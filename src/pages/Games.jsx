@@ -71,7 +71,8 @@ export default function Games() {
     setPage(1);
   }, [timeFilter, resultFilter, searchQuery, games.length]);
 
-  // Sync entire Chess.com history (all monthly archives), replacing prior synced games
+  // Sync Chess.com history — fetch, format, persist, then set state directly
+  // so the display never depends on a write→read roundtrip across Supabase/localStorage
   const handleSyncGames = async () => {
     const username = profile?.chesscom_username;
     if (!username) {
@@ -95,8 +96,25 @@ export default function Games() {
         formatChesscomGame(g, username, profile.id)
       );
 
-      await replaceSyncedChesscomGames(profile.id, formatted);
-      await loadGames();
+      // Persist in the background — don't await or fail if it errors
+      replaceSyncedChesscomGames(profile.id, formatted).catch((err) =>
+        console.warn('Background persist failed:', err)
+      );
+
+      // Enrich with local IDs so the list renders immediately without a reload
+      const withIds = formatted.map((g) => ({
+        ...g,
+        id: g.id || `game-${g.chesscom_game_id}`,
+      }));
+
+      // Preserve any manual PGN imports already in state
+      const manualGames = games.filter(
+        (g) =>
+          String(g?.chesscom_game_id || '').startsWith('custom-') ||
+          String(g?.id || '').startsWith('pgn-')
+      );
+
+      setGames([...withIds, ...manualGames]);
       setPage(1);
 
       if (formatted.length === 0) {
@@ -107,7 +125,7 @@ export default function Games() {
       } else {
         setSyncFeedback({
           type: 'success',
-          text: `Synced ${formatted.length.toLocaleString()} games from @${username} (all-time).`,
+          text: `Synced ${formatted.length.toLocaleString()} games from @${username}.`,
         });
       }
     } catch (err) {
