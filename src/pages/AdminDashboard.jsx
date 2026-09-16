@@ -894,7 +894,8 @@ export default function AdminDashboard() {
                 Course: <strong className="text-white">{assigningCourse.title}</strong>
               </p>
               <p className="text-[11px] text-slate-500 mt-1">
-                Select anywhere from 1 student up to the full roster ({students.length}).
+                Select 1–{students.length || 'all'} students. Confirming updates the roster:
+                only checked students keep this course.
               </p>
             </div>
 

@@ -244,24 +244,52 @@ export async function assignCourseToStudents(courseId, studentIds) {
   }
 
   if (isSupabaseConfigured) {
-    const rows = ids.map((sid) => ({
-      course_id: courseId,
-      student_id: sid,
-      progress: { completed_chapter_ids: [] },
-    }));
-    // ignoreDuplicates keeps existing progress when re-assigning the same student
-    const { error } = await supabase
+    const selected = new Set(ids);
+
+    // Sync roster: drop assignments for students no longer selected
+    const { data: existing, error: existingError } = await supabase
       .from('course_assignments')
-      .upsert(rows, { onConflict: 'course_id,student_id', ignoreDuplicates: true });
-    if (error) throw error;
+      .select('id, student_id')
+      .eq('course_id', courseId);
+    if (existingError) throw existingError;
+
+    const toRemove = (existing || [])
+      .filter((row) => !selected.has(row.student_id))
+      .map((row) => row.id);
+
+    if (toRemove.length > 0) {
+      const { error: removeError } = await supabase
+        .from('course_assignments')
+        .delete()
+        .in('id', toRemove);
+      if (removeError) throw removeError;
+    }
+
+    const alreadyAssigned = new Set((existing || []).map((row) => row.student_id));
+    const toAdd = ids.filter((sid) => !alreadyAssigned.has(sid));
+
+    if (toAdd.length > 0) {
+      const rows = toAdd.map((sid) => ({
+        course_id: courseId,
+        student_id: sid,
+        progress: { completed_chapter_ids: [] },
+      }));
+      const { error } = await supabase.from('course_assignments').insert(rows);
+      if (error) throw error;
+    }
+
     return true;
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  const selected = new Set(ids);
+  const kept = assignments.filter(
+    (a) => a.course_id !== courseId || selected.has(a.student_id)
+  );
   ids.forEach((sid) => {
-    const existing = assignments.find((a) => a.course_id === courseId && a.student_id === sid);
+    const existing = kept.find((a) => a.course_id === courseId && a.student_id === sid);
     if (!existing) {
-      assignments.push({
+      kept.push({
         id: `assign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         course_id: courseId,
         student_id: sid,
@@ -270,7 +298,7 @@ export async function assignCourseToStudents(courseId, studentIds) {
       });
     }
   });
-  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(kept));
   return true;
 }
 
