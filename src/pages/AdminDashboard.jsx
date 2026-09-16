@@ -747,7 +747,7 @@ export default function AdminDashboard() {
                 {courseType === 'video' ? (
                   <div>
                     <label className="block text-xs font-semibold text-slate-400 mb-1">
-                      Video Stream URL (Mux, Cloudflare, or MP4)
+                      Video URL (YouTube, Mux, Cloudflare, or MP4)
                     </label>
                     <input
                       type="url"
@@ -757,9 +757,12 @@ export default function AdminDashboard() {
                         copy[idx].video_url = e.target.value;
                         setChapters(copy);
                       }}
-                      placeholder="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                      placeholder="https://www.youtube.com/watch?v=… or direct .mp4 URL"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                     />
+                    <p className="mt-1.5 text-[11px] text-slate-500">
+                      Paste a YouTube watch or share link — it will embed automatically in the course player.
+                    </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

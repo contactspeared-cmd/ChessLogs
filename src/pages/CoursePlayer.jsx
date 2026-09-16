@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext';
 import ChessboardView from '../components/ChessboardView';
 import { getCourseById, markChapterComplete } from '../lib/db';
+import { getYouTubeEmbedUrl, isYouTubeUrl } from '../lib/youtube';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -235,13 +236,24 @@ export default function CoursePlayer() {
             {course.type === 'video' ? (
               <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative flex items-center justify-center">
                 {activeChapter?.video_url ? (
-                  <video
-                    controls
-                    className="w-full h-full object-contain"
-                    src={activeChapter.video_url}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
+                  isYouTubeUrl(activeChapter.video_url) ? (
+                    <iframe
+                      title={activeChapter.title || 'Course video'}
+                      src={getYouTubeEmbedUrl(activeChapter.video_url)}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  ) : (
+                    <video
+                      controls
+                      className="w-full h-full object-contain"
+                      src={activeChapter.video_url}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  )
                 ) : (
                   <div className="text-center text-slate-500 text-xs">
                     <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
