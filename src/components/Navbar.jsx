@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, profile, isAdmin, signOut, switchDemoRole } = useAuth();
+  const { user, profile, isAdmin, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -89,35 +89,8 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Right Section: Role Switcher & User Menu */}
+          {/* Right Section: User Menu */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Quick Demo Switcher if offline/demo or to test both roles */}
-            <div className="flex items-center bg-slate-900 border border-slate-700/70 rounded-lg p-0.5 text-xs">
-              <button
-                onClick={() => switchDemoRole('admin')}
-                className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                  isAdmin
-                    ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Switch to Coach (Admin) perspective"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                Coach
-              </button>
-              <button
-                onClick={() => switchDemoRole('student')}
-                className={`px-2.5 py-1 rounded-md transition-colors flex items-center gap-1 ${
-                  !isAdmin
-                    ? 'bg-emerald-600 text-white font-semibold shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Switch to Student perspective"
-              >
-                <User className="w-3.5 h-3.5" />
-                Student
-              </button>
-            </div>
 
             {/* User Profile Dropdown */}
             <div className="relative">

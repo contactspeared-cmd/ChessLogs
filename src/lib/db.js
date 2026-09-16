@@ -44,6 +44,16 @@ if (typeof window !== 'undefined') {
   initMockStorage();
 }
 
+export async function shouldUseSupabase() {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return Boolean(session?.user);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * -----------------------------------------------------------------------------
  * COURSES & CHAPTERS
@@ -51,7 +61,7 @@ if (typeof window !== 'undefined') {
  */
 
 export async function getCourses(userProfile) {
-  if (isSupabaseConfigured) {
+  if (await shouldUseSupabase()) {
     if (userProfile?.role === 'admin') {
       const { data, error } = await supabase
         .from('courses')
@@ -299,14 +309,18 @@ export async function markChapterComplete(courseId, studentId, chapterId) {
  */
 
 export async function getGamesForStudent(studentId) {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('games')
-      .select('*, review:game_reviews(*)')
-      .eq('student_id', studentId)
-      .order('played_at', { ascending: false });
-    if (error) throw error;
-    return data || [];
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*, review:game_reviews(*)')
+        .eq('student_id', studentId)
+        .order('played_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('Supabase games query failed, falling back to local storage:', err);
+    }
   }
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -323,13 +337,17 @@ export async function getGamesForStudent(studentId) {
 export async function upsertGames(formattedGames) {
   if (formattedGames.length === 0) return [];
 
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('games')
-      .upsert(formattedGames, { onConflict: 'student_id,chesscom_game_id' })
-      .select();
-    if (error) throw error;
-    return data || [];
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .upsert(formattedGames, { onConflict: 'student_id,chesscom_game_id' })
+        .select();
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('Supabase upsertGames failed, saving to local storage:', err);
+    }
   }
 
   const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -352,23 +370,27 @@ export async function upsertGames(formattedGames) {
 }
 
 export async function saveGameReview(gameId, reviewData) {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('game_reviews')
-      .upsert(
-        {
-          game_id: gameId,
-          engine_version: reviewData.engine_version || 'Stockfish 18 NNUE',
-          move_classifications: reviewData.move_classifications || [],
-          accuracy_white: reviewData.accuracy_white,
-          accuracy_black: reviewData.accuracy_black,
-        },
-        { onConflict: 'game_id' }
-      )
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('game_reviews')
+        .upsert(
+          {
+            game_id: gameId,
+            engine_version: reviewData.engine_version || 'Stockfish 18 NNUE',
+            move_classifications: reviewData.move_classifications || [],
+            accuracy_white: reviewData.accuracy_white,
+            accuracy_black: reviewData.accuracy_black,
+          },
+          { onConflict: 'game_id' }
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('Supabase saveGameReview failed, saving to local storage:', err);
+    }
   }
 
   const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
@@ -389,13 +411,17 @@ export async function saveGameReview(gameId, reviewData) {
  */
 
 export async function getAllStudents() {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*, games:games(id, played_at, result), assignments:course_assignments(course_id, progress)')
-      .eq('role', 'student');
-    if (error) throw error;
-    return data || [];
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*, games:games(id, played_at, result), assignments:course_assignments(course_id, progress)')
+        .eq('role', 'student');
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('Supabase getAllStudents failed, falling back to local storage:', err);
+    }
   }
 
   const profiles = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');

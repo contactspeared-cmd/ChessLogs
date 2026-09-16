@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { DEMO_PROFILES } from '../data/initialData';
+import { fetchChesscomProfile } from '../lib/chesscom';
 
 const AuthContext = createContext(null);
 
@@ -41,30 +42,45 @@ export function AuthProvider({ children }) {
             setUser(session.user);
             const userProfile = await fetchProfile(session.user.id);
             setProfile(userProfile);
+          } else {
+            // Restore local session (e.g. Chess.com player login) if present
+            const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
+            if (saved && mounted) {
+              try {
+                const parsed = JSON.parse(saved);
+                setUser({ id: parsed.id, email: parsed.email || `${parsed.chesscom_username || parsed.role}@chesslogs.local` });
+                setProfile(parsed);
+              } catch {
+                setUser(null);
+                setProfile(null);
+              }
+            } else if (mounted) {
+              setUser(null);
+              setProfile(null);
+            }
           }
         } catch (e) {
           console.error('Failed to get Supabase session:', e);
+          if (mounted) {
+            setUser(null);
+            setProfile(null);
+          }
         }
       } else {
-        // Fallback demo storage mode
         const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
-        if (saved) {
+        if (saved && mounted) {
           try {
             const parsed = JSON.parse(saved);
-            setUser({ id: parsed.id, email: `${parsed.role}@chesslogs.local` });
+            setUser({ id: parsed.id, email: parsed.email || `${parsed.chesscom_username || parsed.role}@chesslogs.local` });
             setProfile(parsed);
           } catch {
-            // fallback to default student
-            const def = DEMO_PROFILES[1];
-            setUser({ id: def.id, email: `${def.role}@chesslogs.local` });
-            setProfile(def);
+            setUser(null);
+            setProfile(null);
           }
-        } else {
-          // Default start as Coach for exploration
-          const def = DEMO_PROFILES[0];
-          setUser({ id: def.id, email: 'coach@chesslogs.local' });
-          setProfile(def);
-          localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(def));
+        } else if (mounted) {
+          // No auto-login: user must sign in deliberately
+          setUser(null);
+          setProfile(null);
         }
       }
 
@@ -83,8 +99,12 @@ export function AuthProvider({ children }) {
           const p = await fetchProfile(session.user.id);
           setProfile(p);
         } else {
-          setUser(null);
-          setProfile(null);
+          // Only clear if active profile is not a local Chess.com player
+          const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
+          if (!saved) {
+            setUser(null);
+            setProfile(null);
+          }
         }
       });
       subscription = data.subscription;
@@ -130,17 +150,19 @@ export function AuthProvider({ children }) {
       if (error) throw error;
       if (data.user) {
         setUser(data.user);
-        // create or fetch profile
-        const { data: prof } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            display_name: displayName,
-            role,
-          })
-          .select()
-          .single();
-        setProfile(prof);
+        if (data.session) {
+          // create or fetch profile
+          const { data: prof } = await supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              display_name: displayName,
+              role,
+            })
+            .select()
+            .single();
+          setProfile(prof);
+        }
       }
       return data;
     } else {
@@ -160,9 +182,66 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Sign in using Chess.com account (verifies against Chess.com API)
+  const signInWithChesscom = async (username) => {
+    if (!username || !username.trim()) {
+      throw new Error('Please enter your Chess.com username.');
+    }
+    const cleanUsername = username.trim().toLowerCase();
+
+    // Verify existence with Chess.com Public API
+    const liveProfile = await fetchChesscomProfile(cleanUsername);
+    if (!liveProfile) {
+      throw new Error(`Chess.com username "${cleanUsername}" was not found.`);
+    }
+
+    const chessProfile = {
+      id: `chesscom-${cleanUsername}`,
+      role: 'student',
+      display_name: liveProfile.name || cleanUsername,
+      avatar_url:
+        liveProfile.avatar ||
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+      chesscom_username: cleanUsername,
+      bio: liveProfile.location ? `Chess.com member from ${liveProfile.location}` : '',
+      created_at: new Date().toISOString(),
+    };
+
+    const sessionUser = {
+      id: chessProfile.id,
+      email: `${cleanUsername}@chess.com`,
+    };
+
+    setUser(sessionUser);
+    setProfile(chessProfile);
+    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(chessProfile));
+    return { user: sessionUser, profile: chessProfile };
+  };
+
   // Google OAuth
   const signInWithGoogle = async () => {
     if (isSupabaseConfigured) {
+      // Check if Google provider is enabled in Supabase to give clear feedback
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+        const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+          headers: { apikey: supabaseAnonKey },
+        });
+        if (res.ok) {
+          const settings = await res.json();
+          if (settings?.external && settings.external.google === false) {
+            throw new Error(
+              'Google Sign-In is not enabled yet in your Supabase project dashboard. Please enable Google under Authentication > Providers in Supabase, or sign in using your Email or Chess.com username below.'
+            );
+          }
+        }
+      } catch (err) {
+        if (err.message?.includes('Google Sign-In is not enabled')) {
+          throw err;
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -172,26 +251,34 @@ export function AuthProvider({ children }) {
       if (error) throw error;
       return data;
     } else {
-      return signInWithEmail('google.user@chesslogs.local', 'mock');
+      const mockGoogleUser = {
+        id: `google-${Date.now()}`,
+        role: 'student',
+        display_name: 'Google Student',
+        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+        chesscom_username: '',
+        bio: '',
+        created_at: new Date().toISOString(),
+      };
+      setUser({ id: mockGoogleUser.id, email: 'student@gmail.com' });
+      setProfile(mockGoogleUser);
+      localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(mockGoogleUser));
+      return { user: { id: mockGoogleUser.id, email: 'student@gmail.com' } };
     }
   };
 
   // Sign out
   const signOut = async () => {
     if (isSupabaseConfigured) {
-      await supabase.auth.signOut();
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore sign out errors
+      }
     }
     setUser(null);
     setProfile(null);
     localStorage.removeItem(STORAGE_KEY_LOCAL_USER);
-  };
-
-  // Quick switch role (Admin Coach <-> Student) for convenient testing
-  const switchDemoRole = (role) => {
-    const matched = DEMO_PROFILES.find((p) => p.role === role) || DEMO_PROFILES[0];
-    setUser({ id: matched.id, email: `${role}@chesslogs.local` });
-    setProfile(matched);
-    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(matched));
   };
 
   // Update profile
@@ -229,9 +316,9 @@ export function AuthProvider({ children }) {
         signInWithEmail,
         signUpWithEmail,
         signInWithGoogle,
+        signInWithChesscom,
         signOut,
         updateProfile,
-        switchDemoRole,
         isSupabaseConfigured,
       }}
     >

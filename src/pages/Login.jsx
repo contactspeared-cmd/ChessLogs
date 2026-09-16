@@ -1,34 +1,84 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ShieldAlert, User, LogIn, AlertCircle } from 'lucide-react';
+import { LogIn, AlertCircle, Sparkles, Mail, CheckCircle2 } from 'lucide-react';
 
 export default function Login() {
-  const { signInWithEmail, signInWithGoogle, switchDemoRole } = useAuth();
+  const { signInWithEmail, signInWithGoogle, signInWithChesscom } = useAuth();
   const navigate = useNavigate();
 
+  const [authMode, setAuthMode] = useState('chesscom'); // 'chesscom' | 'email'
+
+  // Chess.com login state
+  const [chesscomUsername, setChesscomUsername] = useState('');
+  const [chesscomLoading, setChesscomLoading] = useState(false);
+
+  // Email login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // Google state
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [error, setError] = useState('');
+  const [infoMessage, setInfoMessage] = useState('');
+
+  // Handle Chess.com Username Sign In
+  const handleChesscomSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setInfoMessage('');
+    if (!chesscomUsername.trim()) {
+      setError('Please enter your Chess.com username.');
+      return;
+    }
+
+    setChesscomLoading(true);
     try {
-      await signInWithEmail(email, password);
+      await signInWithChesscom(chesscomUsername.trim());
+      navigate('/dashboard');
+    } catch (err) {
+      setError(
+        err.message || `Chess.com account "${chesscomUsername}" could not be found. Please check your username.`
+      );
+    } finally {
+      setChesscomLoading(false);
+    }
+  };
+
+  // Handle Email & Password Sign In
+  const handleEmailSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setInfoMessage('');
+    setEmailLoading(true);
+    try {
+      await signInWithEmail(email.trim(), password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Failed to sign in. Please verify your credentials.');
     } finally {
-      setLoading(false);
+      setEmailLoading(false);
     }
   };
 
-  const handleDemoLogin = (role) => {
-    switchDemoRole(role);
-    navigate('/dashboard');
+  // Handle Google OAuth Sign In
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setInfoMessage('');
+    setGoogleLoading(true);
+    try {
+      const res = await signInWithGoogle();
+      // If client didn't redirect (e.g. local mode), navigate to dashboard
+      if (res?.user) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to sign in with Google.');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -45,92 +95,148 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Quick Demo Switcher Buttons */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2.5">
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block text-center">
-            Instant One-Click Demo Access
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('admin')}
-              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 hover:border-emerald-500 transition-all"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Coach (Admin)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin('student')}
-              className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 hover:border-emerald-500 transition-all"
-            >
-              <User className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Student Alex</span>
-            </button>
-          </div>
+        {/* Auth Method Selector */}
+        <div className="grid grid-cols-2 p-1 bg-slate-950/80 rounded-2xl border border-slate-800">
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('chesscom');
+              setError('');
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              authMode === 'chesscom'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>♟</span>
+            <span>Chess.com Account</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('email');
+              setError('');
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              authMode === 'email'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Email & Password</span>
+          </button>
         </div>
+
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{error}</span>
+          </div>
+        )}
+
+        {infoMessage && (
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            <span className="leading-relaxed">{infoMessage}</span>
+          </div>
+        )}
+
+        {/* Tab 1: Chess.com Account Sign In */}
+        {authMode === 'chesscom' && (
+          <form onSubmit={handleChesscomSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                Chess.com Username
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-slate-500 font-mono text-sm">@</span>
+                <input
+                  type="text"
+                  value={chesscomUsername}
+                  onChange={(e) => setChesscomUsername(e.target.value)}
+                  placeholder="e.g. hikaru, magnuscarlsen, or your handle"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                  required
+                  autoFocus
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-emerald-400" />
+                <span>Instantly connects your profile, ratings, and game archives.</span>
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={chesscomLoading}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{chesscomLoading ? 'Verifying Chess.com...' : 'Sign In with Chess.com'}</span>
+            </button>
+          </form>
+        )}
+
+        {/* Tab 2: Email & Password Sign In */}
+        {authMode === 'email' && (
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="coach@chesslogs.com or your email"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                required
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={emailLoading}
+              className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>{emailLoading ? 'Authenticating...' : 'Sign In with Email'}</span>
+            </button>
+          </form>
+        )}
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-slate-800" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-900 px-3 text-slate-500 font-semibold">Or with Supabase Auth</span>
+            <span className="bg-slate-900 px-3 text-slate-500 font-semibold">Or continue with</span>
           </div>
         </div>
-
-        {error && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Email & Password Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="coach@chesslogs.com or student@chesslogs.com"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              required
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>{loading ? 'Authenticating...' : 'Sign In'}</span>
-          </button>
-        </form>
 
         {/* Google OAuth Button */}
         <button
           type="button"
-          onClick={() => signInWithGoogle()}
-          className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-2"
+          onClick={handleGoogleSignIn}
+          disabled={googleLoading}
+          className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -150,7 +256,7 @@ export default function Login() {
               d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"
             />
           </svg>
-          <span>Continue with Google</span>
+          <span>{googleLoading ? 'Connecting to Google...' : 'Continue with Google'}</span>
         </button>
 
         <p className="text-center text-xs text-slate-400">
