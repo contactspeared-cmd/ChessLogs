@@ -10,6 +10,69 @@ const STORAGE_STUDENTS = 'chesslogs_students';
 // Runtime toggle: set to false when we detect Supabase schema/cache issues
 let runtimeSupabaseEnabled = true;
 
+/**
+ * Unpack chapter annotations jsonb.
+ * Supports legacy bare arrays and packed { description, moments }.
+ */
+export function unpackChapterAnnotations(raw) {
+  if (Array.isArray(raw)) {
+    return { description: '', moments: raw };
+  }
+  if (raw && typeof raw === 'object') {
+    const moments = Array.isArray(raw.moments)
+      ? raw.moments
+      : Array.isArray(raw.items)
+        ? raw.items
+        : Array.isArray(raw.keyMoments)
+          ? raw.keyMoments
+          : [];
+    return {
+      description: typeof raw.description === 'string' ? raw.description : '',
+      moments,
+    };
+  }
+  return { description: '', moments: [] };
+}
+
+/** Pack description + key moments for storage in annotations jsonb. */
+export function packChapterAnnotations(description, moments = []) {
+  const desc = (description || '').trim();
+  const list = Array.isArray(moments) ? moments : [];
+  if (!desc) return list;
+  return { description: desc, moments: list };
+}
+
+/** Normalize a chapter row so callers always see description + moments array. */
+export function normalizeChapter(chapter) {
+  if (!chapter) return chapter;
+  const packed = unpackChapterAnnotations(chapter.annotations);
+  return {
+    ...chapter,
+    description: chapter.description || packed.description || '',
+    annotations: packed.moments,
+  };
+}
+
+function normalizeChapters(chapters = []) {
+  return [...chapters]
+    .map(normalizeChapter)
+    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+}
+
+export function normalizeCourseProgress(progress) {
+  const p = progress && typeof progress === 'object' ? progress : {};
+  return {
+    ...p,
+    completed_chapter_ids: Array.isArray(p.completed_chapter_ids) ? p.completed_chapter_ids : [],
+    read_chapter_ids: Array.isArray(p.read_chapter_ids) ? p.read_chapter_ids : [],
+    trained_chapter_ids: Array.isArray(p.trained_chapter_ids) ? p.trained_chapter_ids : [],
+    preferred_study_mode:
+      p.preferred_study_mode === 'read' || p.preferred_study_mode === 'trainer'
+        ? p.preferred_study_mode
+        : null,
+  };
+}
+
 function isSupabaseSchemaError(err) {
   if (!err) return false;
   const code = err.code || '';
@@ -170,9 +233,7 @@ export async function getCourses(userProfile) {
       if (error) throw error;
       return (data || []).map((course) => ({
         ...course,
-        chapters: [...(course.chapters || [])].sort(
-          (a, b) => (a.order_index || 0) - (b.order_index || 0)
-        ),
+        chapters: normalizeChapters(course.chapters),
       }));
     } else {
       // Student: only assigned courses
@@ -185,10 +246,10 @@ export async function getCourses(userProfile) {
       if (error) throw error;
       return (data || []).map((course) => ({
         ...course,
-        chapters: [...(course.chapters || [])].sort(
-          (a, b) => (a.order_index || 0) - (b.order_index || 0)
+        chapters: normalizeChapters(course.chapters),
+        progress: normalizeCourseProgress(
+          course.assignments?.[0]?.progress || { completed_chapter_ids: [] }
         ),
-        progress: course.assignments?.[0]?.progress || { completed_chapter_ids: [] },
       }));
     }
   }
@@ -198,7 +259,7 @@ export async function getCourses(userProfile) {
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
 
   if (userProfile?.role === 'admin') {
-    return rawCourses;
+    return rawCourses.map((c) => ({ ...c, chapters: normalizeChapters(c.chapters) }));
   }
 
   // Filter for student
@@ -211,12 +272,13 @@ export async function getCourses(userProfile) {
       const assign = studentAssignments.find((a) => a.course_id === c.id);
       return {
         ...c,
-        progress: assign?.progress || { completed_chapter_ids: [] },
+        chapters: normalizeChapters(c.chapters),
+        progress: normalizeCourseProgress(assign?.progress || { completed_chapter_ids: [] }),
       };
     });
 }
 
-export async function getCourseById(courseId) {
+export async function getCourseById(courseId, studentId = null) {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase
       .from('courses')
@@ -224,14 +286,33 @@ export async function getCourseById(courseId) {
       .eq('id', courseId)
       .single();
     if (error) throw error;
-    if (data?.chapters) {
-      data.chapters.sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    if (data) {
+      data.chapters = normalizeChapters(data.chapters);
+      if (studentId) {
+        const { data: assignment } = await supabase
+          .from('course_assignments')
+          .select('progress')
+          .eq('course_id', courseId)
+          .eq('student_id', studentId)
+          .maybeSingle();
+        data.progress = normalizeCourseProgress(assignment?.progress);
+      } else {
+        data.progress = normalizeCourseProgress(data.progress);
+      }
     }
     return data;
   }
 
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
-  return courses.find((c) => c.id === courseId) || null;
+  const course = courses.find((c) => c.id === courseId) || null;
+  if (!course) return null;
+  const normalized = { ...course, chapters: normalizeChapters(course.chapters) };
+  if (studentId) {
+    const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+    const assign = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
+    normalized.progress = normalizeCourseProgress(assign?.progress);
+  }
+  return normalized;
 }
 
 export async function saveCourse(courseData, chaptersData = []) {
@@ -265,15 +346,33 @@ export async function saveCourse(courseData, chaptersData = []) {
     // Replace chapters
     if (chaptersData.length > 0) {
       await supabase.from('course_chapters').delete().eq('course_id', courseId);
-      const rows = chaptersData.map((ch, idx) => ({
-        course_id: courseId,
-        order_index: idx + 1,
-        title: ch.title,
-        video_url: ch.video_url || null,
-        pgn: ch.pgn || null,
-        annotations: ch.annotations || [],
-      }));
-      const { error: chErr } = await supabase.from('course_chapters').insert(rows);
+
+      const buildRows = (includeDescriptionColumn) =>
+        chaptersData.map((ch, idx) => {
+          const moments = Array.isArray(ch.annotations)
+            ? ch.annotations
+            : unpackChapterAnnotations(ch.annotations).moments;
+          const description = (ch.description || '').trim() || null;
+          const row = {
+            course_id: courseId,
+            order_index: idx + 1,
+            title: ch.title,
+            video_url: ch.video_url || null,
+            pgn: ch.pgn || null,
+            // Pack description into annotations so it survives without the column migration
+            annotations: packChapterAnnotations(description, moments),
+          };
+          if (includeDescriptionColumn) {
+            row.description = description;
+          }
+          return row;
+        });
+
+      // Include description column when migrated; fall back if schema cache lacks it.
+      let { error: chErr } = await supabase.from('course_chapters').insert(buildRows(true));
+      if (chErr && isSupabaseSchemaError(chErr)) {
+        ({ error: chErr } = await supabase.from('course_chapters').insert(buildRows(false)));
+      }
       if (chErr) throw chErr;
     }
 
@@ -402,29 +501,46 @@ export async function assignCourseToStudents(courseId, studentIds) {
   return true;
 }
 
-export async function markChapterComplete(courseId, studentId, chapterId) {
+function addUniqueId(list = [], id) {
+  if (!id) return list;
+  return list.includes(id) ? list : [...list, id];
+}
+
+/**
+ * Mark chapter progress for a study mode.
+ * @param {'trained'|'read'|'video'|undefined} mode
+ *   - trained: active-recall Trainer completion
+ *   - read: passive Read walkthrough completion
+ *   - video / omitted: legacy single completion (also used for video chapters)
+ */
+export async function markChapterComplete(courseId, studentId, chapterId, mode = 'video') {
+  const applyProgress = (progress) => {
+    const next = normalizeCourseProgress(progress);
+    if (mode === 'read') {
+      next.read_chapter_ids = addUniqueId(next.read_chapter_ids, chapterId);
+    } else if (mode === 'trained') {
+      next.trained_chapter_ids = addUniqueId(next.trained_chapter_ids, chapterId);
+      next.completed_chapter_ids = addUniqueId(next.completed_chapter_ids, chapterId);
+    } else {
+      // video / legacy
+      next.completed_chapter_ids = addUniqueId(next.completed_chapter_ids, chapterId);
+    }
+    return next;
+  };
+
   if (isSupabaseConfigured) {
     const { data: assignment } = await supabase
       .from('course_assignments')
       .select('*')
       .eq('course_id', courseId)
       .eq('student_id', studentId)
-      .single();
+      .maybeSingle();
 
     if (assignment) {
-      const current = assignment.progress?.completed_chapter_ids || [];
-      if (!current.includes(chapterId)) {
-        const updated = [...current, chapterId];
-        await supabase
-          .from('course_assignments')
-          .update({
-            progress: {
-              ...(assignment.progress || {}),
-              completed_chapter_ids: updated,
-            },
-          })
-          .eq('id', assignment.id);
-      }
+      await supabase
+        .from('course_assignments')
+        .update({ progress: applyProgress(assignment.progress) })
+        .eq('id', assignment.id);
     }
     return true;
   }
@@ -432,15 +548,41 @@ export async function markChapterComplete(courseId, studentId, chapterId) {
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
   if (match) {
-    const current = match.progress?.completed_chapter_ids || [];
-    if (!current.includes(chapterId)) {
-      match.progress = {
-        ...(match.progress || {}),
-        completed_chapter_ids: [...current, chapterId],
-      };
-      localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
-    }
+    match.progress = applyProgress(match.progress);
+    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   }
+  return true;
+}
+
+/** Persist last-used Study mode (trainer | read) for a course. */
+export async function savePreferredStudyMode(courseId, studentId, mode) {
+  if (!courseId || !studentId || (mode !== 'trainer' && mode !== 'read')) return false;
+
+  const apply = (progress) => ({
+    ...normalizeCourseProgress(progress),
+    preferred_study_mode: mode,
+  });
+
+  if (isSupabaseConfigured) {
+    const { data: assignment } = await supabase
+      .from('course_assignments')
+      .select('*')
+      .eq('course_id', courseId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+    if (!assignment) return false;
+    await supabase
+      .from('course_assignments')
+      .update({ progress: apply(assignment.progress) })
+      .eq('id', assignment.id);
+    return true;
+  }
+
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
+  if (!match) return false;
+  match.progress = apply(match.progress);
+  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   return true;
 }
 
@@ -576,13 +718,33 @@ export async function getGameById(gameId) {
 export async function getGamesForStudent(studentId) {
   if (await shouldUseSupabase()) {
     try {
-      const { data, error } = await supabase
-        .from('games')
-        .select('*, review:game_reviews(*)')
-        .eq('student_id', studentId)
-        .order('played_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
+      const allGames = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('games')
+          .select('*, review:game_reviews(*)')
+          .eq('student_id', studentId)
+          .order('played_at', { ascending: false })
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allGames.push(...data);
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return allGames;
     } catch (err) {
       console.warn('Supabase games query failed, falling back to local storage:', err);
     }
@@ -658,11 +820,30 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
 
   if (await shouldUseSupabase()) {
     try {
-      const { data: existing, error: listError } = await supabase
-        .from('games')
-        .select('id, chesscom_game_id')
-        .eq('student_id', studentId);
-      if (listError) throw listError;
+      const existing = [];
+      let from = 0;
+      const step = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error: listError } = await supabase
+          .from('games')
+          .select('id, chesscom_game_id')
+          .eq('student_id', studentId)
+          .range(from, from + step - 1);
+
+        if (listError) throw listError;
+        if (data && data.length > 0) {
+          existing.push(...data);
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
 
       const idsToDelete = (existing || [])
         .filter((g) => !isManualImportedGame(g))

@@ -37,8 +37,11 @@ create table if not exists public.course_chapters (
   course_id uuid not null references public.courses(id) on delete cascade,
   order_index integer not null default 0,
   title text not null,
+  description text,
   video_url text,
   pgn text,
+  -- Key moments: [{ ply, keyMove, comment }, ...]
+  -- Or packed form: { description, moments: [{ ply, keyMove, comment }, ...] }
   annotations jsonb default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
@@ -50,7 +53,15 @@ create table if not exists public.course_assignments (
   course_id uuid not null references public.courses(id) on delete cascade,
   student_id uuid not null references public.profiles(id) on delete cascade,
   assigned_at timestamptz not null default now(),
-  progress jsonb not null default '{"completed_chapter_ids": []}'::jsonb,
+  -- progress shape:
+  -- {
+  --   completed_chapter_ids: [],  -- legacy / overall (trained or video)
+  --   read_chapter_ids: [],
+  --   trained_chapter_ids: [],
+  --   preferred_study_mode: 'trainer' | 'read',
+  --   trainer: { cards: {} }
+  -- }
+  progress jsonb not null default '{"completed_chapter_ids": [], "read_chapter_ids": [], "trained_chapter_ids": []}'::jsonb,
   constraint course_assignments_unique unique (course_id, student_id)
 );
 

@@ -55,6 +55,7 @@ export default function AdminDashboard() {
   const [chapters, setChapters] = useState([
     {
       title: 'Chapter 1: Critical Novelty',
+      description: '',
       video_url: '',
       pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ *',
       annotations: [
@@ -72,6 +73,8 @@ export default function AdminDashboard() {
 
   // PGN Import Wizard
   const [showPgnWizard, setShowPgnWizard] = useState(false);
+  const [courseSaveError, setCourseSaveError] = useState('');
+  const [courseSaving, setCourseSaving] = useState(false);
 
   const loadData = async () => {
     try {
@@ -154,6 +157,7 @@ export default function AdminDashboard() {
     setChapters([
       {
         title: 'Chapter 1: Opening Moves',
+        description: '',
         video_url: '',
         pgn: '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 *',
         annotations: [{ ply: 10, keyMove: 'a6', comment: 'The signature Najdorf move controlling b5.' }],
@@ -171,7 +175,7 @@ export default function AdminDashboard() {
     setChapters(
       (c.chapters || []).length > 0
         ? c.chapters
-        : [{ title: 'Chapter 1', video_url: '', pgn: '', annotations: [] }]
+        : [{ title: 'Chapter 1', description: '', video_url: '', pgn: '', annotations: [] }]
     );
     setActiveTab('courseBuilder');
   };
@@ -180,6 +184,8 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!courseTitle.trim()) return;
 
+    setCourseSaving(true);
+    setCourseSaveError('');
     try {
       await saveCourse(
         {
@@ -196,6 +202,9 @@ export default function AdminDashboard() {
       setActiveTab('courses');
     } catch (err) {
       console.error('Failed to save course:', err);
+      setCourseSaveError(err?.message || 'Failed to save course. Check the console for details.');
+    } finally {
+      setCourseSaving(false);
     }
   };
 
@@ -214,6 +223,7 @@ export default function AdminDashboard() {
       ...chapters,
       {
         title: `Chapter ${chapters.length + 1}: Key Variation`,
+        description: '',
         video_url: '',
         pgn: '',
         annotations: [],
@@ -761,12 +771,15 @@ export default function AdminDashboard() {
               <PgnImportWizard
                 onClose={() => setShowPgnWizard(false)}
                 onConfirm={(importedChapters) => {
-                  const isDefaultEmpty =
+                  // Template chapters always include a sample PGN, so treat a single
+                  // untitled/template chapter as replaceable rather than appending.
+                  const isPlaceholder =
                     chapters.length === 1 &&
-                    !chapters[0].pgn &&
-                    !chapters[0].video_url;
+                    !chapters[0].video_url &&
+                    !String(chapters[0].description || '').trim() &&
+                    String(chapters[0].title || '').startsWith('Chapter 1');
                   setChapters(
-                    isDefaultEmpty ? importedChapters : [...chapters, ...importedChapters]
+                    isPlaceholder ? importedChapters : [...chapters, ...importedChapters]
                   );
                   setShowPgnWizard(false);
                 }}
@@ -915,6 +928,9 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4">
+            {courseSaveError && (
+              <p className="flex-1 text-xs text-rose-400 mr-auto">{courseSaveError}</p>
+            )}
             <button
               type="button"
               onClick={() => setActiveTab('courses')}
@@ -924,9 +940,10 @@ export default function AdminDashboard() {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20"
+              disabled={courseSaving}
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 disabled:opacity-50"
             >
-              Save Course
+              {courseSaving ? 'Saving…' : 'Save Course'}
             </button>
           </div>
         </form>

@@ -45,6 +45,7 @@ export const DEMO_COURSES = [
         id: 'chap-1-najdorf-intro',
         order_index: 1,
         title: 'Chapter 1: The Najdorf 6.Bg5 Critical Line',
+        description: 'Learn the Poisoned Pawn ideas after 6.Bg5 — how Black invites chaos with ...Qb6 and why e6 is the key calming move.',
         video_url: null,
         pgn: `[Event "Najdorf Demonstration"]
 [Site "ChessLogs"]
@@ -72,6 +73,7 @@ export const DEMO_COURSES = [
         id: 'chap-2-tactical-breakthroughs',
         order_index: 2,
         title: 'Chapter 2: The ...d5 Central Breakthrough',
+        description: 'When White plays quietly, strike in the center with ...d5 and open the position on your terms.',
         video_url: null,
         pgn: `[Event "Sicilian Center Break"]
 [Site "ChessLogs"]

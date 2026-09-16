@@ -38,6 +38,7 @@ function parsePgn(pgnText) {
         from: m.from,
         to: m.to,
         color: m.color,      // 'w' | 'b'
+        promotion: m.promotion || undefined,
         moveNumber: Math.ceil((i + 1) / 2),
         fenAfter: replay.fen(),
         // annotation defaults
@@ -56,14 +57,39 @@ function parsePgn(pgnText) {
 
 /** Build a chapter-sliced PGN from a subset of the full move list */
 function buildChapterPgn(allMoves, fromPly, toPly) {
-  // fromPly and toPly are 1-indexed, inclusive
-  const chess = new Chess();
+  // fromPly and toPly are 1-indexed, inclusive.
+  // Replay prior moves so mid-game chapters start from the correct position.
+  const setup = new Chess();
+  for (let i = 0; i < fromPly - 1; i++) {
+    const m = allMoves[i];
+    const played = setup.move({
+      from: m.from,
+      to: m.to,
+      promotion: m.promotion || 'q',
+    });
+    if (!played) {
+      throw new Error(`Could not reach start of chapter at ply ${fromPly} (failed on ${m.san}).`);
+    }
+  }
+
+  const chapter = new Chess(setup.fen());
   const subset = allMoves.slice(fromPly - 1, toPly);
   for (const m of subset) {
-    chess.move({ from: m.from, to: m.to, promotion: 'q' });
+    const played = chapter.move({
+      from: m.from,
+      to: m.to,
+      promotion: m.promotion || 'q',
+    });
+    if (!played) {
+      throw new Error(`Could not build chapter PGN: illegal move ${m.san}.`);
+    }
   }
-  // Append result terminator
-  return chess.pgn() + (chess.pgn().endsWith('*') ? '' : ' *');
+
+  let pgn = chapter.pgn().trim();
+  if (pgn && !/\s(1-0|0-1|1\/2-1\/2|\*)$/.test(pgn)) {
+    pgn = `${pgn} *`;
+  }
+  return pgn || '*';
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +146,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
 
   // Which chapter is expanded in the annotate step
   const [expandedChapter, setExpandedChapter] = useState(0);
+  const [confirmError, setConfirmError] = useState('');
 
   // ------------------------------------------------------------------
   // Step 1: Parse PGN
@@ -200,31 +227,37 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
   // Confirm: build chapters array for saveCourse
   // ------------------------------------------------------------------
   const handleConfirm = () => {
-    const result = chapters.map((ch, idx) => {
-      const meta = chapterMeta[idx] || {};
-      const chMoves = allMoves.slice(ch.startPly - 1, ch.endPly);
+    setConfirmError('');
+    try {
+      const result = chapters.map((ch, idx) => {
+        const meta = chapterMeta[idx] || {};
+        const chMoves = allMoves.slice(ch.startPly - 1, ch.endPly);
 
-      // Build annotations array: only moves with isKeyMove = true
-      const chAnnotations = chMoves
-        .filter((m) => annotations[m.ply]?.isKeyMove)
-        .map((m) => ({
-          ply: m.ply - ch.startPly + 1, // relative ply within chapter
-          keyMove: m.san,
-          comment: annotations[m.ply]?.comment?.trim() || '',
-        }));
+        // Build annotations array: only moves with isKeyMove = true
+        const chAnnotations = chMoves
+          .filter((m) => annotations[m.ply]?.isKeyMove)
+          .map((m) => ({
+            ply: m.ply - ch.startPly + 1, // relative ply within chapter
+            keyMove: m.san,
+            comment: annotations[m.ply]?.comment?.trim() || '',
+          }));
 
-      const pgn = buildChapterPgn(allMoves, ch.startPly, ch.endPly);
+        const pgn = buildChapterPgn(allMoves, ch.startPly, ch.endPly);
 
-      return {
-        title: meta.title?.trim() || `Chapter ${idx + 1}`,
-        description: meta.description?.trim() || '',
-        video_url: '',
-        pgn,
-        annotations: chAnnotations,
-      };
-    });
+        return {
+          title: meta.title?.trim() || `Chapter ${idx + 1}`,
+          description: meta.description?.trim() || '',
+          video_url: '',
+          pgn,
+          annotations: chAnnotations,
+        };
+      });
 
-    onConfirm(result);
+      onConfirm(result);
+    } catch (err) {
+      console.error('PGN import confirm failed:', err);
+      setConfirmError(err?.message || 'Failed to build chapter PGNs from the import.');
+    }
   };
 
   // ------------------------------------------------------------------
@@ -568,78 +601,87 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <div className="text-[11px] text-slate-500">
-            {step === 'divide' && (
-              <span>
-                {allMoves.length} moves parsed •{' '}
-                {chapters.length} chapter{chapters.length !== 1 ? 's' : ''}
-              </span>
-            )}
-            {step === 'annotate' && (
-              <span>
-                {Object.values(annotations).filter((a) => a.isKeyMove).length} key move
-                {Object.values(annotations).filter((a) => a.isKeyMove).length !== 1 ? 's' : ''} annotated
-              </span>
-            )}
-          </div>
+        <div className="px-6 py-4 border-t border-slate-800 flex flex-col gap-3 shrink-0">
+          {confirmError && (
+            <div className="flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{confirmError}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[11px] text-slate-500">
+              {step === 'divide' && (
+                <span>
+                  {allMoves.length} moves parsed •{' '}
+                  {chapters.length} chapter{chapters.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {step === 'annotate' && (
+                <span>
+                  {Object.values(annotations).filter((a) => a.isKeyMove).length} key move
+                  {Object.values(annotations).filter((a) => a.isKeyMove).length !== 1 ? 's' : ''} annotated
+                </span>
+              )}
+            </div>
 
-          <div className="flex items-center gap-3">
-            {step !== 'input' && (
-              <button
-                type="button"
-                onClick={() =>
-                  setStep(step === 'annotate' ? 'divide' : 'input')
-                }
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
-              >
-                ← Back
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {step !== 'input' && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setStep(step === 'annotate' ? 'divide' : 'input')
+                  }
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+                >
+                  ← Back
+                </button>
+              )}
 
-            {step === 'input' && (
-              <button
-                type="button"
-                onClick={handleParse}
-                disabled={!pgnInput.trim()}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Parse PGN →
-              </button>
-            )}
+              {step === 'input' && (
+                <button
+                  type="button"
+                  onClick={handleParse}
+                  disabled={!pgnInput.trim()}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Parse PGN →
+                </button>
+              )}
 
-            {step === 'divide' && (
-              <button
-                type="button"
-                onClick={() => {
-                  // Pre-fill chapter meta if missing
-                  chapters.forEach((_, i) => {
-                    if (!chapterMeta[i]) {
-                      setChapterMeta((prev) => ({
-                        ...prev,
-                        [i]: { title: `Chapter ${i + 1}`, description: '' },
-                      }));
-                    }
-                  });
-                  setExpandedChapter(0);
-                  setStep('annotate');
-                }}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20"
-              >
-                Annotate Moves →
-              </button>
-            )}
+              {step === 'divide' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Pre-fill chapter meta if missing
+                    chapters.forEach((_, i) => {
+                      if (!chapterMeta[i]) {
+                        setChapterMeta((prev) => ({
+                          ...prev,
+                          [i]: { title: `Chapter ${i + 1}`, description: '' },
+                        }));
+                      }
+                    });
+                    setExpandedChapter(0);
+                    setConfirmError('');
+                    setStep('annotate');
+                  }}
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20"
+                >
+                  Annotate Moves →
+                </button>
+              )}
 
-            {step === 'annotate' && (
-              <button
-                type="button"
-                onClick={handleConfirm}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Import {chapters.length} Chapter{chapters.length !== 1 ? 's' : ''} into Course
-              </button>
-            )}
+              {step === 'annotate' && (
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Import {chapters.length} Chapter{chapters.length !== 1 ? 's' : ''} into Course
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

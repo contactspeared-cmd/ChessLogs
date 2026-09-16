@@ -75,7 +75,12 @@ export default function Courses() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.map((course) => {
-            const completedChapters = course.progress?.completed_chapter_ids?.length || 0;
+            const trainedIds = new Set([
+              ...(course.progress?.trained_chapter_ids || []),
+              ...(course.progress?.completed_chapter_ids || []),
+            ]);
+            const readIds = new Set(course.progress?.read_chapter_ids || []);
+            const completedChapters = trainedIds.size;
             const totalChapters = course.chapters?.length || 1;
             const progressPercent = Math.min(100, Math.round((completedChapters / totalChapters) * 100));
 
@@ -141,16 +146,18 @@ export default function Courses() {
                     {/* Segmented chapter bar */}
                     <div className="flex items-center gap-1">
                       {(course.chapters || []).map((ch, ci) => {
-                        const chapterDone =
-                          course.progress?.completed_chapter_ids?.includes(ch.id);
+                        const trained = trainedIds.has(ch.id);
+                        const read = readIds.has(ch.id);
                         return (
                           <div
                             key={ch.id || ci}
-                            title={ch.title}
+                            title={`${ch.title}${trained ? ' (trained)' : ''}${read ? ' (read)' : ''}`}
                             className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                              chapterDone
+                              trained
                                 ? 'bg-gradient-to-r from-emerald-500 to-green-400'
-                                : 'bg-slate-700'
+                                : read
+                                  ? 'bg-sky-500/70'
+                                  : 'bg-slate-700'
                             }`}
                           />
                         );
