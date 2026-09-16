@@ -25,6 +25,75 @@ import {
   X,
 } from 'lucide-react';
 
+/**
+ * Converts a single UCI move (e.g. "e2e4") to SAN (e.g. "e4") from a given FEN.
+ * Falls back to the raw UCI string if conversion fails.
+ */
+function uciToSan(fen, uciMove) {
+  if (!fen || !uciMove) return uciMove ?? '';
+  try {
+    const tmp = new Chess(fen);
+    const from = uciMove.slice(0, 2);
+    const to = uciMove.slice(2, 4);
+    const promotion = uciMove.length === 5 ? uciMove[4] : undefined;
+    const result = tmp.move({ from, to, ...(promotion && { promotion }) });
+    return result?.san ?? uciMove;
+  } catch {
+    return uciMove;
+  }
+}
+
+/**
+ * Converts an array of UCI moves (principal variation) to a formatted string
+ * like "1. e4 e5 2. Nf3 Nc6" starting from the given FEN position.
+ * Stops at the first invalid move.
+ */
+function pvToSan(fen, pvMoves, maxMoves = 6) {
+  if (!fen || !pvMoves?.length) return '';
+  try {
+    const tmp = new Chess(fen);
+    // Determine the starting full-move number and whose turn it is
+    let moveNumber = tmp.moveNumber();
+    let isWhiteTurn = tmp.turn() === 'w';
+
+    const parts = [];
+    let pairBuf = [];
+
+    for (const uci of pvMoves.slice(0, maxMoves)) {
+      const from = uci.slice(0, 2);
+      const to = uci.slice(2, 4);
+      const promotion = uci.length === 5 ? uci[4] : undefined;
+      const result = tmp.move({ from, to, ...(promotion && { promotion }) });
+      if (!result) break;
+
+      if (isWhiteTurn) {
+        // Start a new move pair: "N. san"
+        pairBuf = [`${moveNumber}. ${result.san}`];
+      } else {
+        // Append black's move then flush the pair
+        if (pairBuf.length) {
+          pairBuf.push(result.san);
+          parts.push(pairBuf.join(' '));
+          pairBuf = [];
+          moveNumber++;
+        } else {
+          // Black moves first (e.g. position mid-game with black to move)
+          parts.push(`${moveNumber}... ${result.san}`);
+          moveNumber++;
+        }
+      }
+      isWhiteTurn = !isWhiteTurn;
+    }
+
+    // Flush any trailing white move without a black reply
+    if (pairBuf.length) parts.push(pairBuf.join(' '));
+
+    return parts.join(' ');
+  } catch {
+    return '';
+  }
+}
+
 export default function Analysis() {
   const [searchParams, setSearchParams] = useSearchParams();
   const gameIdParam = searchParams.get('gameId');
@@ -410,6 +479,17 @@ export default function Analysis() {
     activeScoreCp = currentClassification.evalWhiteView;
   }
 
+  // Convert UCI → SAN for display
+  // Best move from game review: use the FEN before the current move was played
+  const bestMoveSan = currentClassification?.bestMoveUci
+    ? uciToSan(currentClassification.fenBefore, currentClassification.bestMoveUci)
+    : null;
+
+  // Deep analysis PV: convert from the current board FEN
+  const pvSan = deepEngineInfo?.pv?.length > 0
+    ? pvToSan(fen, deepEngineInfo.pv, 8)
+    : '';
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Top Banner / Game Header */}
@@ -637,11 +717,11 @@ export default function Analysis() {
                   )}
                 </div>
 
-                {currentClassification?.bestMoveUci && (
+                {bestMoveSan && (
                   <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
                     <span className="text-emerald-400 font-semibold">Engine Best Move:</span>
                     <span className="font-mono text-white font-bold">
-                      {currentClassification.bestMoveUci}
+                      {bestMoveSan}
                     </span>
                   </div>
                 )}
@@ -671,9 +751,9 @@ export default function Analysis() {
                           : `${(deepEngineInfo.scoreCp / 100).toFixed(2)}`}
                       </span>
                     </div>
-                    {deepEngineInfo.pv?.length > 0 && (
-                      <div className="text-slate-400 truncate">
-                        Line: {deepEngineInfo.pv.slice(0, 5).join(' ')}
+                    {pvSan && (
+                      <div className="text-slate-400 leading-relaxed break-words whitespace-normal">
+                        <span className="text-slate-500">Line: </span>{pvSan}
                       </div>
                     )}
                   </div>
