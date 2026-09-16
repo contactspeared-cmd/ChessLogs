@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { useAuth } from '../context/AuthContext';
@@ -62,14 +62,27 @@ export default function Games() {
     }
   }, [profile?.id, profile?.chesscom_username]);
 
+  // Guard: only auto-sync once per page visit
+  const autoSyncedRef = useRef(false);
+
   useEffect(() => {
     loadGames();
   }, [loadGames]);
+
+  // Auto-sync once the initial DB load is done and user has a Chess.com username
+  useEffect(() => {
+    if (!loading && profile?.chesscom_username && !autoSyncedRef.current) {
+      autoSyncedRef.current = true;
+      handleSyncGames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, profile?.chesscom_username]);
 
   // Reset to first page whenever filters change
   useEffect(() => {
     setPage(1);
   }, [timeFilter, resultFilter, searchQuery, games.length]);
+
 
   // Sync Chess.com history — fetch, format, persist, then set state directly
   // so the display never depends on a write→read roundtrip across Supabase/localStorage
