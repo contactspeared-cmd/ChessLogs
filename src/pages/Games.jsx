@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchChesscomMonthlyGames,
+  fetchChesscomAllGames,
   formatChesscomGame,
 } from '../lib/chesscom';
 import { getGamesForStudent, upsertGames, replaceSyncedChesscomGames } from '../lib/db';
@@ -89,7 +89,7 @@ export default function Games() {
     setSyncFeedback(null);
 
     try {
-      const rawGames = await fetchChesscomMonthlyGames(username);
+      const rawGames = await fetchChesscomAllGames(username, null, { monthsLimit: 1 });
       const formatted = (rawGames || []).map((g) =>
         formatChesscomGame(g, username, profile.id)
       );
