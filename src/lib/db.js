@@ -238,21 +238,27 @@ export async function deleteCourse(courseId) {
  */
 
 export async function assignCourseToStudents(courseId, studentIds) {
+  const ids = [...new Set((studentIds || []).filter(Boolean))];
+  if (ids.length < 1) {
+    throw new Error('Select at least 1 student to assign this course.');
+  }
+
   if (isSupabaseConfigured) {
-    const rows = studentIds.map((sid) => ({
+    const rows = ids.map((sid) => ({
       course_id: courseId,
       student_id: sid,
       progress: { completed_chapter_ids: [] },
     }));
+    // ignoreDuplicates keeps existing progress when re-assigning the same student
     const { error } = await supabase
       .from('course_assignments')
-      .upsert(rows, { onConflict: 'course_id,student_id' });
+      .upsert(rows, { onConflict: 'course_id,student_id', ignoreDuplicates: true });
     if (error) throw error;
     return true;
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-  studentIds.forEach((sid) => {
+  ids.forEach((sid) => {
     const existing = assignments.find((a) => a.course_id === courseId && a.student_id === sid);
     if (!existing) {
       assignments.push({

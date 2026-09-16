@@ -64,6 +64,8 @@ export default function AdminDashboard() {
   const [assigningCourse, setAssigningCourse] = useState(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [assignSuccess, setAssignSuccess] = useState(false);
+  const [assignError, setAssignError] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   const loadData = async () => {
     try {
@@ -214,30 +216,54 @@ export default function AdminDashboard() {
 
   const handleOpenAssignModal = (course) => {
     setAssigningCourse(course);
-    // Pre-check students who already have the course if available
-    setSelectedStudentIds(students.map((s) => s.id));
+    // Pre-check students who already have this course assigned
+    const alreadyAssigned = students
+      .filter((s) => (s.assignments || []).some((a) => a.course_id === course.id))
+      .map((s) => s.id);
+    setSelectedStudentIds(alreadyAssigned);
     setAssignSuccess(false);
+    setAssignError('');
+    setAssigning(false);
   };
 
   const handleToggleStudentSelection = (studentId) => {
-    if (selectedStudentIds.includes(studentId)) {
-      setSelectedStudentIds(selectedStudentIds.filter((id) => id !== studentId));
-    } else {
-      setSelectedStudentIds([...selectedStudentIds, studentId]);
-    }
+    setAssignError('');
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId) ? prev.filter((id) => id !== studentId) : [...prev, studentId]
+    );
+  };
+
+  const handleSelectAllStudents = () => {
+    setAssignError('');
+    setSelectedStudentIds(students.map((s) => s.id));
+  };
+
+  const handleClearStudentSelection = () => {
+    setAssignError('');
+    setSelectedStudentIds([]);
   };
 
   const handleConfirmAssignment = async () => {
     if (!assigningCourse) return;
+    if (selectedStudentIds.length < 1) {
+      setAssignError('Select at least 1 student to assign this course.');
+      return;
+    }
+    setAssigning(true);
+    setAssignError('');
     try {
       await assignCourseToStudents(assigningCourse.id, selectedStudentIds);
       setAssignSuccess(true);
+      await loadData();
       setTimeout(() => {
         setAssigningCourse(null);
         setAssignSuccess(false);
+        setAssigning(false);
       }, 1500);
     } catch (err) {
       console.error('Failed to assign course:', err);
+      setAssignError(err?.message || 'Failed to assign course. Please try again.');
+      setAssigning(false);
     }
   };
 
@@ -867,58 +893,114 @@ export default function AdminDashboard() {
               <p className="text-xs text-slate-400 mt-1">
                 Course: <strong className="text-white">{assigningCourse.title}</strong>
               </p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Select anywhere from 1 student up to the full roster ({students.length}).
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-mono text-slate-400">
+                {selectedStudentIds.length} of {students.length} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectAllStudents}
+                  disabled={students.length === 0 || selectedStudentIds.length === students.length}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Select all
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearStudentSelection}
+                  disabled={selectedStudentIds.length === 0}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
 
             <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 max-h-60 overflow-y-auto space-y-1.5">
-              {students.map((student) => {
-                const selected = selectedStudentIds.includes(student.id);
-                return (
-                  <button
-                    key={student.id}
-                    type="button"
-                    onClick={() => handleToggleStudentSelection(student.id)}
-                    className={`w-full p-2.5 rounded-lg flex items-center justify-between text-left text-xs transition-colors ${
-                      selected
-                        ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
-                        : 'hover:bg-slate-900 text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {selected ? (
-                        <CheckSquare className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Square className="w-4 h-4 text-slate-500" />
-                      )}
-                      <span className="font-semibold text-white">{student.display_name}</span>
-                      {student.chesscom_username && (
-                        <span className="text-slate-400 font-mono text-[11px]">
-                          (@{student.chesscom_username})
+              {students.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-6">
+                  No students in the roster yet.
+                </p>
+              ) : (
+                students.map((student) => {
+                  const selected = selectedStudentIds.includes(student.id);
+                  const alreadyHas = (student.assignments || []).some(
+                    (a) => a.course_id === assigningCourse.id
+                  );
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => handleToggleStudentSelection(student.id)}
+                      className={`w-full p-2.5 rounded-lg flex items-center justify-between text-left text-xs transition-colors ${
+                        selected
+                          ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
+                          : 'hover:bg-slate-900 text-slate-300 border border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {selected ? (
+                          <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Square className="w-4 h-4 text-slate-500 shrink-0" />
+                        )}
+                        <span className="font-semibold text-white truncate">
+                          {student.display_name}
+                        </span>
+                        {student.chesscom_username && (
+                          <span className="text-slate-400 font-mono text-[11px] truncate">
+                            (@{student.chesscom_username})
+                          </span>
+                        )}
+                      </div>
+                      {alreadyHas && (
+                        <span className="text-[10px] uppercase font-bold tracking-wide text-emerald-500/80 shrink-0 ml-2">
+                          Assigned
                         </span>
                       )}
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             {assignSuccess && (
               <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs border border-emerald-500/20">
-                Assigned successfully to {selectedStudentIds.length} students!
+                Assigned successfully to {selectedStudentIds.length} student
+                {selectedStudentIds.length === 1 ? '' : 's'}!
+              </div>
+            )}
+
+            {assignError && (
+              <div className="p-3 rounded-lg bg-rose-500/10 text-rose-400 text-xs border border-rose-500/20">
+                {assignError}
               </div>
             )}
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setAssigningCourse(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                disabled={assigning}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmAssignment}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20"
+                disabled={assigning || assignSuccess || selectedStudentIds.length < 1}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
               >
-                Confirm Assignments
+                {assigning
+                  ? 'Assigning…'
+                  : `Assign to ${selectedStudentIds.length || 0} student${selectedStudentIds.length === 1 ? '' : 's'}`}
               </button>
             </div>
           </div>
