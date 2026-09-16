@@ -7,6 +7,21 @@ const STORAGE_ASSIGNMENTS = 'chesslogs_assignments';
 const STORAGE_REVIEWS = 'chesslogs_reviews';
 const STORAGE_STUDENTS = 'chesslogs_students';
 
+// Runtime toggle: set to false when we detect Supabase schema/cache issues
+let runtimeSupabaseEnabled = true;
+
+function isSupabaseSchemaError(err) {
+  if (!err) return false;
+  const code = err.code || '';
+  const msg = (err.message || '').toLowerCase();
+  return (
+    String(code) === 'PGRST204' ||
+    msg.includes("could not find the '") ||
+    msg.includes('schema cache') ||
+    msg.includes('could not find')
+  );
+}
+
 // Max attempts/limits when trimming local games to fit storage quota
 const GAME_TRIM_LIMITS = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
 
@@ -117,8 +132,22 @@ if (typeof window !== 'undefined') {
 
 export async function shouldUseSupabase() {
   if (!isSupabaseConfigured) return false;
+  if (!runtimeSupabaseEnabled) return false;
   try {
     const { data: { session } } = await supabase.auth.getSession();
+    // Quick probe to detect schema/cache issues (some Supabase projects may be missing
+    // recent schema changes which cause errors like PGRST204). If we detect such an error,
+    // disable Supabase usage for this session and fall back to localStorage.
+    try {
+      const { error: probeError } = await supabase.from('games').select('id').limit(1);
+      if (probeError && isSupabaseSchemaError(probeError)) {
+        runtimeSupabaseEnabled = false;
+        console.warn('Disabling Supabase for this session due to schema mismatch:', probeError.message || probeError);
+        return false;
+      }
+    } catch (probeErr) {
+      // ignore probe failure and proceed; the main auth check will still determine usage
+    }
     return Boolean(session?.user);
   } catch {
     return false;
