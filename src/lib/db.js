@@ -676,8 +676,15 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
 
   // Newest synced games first, then preserved manual imports / other students
   const next = [...incoming, ...kept];
+  // Debug: record counts so front-end can surface issues if persistence fails
   try {
+    console.log('replaceSyncedChesscomGames: incoming=', incoming.length, 'kept=', kept.length, 'total=', next.length);
     setGamesSafely(next);
+    try {
+      localStorage.setItem('chesslogs_games_last_sync', JSON.stringify({ at: new Date().toISOString(), count: incoming.length }));
+    } catch (e) {
+      // ignore
+    }
   } catch (err) {
     console.warn('Failed to persist games to localStorage (replaceSyncedChesscomGames):', err);
   }
