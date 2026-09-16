@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PgnImportWizard from '../components/PgnImportWizard';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -9,6 +10,7 @@ import {
   assignCourseToStudents,
   deleteStudent,
   updateStudentProfile,
+  replaceSyncedChesscomGames,
 } from '../lib/db';
 import {
   ShieldAlert,
@@ -23,6 +25,7 @@ import {
   Square,
   ArrowRight,
   UserCheck,
+  FileDown,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -66,6 +69,9 @@ export default function AdminDashboard() {
   const [assignSuccess, setAssignSuccess] = useState(false);
   const [assignError, setAssignError] = useState('');
   const [assigning, setAssigning] = useState(false);
+
+  // PGN Import Wizard
+  const [showPgnWizard, setShowPgnWizard] = useState(false);
 
   const loadData = async () => {
     try {
@@ -117,12 +123,17 @@ export default function AdminDashboard() {
     if (!selectedStudent) return;
     setSavingStudent(true);
     try {
+      const nextUsername = editChesscom.trim().toLowerCase();
+      const prevUsername = (selectedStudent.chesscom_username || '').toLowerCase();
       const updated = await updateStudentProfile(selectedStudent.id, {
         display_name: editName.trim() || selectedStudent.display_name,
-        chesscom_username: editChesscom.trim().toLowerCase(),
+        chesscom_username: nextUsername,
       });
+      if (prevUsername !== nextUsername) {
+        await replaceSyncedChesscomGames(selectedStudent.id, []);
+      }
       if (updated) {
-        setSelectedStudent((prev) => ({ ...prev, ...updated }));
+        setSelectedStudent((prev) => ({ ...prev, ...updated, games: prevUsername !== nextUsername ? [] : prev?.games }));
       }
       setIsEditingStudent(false);
       await loadData();
@@ -718,22 +729,49 @@ export default function AdminDashboard() {
 
           {/* Chapters Builder */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>Chapters & Move Annotations</span>
                 <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                   {chapters.length} Total
                 </span>
               </h3>
-              <button
-                type="button"
-                onClick={handleAddChapter}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold border border-slate-700"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>Add Chapter</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPgnWizard(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-semibold border border-cyan-500/25 transition-colors"
+                >
+                  <FileDown className="w-4 h-4" />
+                  <span>Import from PGN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddChapter}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-semibold border border-slate-700"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Add Chapter</span>
+                </button>
+              </div>
             </div>
+
+            {/* PGN Import Wizard modal */}
+            {showPgnWizard && (
+              <PgnImportWizard
+                onClose={() => setShowPgnWizard(false)}
+                onConfirm={(importedChapters) => {
+                  const isDefaultEmpty =
+                    chapters.length === 1 &&
+                    !chapters[0].pgn &&
+                    !chapters[0].video_url;
+                  setChapters(
+                    isDefaultEmpty ? importedChapters : [...chapters, ...importedChapters]
+                  );
+                  setShowPgnWizard(false);
+                }}
+              />
+            )}
 
             {chapters.map((ch, idx) => (
               <div
@@ -769,6 +807,19 @@ export default function AdminDashboard() {
                     </button>
                   )}
                 </div>
+
+                {/* Chapter description */}
+                <input
+                  type="text"
+                  value={ch.description || ''}
+                  onChange={(e) => {
+                    const copy = [...chapters];
+                    copy[idx].description = e.target.value;
+                    setChapters(copy);
+                  }}
+                  placeholder="Chapter description or learning objective (optional)"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
+                />
 
                 {courseType === 'video' ? (
                   <div>

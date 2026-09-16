@@ -15,6 +15,9 @@ import {
   HelpCircle,
   Award,
   BookOpen,
+  Brain,
+  CircleCheck,
+  Circle,
 } from 'lucide-react';
 
 export default function CoursePlayer() {
@@ -25,6 +28,9 @@ export default function CoursePlayer() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+
+  // Track which chapters the user has marked complete in this session
+  const [completedChapterIds, setCompletedChapterIds] = useState(new Set());
 
   // Walkthrough Chess engine state
   const [chess] = useState(() => new Chess());
@@ -44,6 +50,10 @@ export default function CoursePlayer() {
       try {
         const data = await getCourseById(courseId);
         setCourse(data);
+        // Seed completed chapters from stored progress
+        if (data?.progress?.completed_chapter_ids?.length) {
+          setCompletedChapterIds(new Set(data.progress.completed_chapter_ids));
+        }
       } catch (e) {
         console.error('Failed to load course:', e);
       } finally {
@@ -54,6 +64,11 @@ export default function CoursePlayer() {
   }, [courseId]);
 
   const activeChapter = course?.chapters?.[activeChapterIndex] || null;
+
+  // Derived progress
+  const totalChapters = course?.chapters?.length || 1;
+  const completedCount = completedChapterIds.size;
+  const progressPercent = Math.min(100, Math.round((completedCount / totalChapters) * 100));
 
   // Initialize chapter when active chapter changes
   const initChapter = useCallback((chapter) => {
@@ -91,8 +106,30 @@ export default function CoursePlayer() {
   useEffect(() => {
     if (activeChapter) {
       initChapter(activeChapter);
+      // If this chapter is already completed, show it as such immediately
+      if (activeChapter.id && completedChapterIds.has(activeChapter.id)) {
+        setChallengeCompleted(true);
+      }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChapter, initChapter]);
+
+  // Mark a chapter complete (both local state + DB)
+  const doMarkComplete = useCallback(
+    (chapter) => {
+      if (!chapter?.id) return;
+      setCompletedChapterIds((prev) => {
+        if (prev.has(chapter.id)) return prev;
+        const next = new Set(prev);
+        next.add(chapter.id);
+        return next;
+      });
+      if (profile?.id) {
+        markChapterComplete(courseId, profile.id, chapter.id);
+      }
+    },
+    [courseId, profile?.id]
+  );
 
   // Handle student move on board in walkthrough
   const handlePieceDrop = (sourceSquare, targetSquare) => {
@@ -152,9 +189,7 @@ export default function CoursePlayer() {
         } else {
           // Chapter finished!
           setChallengeCompleted(true);
-          if (profile?.id && activeChapter?.id) {
-            markChapterComplete(courseId, profile.id, activeChapter.id);
-          }
+          doMarkComplete(activeChapter);
         }
         return true;
       } else {
@@ -176,6 +211,18 @@ export default function CoursePlayer() {
     if (activeChapterIndex + 1 < (course?.chapters?.length || 0)) {
       setActiveChapterIndex((idx) => idx + 1);
     }
+  };
+
+  // Mark video chapter as watched and advance
+  const handleMarkVideoComplete = () => {
+    setChallengeCompleted(true);
+    doMarkComplete(activeChapter);
+    confetti({
+      particleCount: 60,
+      spread: 70,
+      origin: { y: 0.75 },
+      colors: ['#22c55e', '#1ba8c2', '#f0c15c'],
+    });
   };
 
   if (loading) {
@@ -200,10 +247,12 @@ export default function CoursePlayer() {
     );
   }
 
+  const isLastChapter = activeChapterIndex + 1 >= (course.chapters?.length || 0);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Navigation & Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <button
           onClick={() => navigate('/courses')}
           className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
@@ -212,9 +261,79 @@ export default function CoursePlayer() {
           <span>Back to All Courses</span>
         </button>
 
-        <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-          Chapter {activeChapterIndex + 1} of {course.chapters?.length || 1}
-        </span>
+        <div className="flex items-center gap-2">
+          {course.type === 'walkthrough' && (
+            <button
+              onClick={() => navigate(`/courses/${courseId}/train`)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/25 transition-colors"
+            >
+              <Brain className="w-3.5 h-3.5" />
+              <span>Move Trainer</span>
+            </button>
+          )}
+          <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            Chapter {activeChapterIndex + 1} of {course.chapters?.length || 1}
+          </span>
+        </div>
+      </div>
+
+      {/* Course Progress Bar */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 shadow-xl space-y-2.5">
+        <div className="flex items-center justify-between text-xs font-medium">
+          <span className="text-slate-300 font-semibold">{course.title}</span>
+          <span
+            className={`font-mono font-bold ${
+              progressPercent === 100 ? 'text-emerald-400' : 'text-slate-400'
+            }`}
+          >
+            {completedCount}/{totalChapters} chapters &mdash; {progressPercent}%
+          </span>
+        </div>
+
+        {/* Segmented chapter progress bar */}
+        <div className="flex items-center gap-1">
+          {(course.chapters || []).map((ch, idx) => {
+            const isDone = completedChapterIds.has(ch.id);
+            const isCurrent = idx === activeChapterIndex;
+            return (
+              <button
+                key={ch.id || idx}
+                title={ch.title}
+                onClick={() => setActiveChapterIndex(idx)}
+                className={`h-2.5 flex-1 rounded-full transition-all duration-300 ${
+                  isDone
+                    ? 'bg-emerald-500'
+                    : isCurrent
+                    ? 'bg-emerald-500/40 ring-1 ring-emerald-400/60'
+                    : 'bg-slate-700 hover:bg-slate-600'
+                }`}
+              />
+            );
+          })}
+        </div>
+
+        {/* Chapter checkpoint dots row */}
+        <div className="flex items-start gap-1">
+          {(course.chapters || []).map((ch, idx) => {
+            const isDone = completedChapterIds.has(ch.id);
+            const isCurrent = idx === activeChapterIndex;
+            return (
+              <div key={ch.id || idx} className="flex-1 flex justify-center">
+                {isDone ? (
+                  <CircleCheck
+                    className={`w-3 h-3 text-emerald-500 transition-all ${isCurrent ? 'scale-125' : ''}`}
+                  />
+                ) : (
+                  <Circle
+                    className={`w-3 h-3 transition-all ${
+                      isCurrent ? 'text-emerald-400 scale-125' : 'text-slate-600'
+                    }`}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -305,6 +424,18 @@ export default function CoursePlayer() {
               </div>
             )}
 
+            {/* Video chapter: "Mark as Watched" checkpoint button */}
+            {course.type === 'video' && !challengeCompleted && (
+              <button
+                onClick={handleMarkVideoComplete}
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/40 hover:border-emerald-500 transition-all shadow-md"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Mark Chapter as Watched &amp; Continue</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Chapter Finished Banner */}
             {challengeCompleted && (
               <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -315,12 +446,14 @@ export default function CoursePlayer() {
                   <div>
                     <h4 className="text-sm font-bold text-white">Chapter Complete!</h4>
                     <p className="text-xs text-slate-400">
-                      You have executed all required tactical steps for this chapter.
+                      {course.type === 'video'
+                        ? 'Chapter marked as watched. Keep it up!'
+                        : 'You have executed all required tactical steps for this chapter.'}
                     </p>
                   </div>
                 </div>
 
-                {activeChapterIndex + 1 < (course.chapters?.length || 0) ? (
+                {!isLastChapter ? (
                   <button
                     onClick={handleNextChapter}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20"
@@ -341,31 +474,47 @@ export default function CoursePlayer() {
         {/* Right: Chapter Directory Sidebar */}
         <div className="lg:col-span-4 space-y-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-400" />
-              <span>Course Chapters</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-400" />
+                <span>Course Chapters</span>
+              </h3>
+              <span className="text-[11px] font-mono text-slate-500">
+                {completedCount}/{totalChapters}
+              </span>
+            </div>
 
             <div className="space-y-2">
               {(course.chapters || []).map((ch, idx) => {
                 const isCurrent = idx === activeChapterIndex;
+                const isDone = completedChapterIds.has(ch.id);
                 return (
                   <button
                     key={ch.id || idx}
                     onClick={() => setActiveChapterIndex(idx)}
-                    className={`w-full p-3 rounded-xl text-left transition-all flex items-center justify-between ${
+                    className={`w-full p-3 rounded-xl text-left transition-all flex items-center justify-between gap-2 ${
                       isCurrent
                         ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 font-semibold'
+                        : isDone
+                        ? 'bg-emerald-950/40 text-slate-300 border border-emerald-900/60 hover:bg-emerald-950/60'
                         : 'bg-slate-950/60 hover:bg-slate-800 text-slate-300 border border-slate-800/80'
                     }`}
                   >
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 min-w-0">
                       <span className="text-[11px] font-mono text-slate-400 uppercase block">
                         Chapter {idx + 1}
                       </span>
                       <span className="text-xs font-medium line-clamp-1">{ch.title}</span>
                     </div>
-                    {isCurrent && <ChevronRight className="w-4 h-4 text-emerald-400 shrink-0" />}
+                    <div className="shrink-0">
+                      {isDone ? (
+                        <CircleCheck className="w-4 h-4 text-emerald-500" />
+                      ) : isCurrent ? (
+                        <ChevronRight className="w-4 h-4 text-emerald-400" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-slate-700" />
+                      )}
+                    </div>
                   </button>
                 );
               })}

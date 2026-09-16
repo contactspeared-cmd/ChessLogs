@@ -11,6 +11,7 @@ import Games from './pages/Games';
 import Analysis from './pages/Analysis';
 import Courses from './pages/Courses';
 import CoursePlayer from './pages/CoursePlayer';
+import MoveTrainer from './pages/MoveTrainer';
 import AdminDashboard from './pages/AdminDashboard';
 
 function AppLayout({ children }) {
@@ -99,6 +100,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <CoursePlayer />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/courses/:id/train"
+              element={
+                <ProtectedRoute>
+                  <MoveTrainer />
                 </ProtectedRoute>
               }
             />

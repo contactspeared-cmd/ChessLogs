@@ -5,6 +5,7 @@ import {
   fetchChesscomStats,
   generateVerificationCode,
 } from '../lib/chesscom';
+import { replaceSyncedChesscomGames } from '../lib/db';
 import { APP_CONFIG } from '../config/engine';
 import {
   ShieldCheck,
@@ -96,6 +97,24 @@ export default function Profile() {
     }
   };
 
+  const linkChesscomUsername = async (liveProfile) => {
+    const nextUsername = chesscomInput.trim().toLowerCase();
+    const prevUsername = (profile?.chesscom_username || '').toLowerCase();
+
+    await updateProfile({
+      chesscom_username: nextUsername,
+      avatar_url: liveProfile?.avatar || profile?.avatar_url,
+    });
+
+    // Username change must drop the previous account's synced games immediately
+    if (profile?.id && prevUsername !== nextUsername) {
+      await replaceSyncedChesscomGames(profile.id, []);
+    }
+
+    await loadChesscomData(nextUsername);
+    return nextUsername;
+  };
+
   const handleVerifyBio = async () => {
     if (!chesscomInput.trim()) return;
     setIsVerifying(true);
@@ -107,14 +126,10 @@ export default function Profile() {
       const codeToFind = verificationCode.toLowerCase();
 
       if (bioText.includes(codeToFind) || APP_CONFIG.verificationMethod === 'trusted') {
-        await updateProfile({
-          chesscom_username: chesscomInput.trim().toLowerCase(),
-          avatar_url: liveProfile?.avatar || profile?.avatar_url,
-        });
-        await loadChesscomData(chesscomInput.trim());
+        const linked = await linkChesscomUsername(liveProfile);
         setVerifyMessage({
           type: 'success',
-          text: `Success! Linked Chess.com account @${chesscomInput.trim()}.`,
+          text: `Success! Linked @${linked}. Previous Chess.com games were cleared — open Games and sync to load this account.`,
         });
       } else {
         setVerifyMessage({
@@ -138,14 +153,10 @@ export default function Profile() {
     setVerifyMessage(null);
     try {
       const liveProfile = await fetchChesscomProfile(chesscomInput.trim());
-      await updateProfile({
-        chesscom_username: chesscomInput.trim().toLowerCase(),
-        avatar_url: liveProfile?.avatar || profile?.avatar_url,
-      });
-      await loadChesscomData(chesscomInput.trim());
+      const linked = await linkChesscomUsername(liveProfile);
       setVerifyMessage({
         type: 'success',
-        text: `Linked Chess.com account @${chesscomInput.trim()} via trusted ownership declaration.`,
+        text: `Linked @${linked} via trusted ownership. Previous Chess.com games were cleared — open Games and sync to load this account.`,
       });
     } catch (err) {
       setVerifyMessage({

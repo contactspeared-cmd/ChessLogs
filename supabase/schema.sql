@@ -70,10 +70,18 @@ create table if not exists public.games (
   url text,
   played_at timestamptz,
   synced_at timestamptz not null default now(),
+  eco text,
+  opening text,
+  variation text,
   constraint unique_student_chesscom_game unique (student_id, chesscom_game_id)
 );
 
 create index if not exists idx_games_student on public.games(student_id, played_at desc);
+
+-- Opening metadata (safe for existing deployments)
+alter table public.games add column if not exists eco text;
+alter table public.games add column if not exists opening text;
+alter table public.games add column if not exists variation text;
 
 create table if not exists public.game_reviews (
   id uuid primary key default gen_random_uuid(),

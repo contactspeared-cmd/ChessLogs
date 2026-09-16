@@ -11,6 +11,8 @@ import {
 } from '../lib/engine';
 import { ENGINE_CONFIG } from '../config/engine';
 import { getGameById, saveGameReview } from '../lib/db';
+import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
+import OpeningBadge from '../components/OpeningBadge';
 import {
   RotateCcw,
   ChevronLeft,
@@ -23,6 +25,7 @@ import {
   ClipboardPaste,
   Trash2,
   X,
+  BookOpen,
 } from 'lucide-react';
 
 /**
@@ -149,7 +152,15 @@ export default function Analysis() {
       const selectedGame = await getGameById(gameIdParam);
 
       if (selectedGame) {
-        setCurrentGame(selectedGame);
+        const openingInfo = selectedGame.opening
+          ? {
+              eco: selectedGame.eco,
+              opening: selectedGame.opening,
+              variation: selectedGame.variation,
+            }
+          : openingFieldsFromDetection(detectOpening(selectedGame.pgn));
+
+        setCurrentGame({ ...selectedGame, ...openingInfo });
 
         // Auto-orient board to student's perspective if they played Black
         if (
@@ -325,6 +336,9 @@ export default function Analysis() {
       setHistory(fullHistory);
 
       const headers = chess.header ? chess.header() : {};
+      const detected = detectOpening(input);
+      const openingInfo = openingFieldsFromDetection(detected);
+
       setCurrentGame({
         white_username: headers.White || 'White',
         black_username: headers.Black || 'Black',
@@ -333,6 +347,7 @@ export default function Analysis() {
         time_class: headers.TimeControl ? 'live' : 'custom',
         played_at: headers.Date || new Date().toISOString(),
         pgn: input,
+        ...openingInfo,
       });
 
       // Reset to start of game for review
@@ -512,6 +527,20 @@ export default function Analysis() {
               'Live Analysis Board'
             )}
           </h1>
+          {currentGame?.opening || currentGame?.eco ? (
+            <div className="mt-2">
+              <OpeningBadge
+                eco={currentGame.eco}
+                opening={currentGame.opening}
+                variation={currentGame.variation}
+              />
+            </div>
+          ) : currentGame?.pgn ? (
+            <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5" />
+              Opening not identified for this game
+            </p>
+          ) : null}
           {!currentGame && (
             <p className="text-xs text-slate-400 mt-0.5">
               Make moves on the board or paste a game to start analyzing.
@@ -864,7 +893,8 @@ export default function Analysis() {
             </div>
 
             <p className="text-xs text-slate-400">
-              Paste standard PGN notation (from Chess.com, Lichess, etc.) or a FEN string to load into the board.
+              Paste standard PGN notation (from Chess.com, Lichess, etc.) or a FEN string.
+              For PGN games, ChessLogs will identify the opening and variation automatically.
             </p>
 
             {pasteError && (

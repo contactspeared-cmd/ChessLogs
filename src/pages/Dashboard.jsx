@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getCourses, getGamesForStudent } from '../lib/db';
 import { fetchChesscomStats } from '../lib/chesscom';
+import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
+import OpeningBadge from '../components/OpeningBadge';
 import StatCard from '../components/StatCard';
 import {
   Trophy,
@@ -30,7 +32,13 @@ export default function Dashboard() {
           profile?.id ? getGamesForStudent(profile.id).catch(() => []) : [],
         ]);
         setCourses(cData || []);
-        setGames(gData || []);
+        setGames(
+          (gData || []).map((game) =>
+            game.opening || game.eco || !game.pgn
+              ? game
+              : { ...game, ...openingFieldsFromDetection(detectOpening(game.pgn)) }
+          )
+        );
 
         if (profile?.chesscom_username) {
           const stats = await fetchChesscomStats(profile.chesscom_username);
@@ -253,10 +261,22 @@ export default function Dashboard() {
                         vs. {game.black_username}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2">
+                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
                       <span className="capitalize">{game.time_class}</span>
                       <span>•</span>
                       <span>{new Date(game.played_at).toLocaleDateString()}</span>
+                      {(game.opening || game.eco) && (
+                        <>
+                          <span>•</span>
+                          <OpeningBadge
+                            eco={game.eco}
+                            opening={game.opening}
+                            variation={game.variation}
+                            size="sm"
+                            className="max-w-[14rem]"
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
 

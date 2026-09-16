@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Layers,
   GraduationCap,
+  Brain,
 } from 'lucide-react';
 
 export default function Courses() {
@@ -124,28 +125,58 @@ export default function Courses() {
 
                 <div className="mt-6 pt-4 border-t border-slate-800/80 space-y-4">
                   {/* Progress Bar */}
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs font-medium">
                       <span className="text-slate-400">Progress</span>
-                      <span className="text-emerald-400 font-mono font-semibold">
-                        {progressPercent}%
-                      </span>
+                      {progressPercent === 100 ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                          ✓ Completed
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono">
+                          {completedChapters}/{totalChapters} chapters
+                        </span>
+                      )}
                     </div>
-                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                      <div
-                        className="bg-gradient-to-r from-emerald-500 to-green-400 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${progressPercent}%` }}
-                      />
+                    {/* Segmented chapter bar */}
+                    <div className="flex items-center gap-1">
+                      {(course.chapters || []).map((ch, ci) => {
+                        const chapterDone =
+                          course.progress?.completed_chapter_ids?.includes(ch.id);
+                        return (
+                          <div
+                            key={ch.id || ci}
+                            title={ch.title}
+                            className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                              chapterDone
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-400'
+                                : 'bg-slate-700'
+                            }`}
+                          />
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => navigate(`/courses/${course.id}`)}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-bold border border-slate-700 hover:border-emerald-500 transition-all shadow-md group-hover:shadow-emerald-600/20"
-                  >
-                    <span>{progressPercent === 100 ? 'Review Course' : 'Continue Course'}</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    <button
+                      onClick={() => navigate(`/courses/${course.id}`)}
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-bold border border-slate-700 hover:border-emerald-500 transition-all shadow-md group-hover:shadow-emerald-600/20"
+                    >
+                      <span>{progressPercent === 100 ? 'Review Course' : 'Continue Course'}</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </button>
+                    {course.type === 'walkthrough' && (
+                      <button
+                        onClick={() => navigate(`/courses/${course.id}/train`)}
+                        className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30 transition-all"
+                      >
+                        <Brain className="w-3.5 h-3.5" />
+                        <span>Move Trainer</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );

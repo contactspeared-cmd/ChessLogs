@@ -317,7 +317,12 @@ export async function markChapterComplete(courseId, studentId, chapterId) {
         const updated = [...current, chapterId];
         await supabase
           .from('course_assignments')
-          .update({ progress: { completed_chapter_ids: updated } })
+          .update({
+            progress: {
+              ...(assignment.progress || {}),
+              completed_chapter_ids: updated,
+            },
+          })
           .eq('id', assignment.id);
       }
     }
@@ -329,11 +334,99 @@ export async function markChapterComplete(courseId, studentId, chapterId) {
   if (match) {
     const current = match.progress?.completed_chapter_ids || [];
     if (!current.includes(chapterId)) {
-      match.progress = { completed_chapter_ids: [...current, chapterId] };
+      match.progress = {
+        ...(match.progress || {}),
+        completed_chapter_ids: [...current, chapterId],
+      };
       localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
     }
   }
   return true;
+}
+
+/**
+ * Persist Move Trainer SRS map inside course_assignments.progress.trainer
+ * @param {string} courseId
+ * @param {string} studentId
+ * @param {Object} trainerProgress - { cards: { [cardId]: srsState }, lastSessionAt?, mode? }
+ */
+export async function saveTrainerProgress(courseId, studentId, trainerProgress) {
+  if (!courseId || !studentId) return false;
+
+  if (isSupabaseConfigured) {
+    const { data: assignment } = await supabase
+      .from('course_assignments')
+      .select('*')
+      .eq('course_id', courseId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (assignment) {
+      const nextProgress = {
+        ...(assignment.progress || { completed_chapter_ids: [] }),
+        trainer: trainerProgress,
+      };
+      const { error } = await supabase
+        .from('course_assignments')
+        .update({ progress: nextProgress })
+        .eq('id', assignment.id);
+      if (error) throw error;
+      return true;
+    }
+
+    // Auto-assign so solo practice still persists
+    const { error } = await supabase.from('course_assignments').insert({
+      course_id: courseId,
+      student_id: studentId,
+      progress: {
+        completed_chapter_ids: [],
+        trainer: trainerProgress,
+      },
+    });
+    if (error) throw error;
+    return true;
+  }
+
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  let match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
+  if (!match) {
+    match = {
+      id: `assign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      course_id: courseId,
+      student_id: studentId,
+      assigned_at: new Date().toISOString(),
+      progress: { completed_chapter_ids: [], trainer: trainerProgress },
+    };
+    assignments.push(match);
+  } else {
+    match.progress = {
+      ...(match.progress || { completed_chapter_ids: [] }),
+      trainer: trainerProgress,
+    };
+  }
+  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+  return true;
+}
+
+/**
+ * Load trainer SRS blob for a student+course (empty object if none).
+ */
+export async function getTrainerProgress(courseId, studentId) {
+  if (!courseId || !studentId) return { cards: {} };
+
+  if (isSupabaseConfigured) {
+    const { data: assignment } = await supabase
+      .from('course_assignments')
+      .select('progress')
+      .eq('course_id', courseId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+    return assignment?.progress?.trainer || { cards: {} };
+  }
+
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
+  return match?.progress?.trainer || { cards: {} };
 }
 
 /**
@@ -439,6 +532,77 @@ export async function upsertGames(formattedGames) {
 
   localStorage.setItem(STORAGE_GAMES, JSON.stringify(newGames));
   return formattedGames;
+}
+
+/** Manual PGN imports are kept when Chess.com sync replaces the library. */
+function isManualImportedGame(game) {
+  const externalId = String(game?.chesscom_game_id || '');
+  const localId = String(game?.id || '');
+  return externalId.startsWith('custom-') || localId.startsWith('pgn-');
+}
+
+/**
+ * Replace Chess.com-synced games for a student with a fresh sync result.
+ * Keeps manually imported PGNs. Pass [] to clear synced games (e.g. username change
+ * or an account with no games in the archive).
+ */
+export async function replaceSyncedChesscomGames(studentId, formattedGames = []) {
+  if (!studentId) return [];
+
+  const UPSERT_CHUNK = 200;
+  const DELETE_CHUNK = 200;
+
+  if (await shouldUseSupabase()) {
+    try {
+      const { data: existing, error: listError } = await supabase
+        .from('games')
+        .select('id, chesscom_game_id')
+        .eq('student_id', studentId);
+      if (listError) throw listError;
+
+      const idsToDelete = (existing || [])
+        .filter((g) => !isManualImportedGame(g))
+        .map((g) => g.id);
+
+      for (let i = 0; i < idsToDelete.length; i += DELETE_CHUNK) {
+        const chunk = idsToDelete.slice(i, i + DELETE_CHUNK);
+        const { error: deleteError } = await supabase.from('games').delete().in('id', chunk);
+        if (deleteError) throw deleteError;
+      }
+
+      if (!formattedGames.length) return [];
+
+      const saved = [];
+      for (let i = 0; i < formattedGames.length; i += UPSERT_CHUNK) {
+        const chunk = formattedGames.slice(i, i + UPSERT_CHUNK);
+        const { data, error } = await supabase
+          .from('games')
+          .upsert(chunk, { onConflict: 'student_id,chesscom_game_id' })
+          .select();
+        if (error) throw error;
+        if (data?.length) saved.push(...data);
+      }
+      return saved;
+    } catch (err) {
+      console.warn('Supabase replaceSyncedChesscomGames failed, using local storage:', err);
+    }
+  }
+
+  const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const kept = existingGames.filter(
+    (g) => g.student_id !== studentId || isManualImportedGame(g)
+  );
+
+  const incoming = (formattedGames || []).map((g) => ({
+    ...g,
+    id: g.id || `game-${g.chesscom_game_id}`,
+    student_id: studentId,
+  }));
+
+  // Newest synced games first, then preserved manual imports / other students
+  const next = [...incoming, ...kept];
+  localStorage.setItem(STORAGE_GAMES, JSON.stringify(next));
+  return incoming;
 }
 
 export async function saveGameReview(gameId, reviewData) {

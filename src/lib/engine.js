@@ -1,5 +1,9 @@
 import { Chess } from 'chess.js';
-import { ENGINE_CONFIG, CLASSIFICATIONS } from '../config/engine';
+import {
+  ENGINE_CONFIG,
+  CLASSIFICATIONS,
+  CLASSIFICATION_THRESHOLDS as T,
+} from '../config/engine';
 
 /**
  * Converts a centipawn evaluation score to winning probability (0% - 100%)
@@ -294,82 +298,132 @@ export function getEngineInstance() {
 }
 
 /**
- * Classifies a move by comparing evaluation before & after the move
+ * Expected points lost for a move (0–1), from CAPS/Lichess win probabilities.
+ */
+export function expectedPointsLost(winProbBefore, winProbAfter) {
+  return Math.max(0, (winProbBefore - winProbAfter) / 100);
+}
+
+/**
+ * Critical evaluation swing: losing→equal/better, or equal→winning.
+ */
+export function isCriticalEvalSwing(evalBefore, evalAfter) {
+  const rescued =
+    evalBefore <= T.greatLosingCp && evalAfter >= T.greatEqualizedCp;
+  const converted =
+    Math.abs(evalBefore) <= T.greatEqualAbsCp && evalAfter >= T.greatWinningCp;
+  return rescued || converted;
+}
+
+/**
+ * Classifies a move with strict gates for special labels and EPL buckets otherwise.
+ *
+ * Order: Book → Brilliant → Great → Best/Good/Inaccuracy/Mistake/Blunder
  */
 export function classifyMove({
   evalBefore, // cp from mover's perspective before move
-  evalAfter,  // cp from mover's perspective after move
+  evalAfter, // cp from mover's perspective after move
   playedMoveUci,
   bestMoveUci,
   isSacrifice,
   isOnlyGoodMove,
-  moveIndex,
+  isCriticalSwing,
+  isBookCandidate,
+  winProbBefore,
+  winProbAfter,
 }) {
-  // Opening book moves
-  if (moveIndex < 6) {
+  const epl = expectedPointsLost(winProbBefore, winProbAfter);
+  const isTopMove = playedMoveUci === bestMoveUci;
+  const isNearBest = isTopMove || epl <= T.excellentMaxEpl;
+
+  // Book: only engine-approved opening moves while still in book (not blind ply count)
+  if (isBookCandidate) {
     return CLASSIFICATIONS.BOOK;
   }
 
-  const cpLoss = Math.max(0, evalBefore - evalAfter);
-
-  // 1. Brilliant: Sacrificed material while maintaining advantage (eval >= +100 cp) and delta <= 15 cp
-  if (isSacrifice && evalAfter >= 80 && cpLoss <= 15) {
+  // Brilliant: best/near-best piece sac, position not bad after, not already winning before
+  if (
+    isSacrifice &&
+    isNearBest &&
+    epl <= T.brilliantMaxEpl &&
+    evalAfter >= T.brilliantMinEvalAfter &&
+    evalBefore < T.brilliantMaxEvalBefore
+  ) {
     return CLASSIFICATIONS.BRILLIANT;
   }
 
-  // 2. Great: The only good move when alternatives drop advantage by >120 cp
-  if (isOnlyGoodMove && cpLoss <= 15) {
+  // Great: best/near-best + only good move OR critical swing
+  if (
+    isNearBest &&
+    epl <= T.greatMaxEpl &&
+    (isOnlyGoodMove || isCriticalSwing)
+  ) {
     return CLASSIFICATIONS.GREAT;
   }
 
-  // 3. Best: Played top engine move or near zero loss
-  if (playedMoveUci === bestMoveUci || cpLoss <= 10) {
+  // Expected-points buckets (Chess.com Classification V2)
+  if (isTopMove || epl <= T.bestMaxEpl) {
     return CLASSIFICATIONS.BEST;
   }
-
-  // 4. Good: Minor loss
-  if (cpLoss <= 35) {
+  if (epl <= T.excellentMaxEpl) {
+    return CLASSIFICATIONS.BEST;
+  }
+  if (epl <= T.goodMaxEpl) {
     return CLASSIFICATIONS.GOOD;
   }
-
-  // 5. Inaccuracy: 35 - 90 cp loss
-  if (cpLoss <= 90) {
+  if (epl <= T.inaccuracyMaxEpl) {
     return CLASSIFICATIONS.INACCURACY;
   }
-
-  // 6. Mistake: 90 - 200 cp loss
-  if (cpLoss <= 200) {
+  if (epl <= T.mistakeMaxEpl) {
     return CLASSIFICATIONS.MISTAKE;
   }
-
-  // 7. Blunder: > 200 cp loss or dropping mate
   return CLASSIFICATIONS.BLUNDER;
 }
 
 /**
- * Detects if a move sacrificed material (e.g. piece captured of lower value or hanging piece)
+ * True piece sacrifice: N/B/R/Q offered with meaningful net material loss,
+ * and the destination can be recaptured by the opponent.
  */
 function checkMaterialSacrifice(chessBefore, move) {
   const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
-  // Check piece value sacrificed
   const movingPieceVal = PIECE_VALUES[move.piece] || 0;
   const capturedVal = move.captured ? PIECE_VALUES[move.captured] : 0;
+  const netOffered = movingPieceVal - capturedVal;
 
-  // If a piece (Knight, Bishop, Rook, Queen) is given up with less or no material taken back
-  if (movingPieceVal >= 3 && movingPieceVal > capturedVal) {
-    // Check if destination square is attacked by opponent
-    const clone = new Chess(chessBefore.fen());
-    clone.move(move);
-    // If the opponent can capture the piece on the next turn
-    const opponentResponses = clone.moves({ verbose: true });
-    const canRecapture = opponentResponses.some((m) => m.to === move.to);
-    if (canRecapture) {
-      return true;
+  // Pawns don't count; require a real material offer (≈2+ pawns)
+  if (movingPieceVal < 3 || netOffered < T.brilliantMinNetSacrifice) {
+    return false;
+  }
+
+  const clone = new Chess(chessBefore.fen());
+  clone.move(move);
+
+  const canRecapture = clone
+    .moves({ verbose: true })
+    .some((m) => m.to === move.to);
+
+  return canRecapture;
+}
+
+/**
+ * Opening moves that count as "book" for this ply (engine best, optionally near-equal #2).
+ */
+function getBookCandidateUcis(evalInfo) {
+  const candidates = new Set();
+  if (evalInfo?.bestMove) {
+    candidates.add(evalInfo.bestMove);
+  }
+
+  const second = evalInfo?.lines?.[1];
+  if (second?.bestMove) {
+    const gap = Math.max(0, (evalInfo.scoreCp || 0) - (second.scoreCp || 0));
+    if (gap <= T.bookAltMoveMaxGapCp) {
+      candidates.add(second.bestMove);
     }
   }
 
-  return false;
+  return candidates;
 }
 
 /**
@@ -419,6 +473,9 @@ export async function runFastReview(pgn, onProgress = null) {
     ENGINE_CONFIG.fastReview
   );
 
+  // Stay in book only while both sides keep playing engine-approved opening moves
+  let stillInBook = true;
+
   for (let i = 0; i < totalMoves; i++) {
     const move = history[i];
     const fenBefore = reviewBoard.fen();
@@ -455,11 +512,29 @@ export async function runFastReview(pgn, onProgress = null) {
       blackMoveCount++;
     }
 
-    // Great-move heuristic: MultiPV #2 drops eval by >120 cp vs best line
+    // Great-move: MultiPV #2 drops eval by a large margin vs best line
     const secondLine = currentEval.lines?.[1];
     const isOnlyGoodMove =
       Boolean(secondLine) &&
-      Math.max(0, (currentEval.scoreCp || 0) - (secondLine.scoreCp || 0)) > 120;
+      Math.max(0, (currentEval.scoreCp || 0) - (secondLine.scoreCp || 0)) >
+        T.onlyMoveGapCp;
+
+    const isCriticalSwing = isCriticalEvalSwing(
+      evalBeforePlayer,
+      evalAfterPlayer
+    );
+
+    // Book: early, roughly equal, still in book sequence, engine-approved move
+    const bookUcis = getBookCandidateUcis(currentEval);
+    const isBookCandidate =
+      stillInBook &&
+      i < T.bookMaxPly &&
+      Math.abs(evalBeforePlayer) <= T.bookMaxAbsEvalCp &&
+      bookUcis.has(playedMoveUci);
+
+    if (!isBookCandidate) {
+      stillInBook = false;
+    }
 
     // Determine classification
     const classification = classifyMove({
@@ -469,7 +544,10 @@ export async function runFastReview(pgn, onProgress = null) {
       bestMoveUci: currentEval.bestMove,
       isSacrifice,
       isOnlyGoodMove,
-      moveIndex: i,
+      isCriticalSwing,
+      isBookCandidate,
+      winProbBefore,
+      winProbAfter,
     });
 
     const playerKey = isWhite ? 'white' : 'black';
@@ -495,6 +573,7 @@ export async function runFastReview(pgn, onProgress = null) {
       classificationSymbol: classification.symbol,
       classificationColor: classification.color,
       accuracy: moveAccuracy,
+      expectedPointsLost: Math.round(expectedPointsLost(winProbBefore, winProbAfter) * 1000) / 1000,
     });
 
     // Update currentEval for next iteration
