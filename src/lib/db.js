@@ -527,3 +527,79 @@ export async function getAllStudents() {
       };
     });
 }
+
+export async function deleteStudent(studentId) {
+  if (await shouldUseSupabase()) {
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', studentId);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.warn('Supabase deleteStudent failed, falling back to local storage:', err);
+    }
+  }
+
+  // Local storage cleanup
+  const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+  const filtered = students.filter(
+    (s) =>
+      s.id !== studentId &&
+      (!s.chesscom_username || `chesscom-${s.chesscom_username.toLowerCase()}` !== studentId.toLowerCase())
+  );
+  localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(filtered));
+
+  const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const filteredGames = games.filter(
+    (g) => g.student_id !== studentId && (!studentId.startsWith('chesscom-') || g.student_id !== studentId)
+  );
+  localStorage.setItem(STORAGE_GAMES, JSON.stringify(filteredGames));
+
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  const filteredAssignments = assignments.filter((a) => a.student_id !== studentId);
+  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(filteredAssignments));
+
+  // If active user was this student, clear local active user
+  const activeRaw = localStorage.getItem('chesslogs_active_profile');
+  if (activeRaw) {
+    try {
+      const active = JSON.parse(activeRaw);
+      if (active.id === studentId || `chesscom-${active.chesscom_username?.toLowerCase()}` === studentId.toLowerCase()) {
+        localStorage.removeItem('chesslogs_active_profile');
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return true;
+}
+
+export async function updateStudentProfile(studentId, updates) {
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', studentId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      console.warn('Supabase updateStudentProfile failed, falling back to local storage:', err);
+    }
+  }
+
+  const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+  const idx = students.findIndex((s) => s.id === studentId);
+  if (idx >= 0) {
+    students[idx] = { ...students[idx], ...updates };
+    localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
+    return students[idx];
+  }
+  return null;
+}
+

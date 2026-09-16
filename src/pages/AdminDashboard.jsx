@@ -7,9 +7,12 @@ import {
   saveCourse,
   deleteCourse,
   assignCourseToStudents,
+  deleteStudent,
+  updateStudentProfile,
 } from '../lib/db';
 import {
   ShieldAlert,
+  ShieldCheck,
   Users,
   BookOpen,
   PlusCircle,
@@ -34,6 +37,12 @@ export default function AdminDashboard() {
 
   // Drill-down on single student
   const [selectedStudent, setSelectedStudent] = useState(null);
+
+  // Edit student state
+  const [isEditingStudent, setIsEditingStudent] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editChesscom, setEditChesscom] = useState('');
+  const [savingStudent, setSavingStudent] = useState(false);
 
   // Course Builder Form State
   const [editingCourseId, setEditingCourseId] = useState(null);
@@ -72,6 +81,56 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Delete student account
+  const handleDeleteStudent = async (studentId, studentName) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to permanently delete the account for "${studentName}"? All synced games, reviews, and course progress will be removed.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await deleteStudent(studentId);
+      if (selectedStudent?.id === studentId) {
+        setSelectedStudent(null);
+      }
+      await loadData();
+    } catch (err) {
+      console.error('Failed to delete student account:', err);
+      alert('Failed to delete student account. Please try again.');
+    }
+  };
+
+  const handleStartEditStudent = (student) => {
+    setIsEditingStudent(!isEditingStudent);
+    setEditName(student.display_name || '');
+    setEditChesscom(student.chesscom_username || '');
+  };
+
+  const handleSaveStudentEdit = async (e) => {
+    e.preventDefault();
+    if (!selectedStudent) return;
+    setSavingStudent(true);
+    try {
+      const updated = await updateStudentProfile(selectedStudent.id, {
+        display_name: editName.trim() || selectedStudent.display_name,
+        chesscom_username: editChesscom.trim().toLowerCase(),
+      });
+      if (updated) {
+        setSelectedStudent((prev) => ({ ...prev, ...updated }));
+      }
+      setIsEditingStudent(false);
+      await loadData();
+    } catch (err) {
+      console.error('Failed to update student profile:', err);
+      alert('Failed to update student profile.');
+    } finally {
+      setSavingStudent(false);
+    }
+  };
 
   // Open Course Builder to create a new course
   const handleOpenNewCourse = () => {
@@ -187,12 +246,19 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold flex items-center gap-1.5 shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Super Admin • {profile?.email || 'satoalt33@gmail.com'}</span>
+            </span>
+            <span className="text-xs text-slate-500 font-mono">Full Account Governance</span>
+          </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
             <ShieldAlert className="w-8 h-8 text-emerald-400" />
-            <span>Coach Command Center</span>
+            <span>Super Admin & Coach Command Center</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Oversee student development, inspect game telemetry, and author interactive training curriculum.
+            Manage student rosters, delete accounts, inspect game telemetry, and author interactive training curriculum.
           </p>
         </div>
 
@@ -327,12 +393,24 @@ export default function AdminDashboard() {
                           </td>
 
                           <td className="py-4 px-5 text-right">
-                            <button
-                              onClick={() => setSelectedStudent(student)}
-                              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-white text-xs font-medium transition-colors"
-                            >
-                              Drill Down
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedStudent(student);
+                                  setIsEditingStudent(false);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-white text-xs font-medium transition-colors"
+                              >
+                                Manage
+                              </button>
+                              <button
+                                onClick={() => handleDeleteStudent(student.id, student.display_name)}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white transition-colors"
+                                title="Delete Account"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -352,22 +430,78 @@ export default function AdminDashboard() {
                     <img
                       src={selectedStudent.avatar_url}
                       alt=""
-                      className="w-12 h-12 rounded-full border-2 border-emerald-500"
+                      className="w-12 h-12 rounded-full border-2 border-emerald-500 object-cover"
                     />
                     <div>
-                      <h3 className="text-lg font-bold text-white">{selectedStudent.display_name}</h3>
+                      <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <span>{selectedStudent.display_name}</span>
+                        <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          {selectedStudent.role || 'student'}
+                        </span>
+                      </h3>
                       <p className="text-xs text-slate-400">
-                        {selectedStudent.chesscom_username ? `@${selectedStudent.chesscom_username}` : 'No handle'} • Role: {selectedStudent.role}
+                        {selectedStudent.chesscom_username ? `@${selectedStudent.chesscom_username}` : 'No handle linked'}
+                        {selectedStudent.created_at ? ` • Joined ${new Date(selectedStudent.created_at).toLocaleDateString()}` : ''}
                       </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => setSelectedStudent(null)}
+                    onClick={() => {
+                      setSelectedStudent(null);
+                      setIsEditingStudent(false);
+                    }}
                     className="p-1 rounded-lg text-slate-400 hover:text-white"
                   >
                     ✕
                   </button>
                 </div>
+
+                {/* Edit Student Account Form */}
+                {isEditingStudent && (
+                  <form onSubmit={handleSaveStudentEdit} className="p-4 bg-slate-950 rounded-2xl border border-slate-800 space-y-3">
+                    <h5 className="text-xs font-bold uppercase text-emerald-400 tracking-wider">
+                      Edit Student Account
+                    </h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">Display Name</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] text-slate-400 mb-1">Chess.com Username</label>
+                        <input
+                          type="text"
+                          value={editChesscom}
+                          onChange={(e) => setEditChesscom(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          placeholder="e.g. hikaru"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingStudent(false)}
+                        className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingStudent}
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold disabled:opacity-50 transition-all shadow-sm"
+                      >
+                        {savingStudent ? 'Saving...' : 'Save Profile'}
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
@@ -404,13 +538,33 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="pt-2 flex justify-end">
+                {/* Footer Actions: Delete Account & Edit Options */}
+                <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
                   <button
-                    onClick={() => setSelectedStudent(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold"
+                    onClick={() => handleDeleteStudent(selectedStudent.id, selectedStudent.display_name)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-semibold transition-colors"
                   >
-                    Close
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Student Account</span>
                   </button>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleStartEditStudent(selectedStudent)}
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                    >
+                      {isEditingStudent ? 'Close Edit' : 'Edit Account'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(null);
+                        setIsEditingStudent(false);
+                      }}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition-colors shadow-sm"
+                    >
+                      Done
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
