@@ -1,12 +1,12 @@
 -- ==============================================================================
 -- ChessLogs: Supabase PostgreSQL Schema & Row-Level Security (RLS)
+-- Tables first, then policies (avoids forward-reference errors).
 -- ==============================================================================
 
--- Enable required extensions
 create extension if not exists "uuid-ossp";
 
 -- ------------------------------------------------------------------------------
--- 1. PROFILES TABLE
+-- TABLES
 -- ------------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -19,11 +19,78 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
--- Index for username lookups & role queries
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_profiles_chesscom on public.profiles(chesscom_username);
 
--- Security definer function to avoid recursive RLS checks when querying admin status
+create table if not exists public.courses (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  type text not null check (type in ('video', 'walkthrough')),
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.course_chapters (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses(id) on delete cascade,
+  order_index integer not null default 0,
+  title text not null,
+  video_url text,
+  pgn text,
+  annotations jsonb default '[]'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_chapters_course on public.course_chapters(course_id, order_index);
+
+create table if not exists public.course_assignments (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid not null references public.courses(id) on delete cascade,
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  assigned_at timestamptz not null default now(),
+  progress jsonb not null default '{"completed_chapter_ids": []}'::jsonb,
+  constraint course_assignments_unique unique (course_id, student_id)
+);
+
+create index if not exists idx_assignments_student on public.course_assignments(student_id);
+
+create table if not exists public.games (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  chesscom_game_id text,
+  pgn text not null,
+  time_class text,
+  result text,
+  white_username text,
+  black_username text,
+  white_rating integer,
+  black_rating integer,
+  url text,
+  played_at timestamptz,
+  synced_at timestamptz not null default now(),
+  constraint unique_student_chesscom_game unique (student_id, chesscom_game_id)
+);
+
+create index if not exists idx_games_student on public.games(student_id, played_at desc);
+
+create table if not exists public.game_reviews (
+  id uuid primary key default gen_random_uuid(),
+  game_id uuid not null references public.games(id) on delete cascade,
+  engine_version text not null default 'Stockfish 18 NNUE',
+  move_classifications jsonb not null default '[]'::jsonb,
+  accuracy_white numeric(5,2),
+  accuracy_black numeric(5,2),
+  created_at timestamptz not null default now(),
+  constraint unique_game_review unique (game_id)
+);
+
+create index if not exists idx_reviews_game on public.game_reviews(game_id);
+
+-- ------------------------------------------------------------------------------
+-- HELPERS + AUTH TRIGGER
+-- ------------------------------------------------------------------------------
 create or replace function public.is_admin()
 returns boolean
 language sql
@@ -37,28 +104,6 @@ as $$
   );
 $$;
 
--- Enable RLS
-alter table public.profiles enable row level security;
-
--- Profiles Policies
-create policy "Users can view their own profile or admin can view all"
-  on public.profiles for select
-  using (auth.uid() = id or public.is_admin());
-
-create policy "Users can update their own profile"
-  on public.profiles for update
-  using (auth.uid() = id or public.is_admin())
-  with check (auth.uid() = id or public.is_admin());
-
-create policy "Users can insert their own profile"
-  on public.profiles for insert
-  with check (auth.uid() = id or public.is_admin());
-
-create policy "Admins can delete profiles"
-  on public.profiles for delete
-  using (public.is_admin());
-
--- Auto profile creation trigger on signup
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -85,25 +130,45 @@ create trigger on_auth_user_created
   for each row execute function public.handle_new_user();
 
 -- ------------------------------------------------------------------------------
--- 2. COURSES TABLE
+-- RLS
 -- ------------------------------------------------------------------------------
-create table if not exists public.courses (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  description text,
-  type text not null check (type in ('video', 'walkthrough')),
-  created_by uuid references public.profiles(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
+alter table public.profiles enable row level security;
 alter table public.courses enable row level security;
+alter table public.course_chapters enable row level security;
+alter table public.course_assignments enable row level security;
+alter table public.games enable row level security;
+alter table public.game_reviews enable row level security;
 
+-- Profiles
+drop policy if exists "Users can view their own profile or admin can view all" on public.profiles;
+create policy "Users can view their own profile or admin can view all"
+  on public.profiles for select
+  using (auth.uid() = id or public.is_admin());
+
+drop policy if exists "Users can update their own profile" on public.profiles;
+create policy "Users can update their own profile"
+  on public.profiles for update
+  using (auth.uid() = id or public.is_admin())
+  with check (auth.uid() = id or public.is_admin());
+
+drop policy if exists "Users can insert their own profile" on public.profiles;
+create policy "Users can insert their own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id or public.is_admin());
+
+drop policy if exists "Admins can delete profiles" on public.profiles;
+create policy "Admins can delete profiles"
+  on public.profiles for delete
+  using (public.is_admin());
+
+-- Courses
+drop policy if exists "Admins can manage all courses" on public.courses;
 create policy "Admins can manage all courses"
   on public.courses for all
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Students can view assigned courses" on public.courses;
 create policy "Students can view assigned courses"
   on public.courses for select
   using (
@@ -114,29 +179,14 @@ create policy "Students can view assigned courses"
     )
   );
 
--- ------------------------------------------------------------------------------
--- 3. COURSE CHAPTERS TABLE
--- ------------------------------------------------------------------------------
-create table if not exists public.course_chapters (
-  id uuid primary key default gen_random_uuid(),
-  course_id uuid not null references public.courses(id) on delete cascade,
-  order_index integer not null default 0,
-  title text not null,
-  video_url text,
-  pgn text,
-  annotations jsonb default '[]'::jsonb,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_chapters_course on public.course_chapters(course_id, order_index);
-
-alter table public.course_chapters enable row level security;
-
+-- Chapters
+drop policy if exists "Admins can manage all chapters" on public.course_chapters;
 create policy "Admins can manage all chapters"
   on public.course_chapters for all
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Students can view chapters of assigned courses" on public.course_chapters;
 create policy "Students can view chapters of assigned courses"
   on public.course_chapters for select
   using (
@@ -147,104 +197,59 @@ create policy "Students can view chapters of assigned courses"
     )
   );
 
--- ------------------------------------------------------------------------------
--- 4. COURSE ASSIGNMENTS TABLE
--- ------------------------------------------------------------------------------
-create table if not exists public.course_assignments (
-  id uuid primary key default gen_random_uuid(),
-  course_id uuid not null references public.courses(id) on delete cascade,
-  student_id uuid not null references public.profiles(id) on delete cascade,
-  assigned_at timestamptz not null default now(),
-  progress jsonb not null default '{"completed_chapter_ids": []}'::jsonb,
-  constraint course_assignments_unique unique (course_id, student_id)
-);
-
-create index if not exists idx_assignments_student on public.course_assignments(student_id);
-
-alter table public.course_assignments enable row level security;
-
+-- Assignments
+drop policy if exists "Admins can manage all assignments" on public.course_assignments;
 create policy "Admins can manage all assignments"
   on public.course_assignments for all
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Students can view their own assignments" on public.course_assignments;
 create policy "Students can view their own assignments"
   on public.course_assignments for select
   using (student_id = auth.uid());
 
+drop policy if exists "Students can update progress on their assignments" on public.course_assignments;
 create policy "Students can update progress on their assignments"
   on public.course_assignments for update
   using (student_id = auth.uid())
   with check (student_id = auth.uid());
 
--- ------------------------------------------------------------------------------
--- 5. GAMES TABLE
--- ------------------------------------------------------------------------------
-create table if not exists public.games (
-  id uuid primary key default gen_random_uuid(),
-  student_id uuid not null references public.profiles(id) on delete cascade,
-  chesscom_game_id text,
-  pgn text not null,
-  time_class text, -- bullet, blitz, rapid, daily
-  result text,     -- win, loss, draw
-  white_username text,
-  black_username text,
-  white_rating integer,
-  black_rating integer,
-  url text,
-  played_at timestamptz,
-  synced_at timestamptz not null default now(),
-  constraint unique_student_chesscom_game unique (student_id, chesscom_game_id)
-);
-
-create index if not exists idx_games_student on public.games(student_id, played_at desc);
-
-alter table public.games enable row level security;
-
+-- Games
+drop policy if exists "Admins can manage all games" on public.games;
 create policy "Admins can manage all games"
   on public.games for all
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Students can view their own games" on public.games;
 create policy "Students can view their own games"
   on public.games for select
   using (student_id = auth.uid());
 
+drop policy if exists "Students can insert their own games" on public.games;
 create policy "Students can insert their own games"
   on public.games for insert
   with check (student_id = auth.uid());
 
+drop policy if exists "Students can update their own games" on public.games;
 create policy "Students can update their own games"
   on public.games for update
   using (student_id = auth.uid());
 
+drop policy if exists "Students can delete their own games" on public.games;
 create policy "Students can delete their own games"
   on public.games for delete
   using (student_id = auth.uid());
 
--- ------------------------------------------------------------------------------
--- 6. GAME REVIEWS TABLE
--- ------------------------------------------------------------------------------
-create table if not exists public.game_reviews (
-  id uuid primary key default gen_random_uuid(),
-  game_id uuid not null references public.games(id) on delete cascade,
-  engine_version text not null default 'Stockfish 18 NNUE',
-  move_classifications jsonb not null default '[]'::jsonb,
-  accuracy_white numeric(5,2),
-  accuracy_black numeric(5,2),
-  created_at timestamptz not null default now(),
-  constraint unique_game_review unique (game_id)
-);
-
-create index if not exists idx_reviews_game on public.game_reviews(game_id);
-
-alter table public.game_reviews enable row level security;
-
+-- Reviews
+drop policy if exists "Admins can manage all reviews" on public.game_reviews;
 create policy "Admins can manage all reviews"
   on public.game_reviews for all
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Students can view reviews of their games" on public.game_reviews;
 create policy "Students can view reviews of their games"
   on public.game_reviews for select
   using (
@@ -255,6 +260,7 @@ create policy "Students can view reviews of their games"
     )
   );
 
+drop policy if exists "Students can insert reviews for their games" on public.game_reviews;
 create policy "Students can insert reviews for their games"
   on public.game_reviews for insert
   with check (
@@ -265,6 +271,7 @@ create policy "Students can insert reviews for their games"
     )
   );
 
+drop policy if exists "Students can update reviews for their games" on public.game_reviews;
 create policy "Students can update reviews for their games"
   on public.game_reviews for update
   using (
