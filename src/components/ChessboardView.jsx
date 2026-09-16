@@ -47,27 +47,50 @@ export default function ChessboardView({
     };
   }
 
+  // Normalize arrows to react-chessboard v5 format: { startSquare, endSquare, color }
+  const formattedArrows = (customArrows || []).map((arr) => {
+    if (Array.isArray(arr)) {
+      return {
+        startSquare: arr[0],
+        endSquare: arr[1],
+        color: arr[2] || '#ffaa00',
+      };
+    }
+    return arr;
+  });
+
+  // Handler for drop in react-chessboard v5
+  const handlePieceDrop = ({ piece, sourceSquare, targetSquare }) => {
+    if (!targetSquare) return false;
+    if (!onPieceDrop) return false;
+    const res = onPieceDrop(sourceSquare, targetSquare, piece);
+    return res !== false;
+  };
+
+  const chessboardOptions = {
+    position,
+    boardOrientation,
+    allowDragging: isDraggable,
+    onPieceDrop: handlePieceDrop,
+    arrows: formattedArrows,
+    squareStyles,
+    boardStyle: {
+      borderRadius: '8px',
+      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+    },
+    darkSquareStyle: { backgroundColor: '#769656' },
+    lightSquareStyle: { backgroundColor: '#eeeed2' },
+    animationDurationInMs: 200,
+    clearArrowsOnPositionChange: false,
+  };
+
   return (
     <div
       ref={containerRef}
       className="flex items-center justify-center p-2 rounded-xl bg-slate-900/60 border border-slate-800 shadow-2xl backdrop-blur-sm"
     >
       <div style={{ width: computedWidth, height: computedWidth }}>
-        <Chessboard
-          position={position}
-          onPieceDrop={onPieceDrop}
-          boardOrientation={boardOrientation}
-          arePiecesDraggable={isDraggable}
-          customArrows={customArrows}
-          customSquareStyles={squareStyles}
-          customBoardStyle={{
-            borderRadius: '8px',
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-          }}
-          customDarkSquareStyle={{ backgroundColor: '#769656' }}
-          customLightSquareStyle={{ backgroundColor: '#eeeed2' }}
-          animationDuration={200}
-        />
+        <Chessboard options={chessboardOptions} />
       </div>
     </div>
   );

@@ -2,6 +2,10 @@
 
 Coach–student LMS for chess improvement: assigned courses, Chess.com game sync, and Stockfish-powered game review.
 
+[![ChessLogs Preview](public/preview.jpg)](https://chesslogs.vercel.app)
+
+> **Live Deployment**: [https://chesslogs.vercel.app](https://chesslogs.vercel.app)
+
 ## Tech stack
 
 - **Frontend**: React (Vite, JavaScript) + React Router + Tailwind CSS

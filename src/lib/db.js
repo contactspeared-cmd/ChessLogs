@@ -308,6 +308,44 @@ export async function markChapterComplete(courseId, studentId, chapterId) {
  * -----------------------------------------------------------------------------
  */
 
+export async function getGameById(gameId) {
+  if (!gameId) return null;
+
+  if (await shouldUseSupabase()) {
+    try {
+      const { data, error } = await supabase
+        .from('games')
+        .select('*, review:game_reviews(*)')
+        .or(`id.eq.${gameId},chesscom_game_id.eq.${gameId}`)
+        .maybeSingle();
+      if (!error && data) return data;
+    } catch (err) {
+      console.warn('Supabase getGameById failed, falling back to local storage:', err);
+    }
+  }
+
+  const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
+
+  const found = games.find((g) => g.id === gameId || g.chesscom_game_id === gameId);
+  if (found) {
+    return {
+      ...found,
+      review: found.review || reviews[found.id] || null,
+    };
+  }
+
+  const demoFound = DEMO_GAMES.find((g) => g.id === gameId || g.chesscom_game_id === gameId);
+  if (demoFound) {
+    return {
+      ...demoFound,
+      review: demoFound.review || reviews[demoFound.id] || null,
+    };
+  }
+
+  return null;
+}
+
 export async function getGamesForStudent(studentId) {
   if (await shouldUseSupabase()) {
     try {
@@ -411,28 +449,77 @@ export async function saveGameReview(gameId, reviewData) {
  */
 
 export async function getAllStudents() {
+  const localStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+  const localGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const localAssignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+
+  // Check active local user in case they signed in on this client
+  const activeProfileRaw = localStorage.getItem('chesslogs_active_profile');
+  if (activeProfileRaw) {
+    try {
+      const active = JSON.parse(activeProfileRaw);
+      if (active && (active.role === 'student' || !active.role)) {
+        const exists = localStudents.some(
+          (s) =>
+            s.id === active.id ||
+            (s.chesscom_username && active.chesscom_username && s.chesscom_username.toLowerCase() === active.chesscom_username.toLowerCase())
+        );
+        if (!exists) {
+          localStudents.push(active);
+          localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(localStudents));
+        }
+      }
+    } catch {
+      // ignore JSON error
+    }
+  }
+
   if (await shouldUseSupabase()) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*, games:games(id, played_at, result), assignments:course_assignments(course_id, progress)')
+        .select('*, games:games(id, played_at, result, time_class, white_username, black_username), assignments:course_assignments(course_id, progress)')
         .eq('role', 'student');
-      if (error) throw error;
-      return data || [];
+
+      if (!error && data) {
+        // Merge Supabase students with any local students
+        const merged = [...data];
+        localStudents.forEach((ls) => {
+          const match = merged.find(
+            (ms) =>
+              ms.id === ls.id ||
+              (ms.chesscom_username && ls.chesscom_username && ms.chesscom_username.toLowerCase() === ls.chesscom_username.toLowerCase())
+          );
+          if (!match) {
+            const studentGames = localGames.filter(
+              (g) =>
+                g.student_id === ls.id ||
+                (ls.chesscom_username && g.student_id === `chesscom-${ls.chesscom_username.toLowerCase()}`)
+            );
+            const studentAssignments = localAssignments.filter((a) => a.student_id === ls.id);
+            merged.push({
+              ...ls,
+              games: studentGames,
+              assignments: studentAssignments,
+            });
+          }
+        });
+        return merged;
+      }
     } catch (err) {
       console.warn('Supabase getAllStudents failed, falling back to local storage:', err);
     }
   }
 
-  const profiles = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
-  const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
-  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-
-  return profiles
-    .filter((p) => p.role === 'student')
+  return localStudents
+    .filter((p) => p.role === 'student' || !p.role)
     .map((p) => {
-      const studentGames = games.filter((g) => g.student_id === p.id);
-      const studentAssignments = assignments.filter((a) => a.student_id === p.id);
+      const studentGames = localGames.filter(
+        (g) =>
+          g.student_id === p.id ||
+          (p.chesscom_username && g.student_id === `chesscom-${p.chesscom_username.toLowerCase()}`)
+      );
+      const studentAssignments = localAssignments.filter((a) => a.student_id === p.id);
       return {
         ...p,
         games: studentGames,

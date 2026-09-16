@@ -195,8 +195,9 @@ export function AuthProvider({ children }) {
       throw new Error(`Chess.com username "${cleanUsername}" was not found.`);
     }
 
-    const chessProfile = {
-      id: `chesscom-${cleanUsername}`,
+    let finalId = `chesscom-${cleanUsername}`;
+    let finalProfile = {
+      id: finalId,
       role: 'student',
       display_name: liveProfile.name || cleanUsername,
       avatar_url:
@@ -207,15 +208,93 @@ export function AuthProvider({ children }) {
       created_at: new Date().toISOString(),
     };
 
+    // If Supabase is configured, create/sync Supabase Auth user and Profile
+    if (isSupabaseConfigured) {
+      const authEmail = `${cleanUsername}@chess.com`;
+      const authPassword = `ChessLogs@${cleanUsername}!2026`;
+
+      try {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        });
+
+        let authUser = signInData?.user;
+
+        if (signInError || !authUser) {
+          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+            email: authEmail,
+            password: authPassword,
+            options: {
+              data: {
+                full_name: liveProfile.name || cleanUsername,
+                role: 'student',
+                avatar_url: liveProfile.avatar || null,
+                chesscom_username: cleanUsername,
+              },
+            },
+          });
+
+          if (!signUpError && signUpData?.user) {
+            authUser = signUpData.user;
+          }
+        }
+
+        if (authUser) {
+          finalId = authUser.id;
+          finalProfile.id = authUser.id;
+
+          const { data: profData, error: profError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: authUser.id,
+              display_name: liveProfile.name || cleanUsername,
+              avatar_url: liveProfile.avatar || null,
+              chesscom_username: cleanUsername,
+              bio: liveProfile.location ? `Chess.com member from ${liveProfile.location}` : '',
+              role: 'student',
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (!profError && profData) {
+            finalProfile = profData;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not sync Chess.com user to Supabase Auth, using local session:', err);
+      }
+    }
+
+    // Always register in local students storage so coach command center sees them
+    try {
+      const STORAGE_STUDENTS = 'chesslogs_students';
+      const existingStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+      const studentIdx = existingStudents.findIndex(
+        (s) =>
+          s.id === finalProfile.id ||
+          (s.chesscom_username && s.chesscom_username.toLowerCase() === cleanUsername)
+      );
+      if (studentIdx >= 0) {
+        existingStudents[studentIdx] = { ...existingStudents[studentIdx], ...finalProfile };
+      } else {
+        existingStudents.push(finalProfile);
+      }
+      localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(existingStudents));
+    } catch (e) {
+      console.warn('Failed to update local storage students:', e);
+    }
+
     const sessionUser = {
-      id: chessProfile.id,
+      id: finalProfile.id,
       email: `${cleanUsername}@chess.com`,
     };
 
     setUser(sessionUser);
-    setProfile(chessProfile);
-    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(chessProfile));
-    return { user: sessionUser, profile: chessProfile };
+    setProfile(finalProfile);
+    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(finalProfile));
+    return { user: sessionUser, profile: finalProfile };
   };
 
   // Google OAuth

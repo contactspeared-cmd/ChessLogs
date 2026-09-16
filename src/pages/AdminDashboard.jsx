@@ -377,8 +377,14 @@ export default function AdminDashboard() {
                     {(selectedStudent.games || []).map((g) => (
                       <div key={g.id} className="py-2 flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-semibold text-white">vs. {g.black_username || 'Opponent'}</span>
-                          <span className="ml-2 text-slate-400 font-mono text-[11px] capitalize">({g.time_class})</span>
+                          <span className="font-semibold text-white">
+                            {g.white_username && g.black_username
+                              ? (g.white_username.toLowerCase() === selectedStudent.chesscom_username?.toLowerCase()
+                                  ? `vs. ${g.black_username}`
+                                  : `vs. ${g.white_username}`)
+                              : (g.black_username ? `vs. ${g.black_username}` : 'Opponent')}
+                          </span>
+                          <span className="ml-2 text-slate-400 font-mono text-[11px] capitalize">({g.time_class || 'rapid'})</span>
                         </div>
                         <button
                           onClick={() => {

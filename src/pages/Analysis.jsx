@@ -10,8 +10,7 @@ import {
   runFastReview,
 } from '../lib/engine';
 import { ENGINE_CONFIG } from '../config/engine';
-import { getGamesForStudent, saveGameReview } from '../lib/db';
-import { DEMO_GAMES } from '../data/initialData';
+import { getGameById, saveGameReview } from '../lib/db';
 import {
   RotateCcw,
   ChevronLeft,
@@ -21,17 +20,20 @@ import {
   RefreshCw,
   Cpu,
   Award,
+  ClipboardPaste,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 export default function Analysis() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const gameIdParam = searchParams.get('gameId');
   const { profile } = useAuth();
 
   // Chess game instance
   const [chess] = useState(() => new Chess());
   const [fen, setFen] = useState(chess.fen());
-  const [history, setHistory] = useState([]); // array of moves
+  const [history, setHistory] = useState([]); // array of verbose moves
   const [currentPly, setCurrentPly] = useState(0); // 0 is initial position
   const [boardOrientation, setBoardOrientation] = useState('white');
   const [lastMove, setLastMove] = useState(null);
@@ -49,76 +51,247 @@ export default function Analysis() {
   // Loaded game metadata
   const [currentGame, setCurrentGame] = useState(null);
 
-  // Custom arrows on board: [[from, to, color]]
+  // Custom arrows on board: [[from, to, color]] or [{ startSquare, endSquare, color }]
   const [arrows, setArrows] = useState([]);
 
-  // Load game by ID or sample game
+  // Paste game modal state
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pasteInput, setPasteInput] = useState('');
+  const [pasteError, setPasteError] = useState('');
+
+  // Load game by ID or initialize a fresh board
   useEffect(() => {
     async function loadGame() {
-      let selectedGame = null;
-      if (profile?.id) {
-        const studentGames = await getGamesForStudent(profile.id);
-        selectedGame = studentGames.find((g) => g.id === gameIdParam);
+      // If no gameIdParam provided, start with a clean, fresh board
+      if (!gameIdParam) {
+        chess.reset();
+        setFen(chess.fen());
+        setHistory([]);
+        setCurrentPly(0);
+        setLastMove(null);
+        setCurrentGame(null);
+        setReviewData(null);
+        setArrows([]);
+        setBoardOrientation('white');
+        return;
       }
-      if (!selectedGame) {
-        selectedGame = DEMO_GAMES.find((g) => g.id === gameIdParam) || DEMO_GAMES[0];
-      }
 
-      setCurrentGame(selectedGame);
+      // Fetch the exact game from DB / local storage / demo games
+      const selectedGame = await getGameById(gameIdParam);
 
-      if (selectedGame?.pgn) {
-        try {
-          chess.loadPgn(selectedGame.pgn);
-          const fullHistory = chess.history({ verbose: true });
-          setHistory(fullHistory);
+      if (selectedGame) {
+        setCurrentGame(selectedGame);
 
-          // Reset to start of game for review
-          chess.reset();
-          setFen(chess.fen());
-          setCurrentPly(0);
-          setLastMove(null);
-
-          // Check if already reviewed
-          if (selectedGame.review) {
-            setReviewData({
-              moveClassifications: selectedGame.review.move_classifications || [],
-              accuracyWhite: selectedGame.review.accuracy_white,
-              accuracyBlack: selectedGame.review.accuracy_black,
-            });
-          }
-        } catch (e) {
-          console.error('Failed to load PGN:', e);
+        // Auto-orient board to student's perspective if they played Black
+        if (
+          profile?.chesscom_username &&
+          selectedGame.black_username?.toLowerCase() === profile.chesscom_username.toLowerCase()
+        ) {
+          setBoardOrientation('black');
+        } else {
+          setBoardOrientation('white');
         }
+
+        if (selectedGame.pgn) {
+          try {
+            chess.loadPgn(selectedGame.pgn);
+            const fullHistory = chess.history({ verbose: true });
+            setHistory(fullHistory);
+
+            // Reset to start of game for review
+            chess.reset();
+            setFen(chess.fen());
+            setCurrentPly(0);
+            setLastMove(null);
+
+            // Check if already reviewed
+            if (selectedGame.review) {
+              setReviewData({
+                moveClassifications: selectedGame.review.move_classifications || [],
+                accuracyWhite: selectedGame.review.accuracy_white,
+                accuracyBlack: selectedGame.review.accuracy_black,
+              });
+            } else {
+              setReviewData(null);
+            }
+          } catch (e) {
+            console.error('Failed to load PGN:', e);
+          }
+        }
+      } else {
+        // Game not found - start fresh
+        chess.reset();
+        setFen(chess.fen());
+        setHistory([]);
+        setCurrentPly(0);
+        setLastMove(null);
+        setCurrentGame(null);
+        setReviewData(null);
       }
     }
 
     loadGame();
-  }, [gameIdParam, profile?.id, chess]);
+  }, [gameIdParam, profile?.id, profile?.chesscom_username, chess]);
 
   // Navigate to specific ply in game
   const goToPly = useCallback((targetPly) => {
     if (targetPly < 0 || targetPly > history.length) return;
 
-    chess.reset();
-    let moveObj = null;
-    for (let i = 0; i < targetPly; i++) {
-      moveObj = chess.move(history[i]);
+    if (targetPly === 0) {
+      chess.reset();
+      setFen(chess.fen());
+      setCurrentPly(0);
+      setLastMove(null);
+      return;
     }
 
-    setFen(chess.fen());
-    setCurrentPly(targetPly);
-    setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
+    const move = history[targetPly - 1];
+    if (move && move.after) {
+      chess.load(move.after);
+      setFen(move.after);
+      setCurrentPly(targetPly);
+      setLastMove({ from: move.from, to: move.to });
+    } else {
+      chess.reset();
+      let moveObj = null;
+      for (let i = 0; i < targetPly; i++) {
+        moveObj = chess.move(history[i]);
+      }
+      setFen(chess.fen());
+      setCurrentPly(targetPly);
+      setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
+    }
   }, [chess, history]);
+
+  // Handle user making a move on the board
+  const handlePieceDrop = (sourceSquare, targetSquare) => {
+    try {
+      const move = chess.move({
+        from: sourceSquare,
+        to: targetSquare,
+        promotion: 'q',
+      });
+
+      if (!move) return false;
+
+      // Succeeded! If we were at currentPly < history.length, truncate forward history and append new move
+      const newHistory = [...history.slice(0, currentPly), move];
+      setHistory(newHistory);
+      setCurrentPly(newHistory.length);
+      setFen(chess.fen());
+      setLastMove({ from: move.from, to: move.to });
+
+      // Invalidate existing review data if board diverges from reviewed game
+      if (reviewData) {
+        setReviewData(null);
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  // Reset to fresh board
+  const handleNewAnalysis = () => {
+    chess.reset();
+    setFen(chess.fen());
+    setHistory([]);
+    setCurrentPly(0);
+    setLastMove(null);
+    setCurrentGame(null);
+    setReviewData(null);
+    setArrows([]);
+    setBoardOrientation('white');
+    setSearchParams({});
+  };
+
+  // Handle importing custom PGN or FEN
+  const handlePasteSubmit = (e) => {
+    e?.preventDefault();
+    setPasteError('');
+    const input = pasteInput.trim();
+    if (!input) {
+      setPasteError('Please enter a PGN or FEN string.');
+      return;
+    }
+
+    // Try FEN first
+    try {
+      const fenTest = new Chess();
+      fenTest.load(input);
+      // Valid FEN
+      chess.load(input);
+      setFen(chess.fen());
+      setHistory([]);
+      setCurrentPly(0);
+      setLastMove(null);
+      setCurrentGame({
+        white_username: 'Custom Position',
+        black_username: '',
+        white_rating: null,
+        black_rating: null,
+        time_class: 'custom',
+        played_at: new Date().toISOString(),
+      });
+      setReviewData(null);
+      setIsPasteModalOpen(false);
+      setPasteInput('');
+      setSearchParams({});
+      return;
+    } catch {
+      // Not a FEN, try PGN
+    }
+
+    try {
+      const pgnTest = new Chess();
+      pgnTest.loadPgn(input);
+      const moves = pgnTest.history({ verbose: true });
+      if (moves.length === 0) {
+        throw new Error('No moves found in the provided PGN.');
+      }
+
+      chess.loadPgn(input);
+      const fullHistory = chess.history({ verbose: true });
+      setHistory(fullHistory);
+
+      const headers = chess.header ? chess.header() : {};
+      setCurrentGame({
+        white_username: headers.White || 'White',
+        black_username: headers.Black || 'Black',
+        white_rating: headers.WhiteElo || null,
+        black_rating: headers.BlackElo || null,
+        time_class: headers.TimeControl ? 'live' : 'custom',
+        played_at: headers.Date || new Date().toISOString(),
+        pgn: input,
+      });
+
+      // Reset to start of game for review
+      chess.reset();
+      setFen(chess.fen());
+      setCurrentPly(0);
+      setLastMove(null);
+      setReviewData(null);
+      setIsPasteModalOpen(false);
+      setPasteInput('');
+      setSearchParams({});
+    } catch (err) {
+      setPasteError(err.message || 'Invalid PGN or FEN format. Please verify your text.');
+    }
+  };
 
   // Handle keyboard arrow navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-        if (e.key === 'ArrowLeft') goToPly(currentPly - 1);
-        if (e.key === 'ArrowRight') goToPly(currentPly + 1);
-        if (e.key === 'ArrowUp') goToPly(0);
-        if (e.key === 'ArrowDown') goToPly(history.length);
+        // Prevent scrolling if active
+        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
+          e.preventDefault();
+          if (e.key === 'ArrowLeft') goToPly(currentPly - 1);
+          if (e.key === 'ArrowRight') goToPly(currentPly + 1);
+          if (e.key === 'ArrowUp') goToPly(0);
+          if (e.key === 'ArrowDown') goToPly(history.length);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -127,19 +300,26 @@ export default function Analysis() {
 
   // Run Fast Review across entire game
   const handleStartFastReview = async () => {
-    if (!currentGame?.pgn || isReviewing) return;
+    let pgnToReview = currentGame?.pgn;
+    if (!pgnToReview && history.length > 0) {
+      const tempChess = new Chess();
+      history.forEach((m) => tempChess.move(m));
+      pgnToReview = tempChess.pgn();
+    }
+
+    if (!pgnToReview || isReviewing) return;
     setIsReviewing(true);
     setReviewProgress(0);
 
     try {
-      const result = await runFastReview(currentGame.pgn, (progress) => {
+      const result = await runFastReview(pgnToReview, (progress) => {
         setReviewProgress(progress.percent);
       });
 
       setReviewData(result);
 
-      // Persist review to DB
-      if (currentGame.id) {
+      // Persist review to DB if game has an id
+      if (currentGame?.id) {
         await saveGameReview(currentGame.id, {
           engine_version: ENGINE_CONFIG.version,
           move_classifications: result.moveClassifications,
@@ -197,7 +377,6 @@ export default function Analysis() {
       (m) => m.ply === currentPly
     );
 
-    // If fast review has best move recorded
     if (currentClassification?.bestMoveUci) {
       const best = currentClassification.bestMoveUci;
       const from = best.substring(0, 2);
@@ -238,36 +417,64 @@ export default function Analysis() {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-              {currentGame?.time_class?.toUpperCase() || 'GAME'}
+              {currentGame?.time_class ? currentGame.time_class.toUpperCase() : 'FRESH BOARD'}
             </span>
             <span className="text-xs text-slate-400">
-              {currentGame?.played_at ? new Date(currentGame.played_at).toLocaleDateString() : 'Active Analysis'}
+              {currentGame?.played_at
+                ? new Date(currentGame.played_at).toLocaleDateString()
+                : 'Interactive Sandbox'}
             </span>
           </div>
           <h1 className="text-xl font-extrabold text-white mt-1">
-            {currentGame?.white_username || 'White'} ({currentGame?.white_rating || '—'}) vs.{' '}
-            {currentGame?.black_username || 'Black'} ({currentGame?.black_rating || '—'})
+            {currentGame ? (
+              `${currentGame.white_username || 'White'} (${currentGame.white_rating || '—'}) vs. ${currentGame.black_username || 'Black'} (${currentGame.black_rating || '—'})`
+            ) : (
+              'Live Analysis Board'
+            )}
           </h1>
+          {!currentGame && (
+            <p className="text-xs text-slate-400 mt-0.5">
+              Make moves on the board or paste a game to start analyzing.
+            </p>
+          )}
         </div>
 
-        {/* Engine mode triggers */}
-        <div className="flex items-center gap-3">
+        {/* Board actions and Engine mode triggers */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={() => setIsPasteModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all shadow-sm"
+            title="Paste Game (PGN or FEN)"
+          >
+            <ClipboardPaste className="w-4 h-4 text-emerald-400" />
+            <span>Paste Game</span>
+          </button>
+
+          <button
+            onClick={handleNewAnalysis}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all shadow-sm"
+            title="Reset to fresh board"
+          >
+            <Trash2 className="w-4 h-4 text-slate-400" />
+            <span>Fresh Board</span>
+          </button>
+
           <button
             onClick={() => setDeepAnalysisEnabled(!deepAnalysisEnabled)}
-            className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
               deepAnalysisEnabled
                 ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
           >
             <Cpu className="w-4 h-4 text-cyan-400" />
-            <span>Deep Analysis {deepAnalysisEnabled ? 'ON' : 'OFF'}</span>
+            <span>Deep {deepAnalysisEnabled ? 'ON' : 'OFF'}</span>
           </button>
 
           <button
             onClick={handleStartFastReview}
-            disabled={isReviewing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-50"
+            disabled={isReviewing || (history.length === 0 && !currentGame?.pgn)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-40"
           >
             <Sparkles className={`w-4 h-4 ${isReviewing ? 'animate-spin' : ''}`} />
             <span>{isReviewing ? `Reviewing (${reviewProgress}%)...` : 'Run Game Review'}</span>
@@ -340,7 +547,8 @@ export default function Analysis() {
               boardOrientation={boardOrientation}
               customArrows={arrows}
               lastMove={lastMove}
-              isDraggable={false}
+              isDraggable={true}
+              onPieceDrop={handlePieceDrop}
             />
 
             {/* Board Controls */}
@@ -554,6 +762,69 @@ export default function Analysis() {
           </div>
         </div>
       </div>
+
+      {/* Paste Game / Position Modal */}
+      {isPasteModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <ClipboardPaste className="w-5 h-5 text-emerald-400" />
+                <span>Paste Game or FEN Position</span>
+              </h3>
+              <button
+                onClick={() => {
+                  setIsPasteModalOpen(false);
+                  setPasteError('');
+                }}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400">
+              Paste standard PGN notation (from Chess.com, Lichess, etc.) or a FEN string to load into the board.
+            </p>
+
+            {pasteError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+                {pasteError}
+              </div>
+            )}
+
+            <form onSubmit={handlePasteSubmit} className="space-y-4">
+              <textarea
+                value={pasteInput}
+                onChange={(e) => setPasteInput(e.target.value)}
+                placeholder="Paste PGN (e.g. 1. e4 e5 2. Nf3...) or FEN string here"
+                rows={6}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                autoFocus
+              />
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasteModalOpen(false);
+                    setPasteError('');
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all"
+                >
+                  Load into Board
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
