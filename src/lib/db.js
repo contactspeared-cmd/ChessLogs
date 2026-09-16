@@ -601,7 +601,11 @@ export async function upsertGames(formattedGames) {
     }
   });
 
-  setGamesSafely(newGames);
+  try {
+    setGamesSafely(newGames);
+  } catch (err) {
+    console.warn('Failed to persist games to localStorage (upsertGames):', err);
+  }
   return formattedGames;
 }
 
@@ -672,7 +676,11 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
 
   // Newest synced games first, then preserved manual imports / other students
   const next = [...incoming, ...kept];
-  setGamesSafely(next);
+  try {
+    setGamesSafely(next);
+  } catch (err) {
+    console.warn('Failed to persist games to localStorage (replaceSyncedChesscomGames):', err);
+  }
   return incoming;
 }
 
@@ -821,7 +829,11 @@ export async function deleteStudent(studentId) {
   const filteredGames = games.filter(
     (g) => g.student_id !== studentId && (!studentId.startsWith('chesscom-') || g.student_id !== studentId)
   );
-  setGamesSafely(filteredGames);
+  try {
+    setGamesSafely(filteredGames);
+  } catch (err) {
+    console.warn('Failed to persist games to localStorage (deleteStudent):', err);
+  }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const filteredAssignments = assignments.filter((a) => a.student_id !== studentId);
