@@ -7,6 +7,77 @@ const STORAGE_ASSIGNMENTS = 'chesslogs_assignments';
 const STORAGE_REVIEWS = 'chesslogs_reviews';
 const STORAGE_STUDENTS = 'chesslogs_students';
 
+// Max attempts/limits when trimming local games to fit storage quota
+const GAME_TRIM_LIMITS = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
+
+function isQuotaExceededError(err) {
+  if (!err) return false;
+  const name = err.name || '';
+  const code = err.code || err.number || null;
+  const msg = (err.message || '').toLowerCase();
+  return (
+    name === 'QuotaExceededError' ||
+    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    code === 22 ||
+    code === 1014 ||
+    msg.includes('quota') ||
+    msg.includes('exceeded')
+  );
+}
+
+function minimalGame(game) {
+  // Keep only small index fields to preserve identity and basic metadata
+  return {
+    id: game.id,
+    student_id: game.student_id,
+    chesscom_game_id: game.chesscom_game_id,
+    played_at: game.played_at,
+    result: game.result,
+    time_class: game.time_class,
+    white_username: game.white_username,
+    black_username: game.black_username,
+  };
+}
+
+function stripLargeFields(game) {
+  const copy = { ...game };
+  delete copy.pgn;
+  delete copy.moves;
+  delete copy.analysis;
+  delete copy.annotations;
+  delete copy.engine_report;
+  return copy;
+}
+
+function setGamesSafely(gamesArray) {
+  try {
+    localStorage.setItem(STORAGE_GAMES, JSON.stringify(gamesArray));
+    return;
+  } catch (err) {
+    if (!isQuotaExceededError(err)) throw err;
+    // Try progressively trimming / stripping large fields until it fits
+    for (let limit of GAME_TRIM_LIMITS) {
+      const trimmed = gamesArray.slice(0, Math.min(limit, gamesArray.length)).map(stripLargeFields);
+      try {
+        localStorage.setItem(STORAGE_GAMES, JSON.stringify(trimmed));
+        return;
+      } catch (e2) {
+        if (!isQuotaExceededError(e2)) throw e2;
+        // next iteration will reduce further
+      }
+    }
+
+    // As a last resort, store only minimal metadata for the most recent game
+    try {
+      const minimal = gamesArray.slice(0, 5).map(minimalGame);
+      localStorage.setItem(STORAGE_GAMES, JSON.stringify(minimal));
+    } catch (finalErr) {
+      // If even this fails, give up (do not crash app) and emit console.warn
+      console.warn('Unable to persist games to localStorage due to quota limits.', finalErr);
+    }
+  }
+}
+
 // Initialize mock storage if empty
 function initMockStorage() {
   if (!localStorage.getItem(STORAGE_COURSES)) {
@@ -530,7 +601,7 @@ export async function upsertGames(formattedGames) {
     }
   });
 
-  localStorage.setItem(STORAGE_GAMES, JSON.stringify(newGames));
+  setGamesSafely(newGames);
   return formattedGames;
 }
 
@@ -601,7 +672,7 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
 
   // Newest synced games first, then preserved manual imports / other students
   const next = [...incoming, ...kept];
-  localStorage.setItem(STORAGE_GAMES, JSON.stringify(next));
+  setGamesSafely(next);
   return incoming;
 }
 
@@ -750,7 +821,7 @@ export async function deleteStudent(studentId) {
   const filteredGames = games.filter(
     (g) => g.student_id !== studentId && (!studentId.startsWith('chesscom-') || g.student_id !== studentId)
   );
-  localStorage.setItem(STORAGE_GAMES, JSON.stringify(filteredGames));
+  setGamesSafely(filteredGames);
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const filteredAssignments = assignments.filter((a) => a.student_id !== studentId);
