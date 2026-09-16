@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { useAuth } from '../context/AuthContext';
 import {
-  fetchChesscomAllGames,
+  fetchChesscomMonthlyGames,
   formatChesscomGame,
 } from '../lib/chesscom';
 import { getGamesForStudent, upsertGames, replaceSyncedChesscomGames } from '../lib/db';
@@ -24,9 +24,11 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 
-const GAMES_PER_PAGE = 50;
+const DEFAULT_GAMES_PER_PAGE = 50;
 
 export default function Games() {
   const { profile } = useAuth();
@@ -35,14 +37,15 @@ export default function Games() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(null);
   const [syncFeedback, setSyncFeedback] = useState(null);
 
-  // Filters
+  // Filters & Pagination
   const [timeFilter, setTimeFilter] = useState('all');
   const [resultFilter, setResultFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
+  const [gamesPerPage, setGamesPerPage] = useState(DEFAULT_GAMES_PER_PAGE);
+  const [jumpPageInput, setJumpPageInput] = useState('');
 
   // PGN Import Modal
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -69,9 +72,9 @@ export default function Games() {
   // Reset to first page whenever filters change
   useEffect(() => {
     setPage(1);
-  }, [timeFilter, resultFilter, searchQuery, games.length]);
+  }, [timeFilter, resultFilter, searchQuery, gamesPerPage]);
 
-  // Sync entire Chess.com history (all monthly archives), replacing prior synced games
+  // Sync most recent month of Chess.com games
   const handleSyncGames = async () => {
     const username = profile?.chesscom_username;
     if (!username) {
@@ -84,13 +87,9 @@ export default function Games() {
 
     setSyncing(true);
     setSyncFeedback(null);
-    setSyncProgress({ completed: 0, total: 0, gameCount: 0 });
 
     try {
-      const rawGames = await fetchChesscomAllGames(username, (progress) => {
-        setSyncProgress(progress);
-      });
-
+      const rawGames = await fetchChesscomMonthlyGames(username);
       const formatted = (rawGames || []).map((g) =>
         formatChesscomGame(g, username, profile.id)
       );
@@ -102,23 +101,22 @@ export default function Games() {
       if (formatted.length === 0) {
         setSyncFeedback({
           type: 'info',
-          text: `No games found for @${username}. Your Chess.com game list is empty.`,
+          text: `No recent games found for @${username}.`,
         });
       } else {
         setSyncFeedback({
           type: 'success',
-          text: `Synced ${formatted.length.toLocaleString()} games from @${username} (all-time).`,
+          text: `Synced ${formatted.length.toLocaleString()} games from @${username}.`,
         });
       }
     } catch (err) {
       setSyncFeedback({
         type: 'error',
-        text: err.message || 'Failed to sync games from Chess.com Public API.',
+        text: err.message || 'Failed to sync games from Chess.com.',
       });
     } finally {
       setSyncing(false);
-      setSyncProgress(null);
-      setTimeout(() => setSyncFeedback(null), 6000);
+      setTimeout(() => setSyncFeedback(null), 5000);
     }
   };
 
@@ -188,21 +186,52 @@ export default function Games() {
     });
   }, [games, timeFilter, resultFilter, searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredGames.length / GAMES_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filteredGames.length / gamesPerPage));
   const safePage = Math.min(page, totalPages);
 
+  const handlePageChange = (newPage) => {
+    const target = Math.max(1, Math.min(totalPages, newPage));
+    setPage(target);
+    setJumpPageInput('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleJumpToPage = (e) => {
+    e.preventDefault();
+    const val = parseInt(jumpPageInput, 10);
+    if (!isNaN(val) && val >= 1 && val <= totalPages) {
+      handlePageChange(val);
+    }
+  };
+
+  const getPageNumbers = (current, total) => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    const pages = [1];
+    if (current > 3) pages.push('ellipsis-start');
+    const start = Math.max(2, current - 1);
+    const end = Math.min(total - 1, current + 1);
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    if (current < total - 2) pages.push('ellipsis-end');
+    pages.push(total);
+    return pages;
+  };
+
   const pagedGames = useMemo(() => {
-    const start = (safePage - 1) * GAMES_PER_PAGE;
-    const slice = filteredGames.slice(start, start + GAMES_PER_PAGE);
+    const start = (safePage - 1) * gamesPerPage;
+    const slice = filteredGames.slice(start, start + gamesPerPage);
     // Enrich openings only for the visible page (avoids lag on huge libraries)
     return slice.map((game) => {
       if (game.opening || game.eco || !game.pgn) return game;
       return { ...game, ...openingFieldsFromDetection(detectOpening(game.pgn)) };
     });
-  }, [filteredGames, safePage]);
+  }, [filteredGames, safePage, gamesPerPage]);
 
-  const rangeStart = filteredGames.length === 0 ? 0 : (safePage - 1) * GAMES_PER_PAGE + 1;
-  const rangeEnd = Math.min(safePage * GAMES_PER_PAGE, filteredGames.length);
+  const rangeStart = filteredGames.length === 0 ? 0 : (safePage - 1) * gamesPerPage + 1;
+  const rangeEnd = Math.min(safePage * gamesPerPage, filteredGames.length);
 
   const getTimeClassIcon = (timeClass) => {
     switch (timeClass) {
@@ -227,7 +256,7 @@ export default function Games() {
             <span>Game Database</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Sync your full Chess.com history and review games with Stockfish 18 NNUE.
+            Sync your recent games and review positions with Stockfish 18 NNUE.
             {games.length > 0 && (
               <span className="text-slate-500"> · {games.length.toLocaleString()} games stored</span>
             )}
@@ -249,36 +278,10 @@ export default function Games() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Syncing All Games…' : 'Sync Chess.com'}</span>
+            <span>{syncing ? 'Syncing…' : 'Sync Chess.com'}</span>
           </button>
         </div>
       </div>
-
-      {/* Sync progress */}
-      {syncing && syncProgress && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>
-              Fetching archives{syncProgress.total > 0 ? ` ${syncProgress.completed}/${syncProgress.total}` : '…'}
-            </span>
-            <span className="font-mono text-emerald-400">
-              {syncProgress.gameCount.toLocaleString()} games
-            </span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300"
-              style={{
-                width: `${
-                  syncProgress.total > 0
-                    ? Math.round((syncProgress.completed / syncProgress.total) * 100)
-                    : 8
-                }%`,
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Sync Feedback Toast */}
       {syncFeedback && (
@@ -348,6 +351,23 @@ export default function Games() {
               </button>
             ))}
           </div>
+
+          {/* Games per page selector */}
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+            <span>Per page:</span>
+            <select
+              value={gamesPerPage}
+              onChange={(e) => {
+                setGamesPerPage(Number(e.target.value));
+                setPage(1);
+              }}
+              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer text-xs"
+            >
+              <option value={25} className="bg-slate-900 text-white">25</option>
+              <option value={50} className="bg-slate-900 text-white">50</option>
+              <option value={100} className="bg-slate-900 text-white">100</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -390,6 +410,41 @@ export default function Games() {
         </div>
       ) : (
         <>
+          {/* Top pagination status bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs text-slate-400">
+            <div>
+              Showing <span className="text-slate-200 font-mono font-semibold">{rangeStart}–{rangeEnd}</span> of{' '}
+              <span className="text-slate-200 font-mono font-semibold">{filteredGames.length.toLocaleString()}</span> games
+              {filteredGames.length < games.length && (
+                <span className="text-slate-500"> (filtered from {games.length.toLocaleString()})</span>
+              )}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(safePage - 1)}
+                  disabled={safePage <= 1}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Prev
+                </button>
+                <span className="font-mono text-slate-300 px-2 font-medium">
+                  Page {safePage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handlePageChange(safePage + 1)}
+                  disabled={safePage >= totalPages}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-800">
             {pagedGames.map((game) => {
               const isUserWhite =
@@ -495,43 +550,138 @@ export default function Games() {
             })}
           </div>
 
-          {/* Pagination — 50 games per page */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3">
-            <p className="text-xs text-slate-400">
-              Showing{' '}
-              <span className="text-slate-200 font-mono font-semibold">
-                {rangeStart}–{rangeEnd}
-              </span>{' '}
-              of{' '}
-              <span className="text-slate-200 font-mono font-semibold">
-                {filteredGames.length.toLocaleString()}
-              </span>{' '}
-              games · {GAMES_PER_PAGE} per page
-            </p>
+          {/* Complete Pagination Controls to Divide Games */}
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 shadow-lg">
+            <div className="flex flex-col sm:flex-row items-center gap-3 text-xs text-slate-400">
+              <p>
+                Showing{' '}
+                <span className="text-slate-100 font-mono font-bold">
+                  {rangeStart}–{rangeEnd}
+                </span>{' '}
+                of{' '}
+                <span className="text-slate-100 font-mono font-bold">
+                  {filteredGames.length.toLocaleString()}
+                </span>{' '}
+                games
+              </p>
 
-            <div className="flex items-center gap-2">
+              <div className="hidden sm:inline text-slate-600">•</div>
+
+              <div className="flex items-center gap-1.5">
+                <span>Per page:</span>
+                <select
+                  value={gamesPerPage}
+                  onChange={(e) => {
+                    setGamesPerPage(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="bg-slate-950 border border-slate-800 text-white font-semibold rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {/* First Page */}
               <button
                 type="button"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                onClick={() => handlePageChange(1)}
                 disabled={safePage <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="First Page"
               >
-                <ChevronLeft className="w-4 h-4" />
-                Prev
+                <ChevronsLeft className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">First</span>
               </button>
-              <span className="text-xs font-mono text-slate-400 px-2">
-                Page {safePage} / {totalPages}
-              </span>
+
+              {/* Prev Page */}
               <button
                 type="button"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => handlePageChange(safePage - 1)}
+                disabled={safePage <= 1}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Previous Page"
               >
-                Next
-                <ChevronRight className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>Prev</span>
+              </button>
+
+              {/* Numbered Page Buttons */}
+              <div className="flex items-center gap-1">
+                {getPageNumbers(safePage, totalPages).map((p, idx) => {
+                  if (typeof p === 'string') {
+                    return (
+                      <span key={`ell-${idx}`} className="px-1.5 text-xs text-slate-500 font-mono">
+                        …
+                      </span>
+                    );
+                  }
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => handlePageChange(p)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-mono font-semibold transition-all ${
+                        p === safePage
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                          : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Next Page */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(safePage + 1)}
+                disabled={safePage >= totalPages}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Next Page"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Last Page */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={safePage >= totalPages}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                title="Last Page"
+              >
+                <span className="hidden sm:inline">Last</span>
+                <ChevronsRight className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Direct Jump to Page Form */}
+            {totalPages > 2 && (
+              <form onSubmit={handleJumpToPage} className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-400">Go to:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  value={jumpPageInput}
+                  onChange={(e) => setJumpPageInput(e.target.value)}
+                  placeholder={String(safePage)}
+                  className="w-14 px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-center font-mono text-white text-xs focus:outline-none focus:border-emerald-500"
+                />
+                <button
+                  type="submit"
+                  className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-semibold transition-colors"
+                >
+                  Go
+                </button>
+              </form>
+            )}
           </div>
         </>
       )}
@@ -543,7 +693,7 @@ export default function Games() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-emerald-400" />
-                <span>Import Game PGN</span>
+                <span>Import Game PGN (Any Date)</span>
               </h3>
               <button
                 onClick={() => setIsImportModalOpen(false)}
@@ -554,15 +704,22 @@ export default function Games() {
             </div>
 
             <p className="text-xs text-slate-400">
-              Paste a PGN to save and open it in analysis. ChessLogs will detect the opening and variation automatically.
+              Paste any game PGN to save it to your library and open it in the Stockfish 18 analysis board. Use this to import any game older than 6 months from Chess.com or other sources.
             </p>
+
+            <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl text-[11px] text-slate-400 space-y-1">
+              <span className="font-semibold text-slate-300">How to copy PGN from Chess.com:</span>
+              <p>
+                Open any completed game on Chess.com → click the <strong className="text-slate-200">Share</strong> button → select <strong className="text-slate-200">PGN</strong> → copy the text and paste it below.
+              </p>
+            </div>
 
             <form onSubmit={handleImportCustomPgn} className="space-y-4">
               <textarea
                 rows={7}
                 value={pastedPgn}
                 onChange={(e) => setPastedPgn(e.target.value)}
-                placeholder={'1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5...'}
+                placeholder={'[Event "Live Chess"]\n[White "player1"]\n[Black "player2"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5...'}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                 required
               />

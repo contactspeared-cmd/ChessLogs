@@ -9,7 +9,7 @@ const BASE_URL = APP_CONFIG.chesscomPublicApiBase;
 const ARCHIVE_CONCURRENCY = 4;
 
 function chesscomHeaders() {
-  return { 'User-Agent': 'ChessLogs-Improvement-Platform/1.0' };
+  return { 'User-Agent': 'ChessLogs-Improvement-Platform/1.0 (contact: support@chesslogs.app)' };
 }
 
 /**
@@ -137,37 +137,59 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
   }
 }
 
-async function fetchGamesFromArchiveUrl(archiveUrl) {
-  const res = await fetch(archiveUrl, { headers: chesscomHeaders() });
-  if (!res.ok) {
-    if (res.status === 404) return [];
-    throw new Error(`Failed to fetch archive ${archiveUrl}: ${res.statusText}`);
+async function fetchGamesFromArchiveUrl(archiveUrl, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(archiveUrl, { headers: chesscomHeaders() });
+      if (res.status === 429) {
+        // Rate limited by Chess.com, back off and retry
+        await new Promise((r) => setTimeout(r, 600 * attempt));
+        continue;
+      }
+      if (res.status === 404) return [];
+      if (!res.ok) {
+        if (res.status >= 500 && attempt < retries) {
+          await new Promise((r) => setTimeout(r, 600 * attempt));
+          continue;
+        }
+        throw new Error(`Failed to fetch archive ${archiveUrl}: ${res.statusText || res.status}`);
+      }
+      const data = await res.json();
+      return data.games || [];
+    } catch (err) {
+      if (attempt >= retries) throw err;
+      await new Promise((r) => setTimeout(r, 600 * attempt));
+    }
   }
-  const data = await res.json();
-  return data.games || [];
+  return [];
 }
 
 /**
- * Fetch ALL games across every monthly archive for a player.
+ * Fetch games across monthly archives for a player (defaults to past 6 months).
  * @param {string} username
  * @param {Function} [onProgress] ({ completed, total, gameCount })
+ * @param {Object} [options]
+ * @param {number} [options.monthsLimit=6] Number of recent monthly archives to fetch (default: 6)
  * @returns {Promise<Object[]>} raw Chess.com game objects, newest first, deduped
  */
-export async function fetchChesscomAllGames(username, onProgress = null) {
+export async function fetchChesscomAllGames(username, onProgress = null, options = {}) {
   if (!username) return [];
   const cleanUsername = username.trim().toLowerCase();
   const archives = await fetchChesscomArchiveUrls(cleanUsername);
 
-  if (archives.length === 0) {
+  const monthsLimit = typeof options.monthsLimit === 'number' ? options.monthsLimit : 6;
+
+  // Pull archives newest-first
+  const allOrdered = [...archives].reverse();
+  const ordered = monthsLimit > 0 ? allOrdered.slice(0, monthsLimit) : allOrdered;
+
+  if (ordered.length === 0) {
     if (onProgress) onProgress({ completed: 0, total: 0, gameCount: 0 });
     return [];
   }
 
   const allGames = [];
   let completed = 0;
-
-  // Pull archives newest-first so progress feels responsive
-  const ordered = [...archives].reverse();
 
   for (let i = 0; i < ordered.length; i += ARCHIVE_CONCURRENCY) {
     const batch = ordered.slice(i, i + ARCHIVE_CONCURRENCY);
@@ -193,6 +215,26 @@ export async function fetchChesscomAllGames(username, onProgress = null) {
         });
       }
     }
+
+    // Small delay between batches to respect Chess.com rate limits
+    if (i + ARCHIVE_CONCURRENCY < ordered.length) {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+
+  // Also fetch live daily/in-progress games of the current month if available
+  try {
+    const liveRes = await fetch(`${BASE_URL}/player/${cleanUsername}/games`, {
+      headers: chesscomHeaders(),
+    });
+    if (liveRes.ok) {
+      const liveData = await liveRes.json();
+      if (Array.isArray(liveData.games) && liveData.games.length > 0) {
+        allGames.push(...liveData.games);
+      }
+    }
+  } catch {
+    // Ignore current live game probe failure
   }
 
   // Deduplicate by URL / uuid / end_time
