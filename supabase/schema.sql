@@ -28,6 +28,8 @@ create table if not exists public.courses (
   description text,
   type text not null check (type in ('video', 'walkthrough')),
   created_by uuid references public.profiles(id) on delete set null,
+  orientation text default 'white',
+  trained_side text default 'white',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -40,6 +42,8 @@ create table if not exists public.course_chapters (
   description text,
   video_url text,
   pgn text,
+  orientation text default 'white',
+  trained_side text default 'white',
   -- Key moments: [{ ply, keyMove, comment }, ...]
   -- Or packed form: { description, moments: [{ ply, keyMove, comment }, ...] }
   annotations jsonb default '[]'::jsonb,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import PgnImportWizard from '../components/PgnImportWizard';
+import EngineVariationTools from '../components/EngineVariationTools';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -52,11 +53,15 @@ export default function AdminDashboard() {
   const [courseTitle, setCourseTitle] = useState('');
   const [courseDesc, setCourseDesc] = useState('');
   const [courseType, setCourseType] = useState('walkthrough');
+  const [courseOrientation, setCourseOrientation] = useState('white');
+  const [courseTrainedSide, setCourseTrainedSide] = useState('white');
   const [chapters, setChapters] = useState([
     {
       title: 'Chapter 1: Critical Novelty',
       description: '',
       video_url: '',
+      orientation: 'white',
+      trained_side: 'white',
       pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ *',
       annotations: [
         { ply: 12, keyMove: 'Bb4+', comment: 'Check with bishop to disrupt White’s central tempo.' },
@@ -154,11 +159,15 @@ export default function AdminDashboard() {
     setCourseTitle('');
     setCourseDesc('');
     setCourseType('walkthrough');
+    setCourseOrientation('white');
+    setCourseTrainedSide('white');
     setChapters([
       {
         title: 'Chapter 1: Opening Moves',
         description: '',
         video_url: '',
+        orientation: 'white',
+        trained_side: 'white',
         pgn: '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 *',
         annotations: [{ ply: 10, keyMove: 'a6', comment: 'The signature Najdorf move controlling b5.' }],
       },
@@ -172,10 +181,16 @@ export default function AdminDashboard() {
     setCourseTitle(c.title);
     setCourseDesc(c.description || '');
     setCourseType(c.type || 'walkthrough');
+    setCourseOrientation(c.orientation || 'white');
+    setCourseTrainedSide(c.trained_side || 'white');
     setChapters(
       (c.chapters || []).length > 0
-        ? c.chapters
-        : [{ title: 'Chapter 1', description: '', video_url: '', pgn: '', annotations: [] }]
+        ? c.chapters.map((ch) => ({
+            ...ch,
+            orientation: ch.orientation || c.orientation || 'white',
+            trained_side: ch.trained_side || c.trained_side || 'white',
+          }))
+        : [{ title: 'Chapter 1', description: '', video_url: '', orientation: c.orientation || 'white', trained_side: c.trained_side || 'white', pgn: '', annotations: [] }]
     );
     setActiveTab('courseBuilder');
   };
@@ -193,9 +208,15 @@ export default function AdminDashboard() {
           title: courseTitle.trim(),
           description: courseDesc.trim(),
           type: courseType,
+          orientation: courseOrientation,
+          trained_side: courseTrainedSide,
           created_by: profile?.id,
         },
-        chapters
+        chapters.map((ch) => ({
+          ...ch,
+          orientation: ch.orientation || courseOrientation || 'white',
+          trained_side: ch.trained_side || courseTrainedSide || 'white',
+        }))
       );
 
       await loadData();
@@ -652,7 +673,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <h3 className="text-base font-bold text-white">{course.title}</h3>
-                  <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed">
+                  <p className="text-xs text-slate-400 line-clamp-3 leading-relaxed whitespace-pre-line">
                     {course.description}
                   </p>
                 </div>
@@ -699,7 +720,7 @@ export default function AdminDashboard() {
               <span>{editingCourseId ? 'Edit Course' : 'Create Course Module'}</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-xs font-semibold uppercase text-slate-400">Course Title</label>
                 <input
@@ -723,7 +744,58 @@ export default function AdminDashboard() {
                   <option value="video">Video Masterclass</option>
                 </select>
               </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-semibold uppercase text-slate-400">Default Perspective</label>
+                <select
+                  value={courseOrientation}
+                  onChange={(e) => setCourseOrientation(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="white">White (White at bottom)</option>
+                  <option value="black">Black (Black at bottom)</option>
+                </select>
+              </div>
             </div>
+
+            {courseType === 'walkthrough' && (
+              <div className="flex items-center gap-4 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
+                <span className="font-semibold text-slate-300">Default Trained Side:</span>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
+                  <input
+                    type="radio"
+                    name="course_trained_side"
+                    value="white"
+                    checked={courseTrainedSide === 'white'}
+                    onChange={(e) => setCourseTrainedSide(e.target.value)}
+                    className="text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>White moves only</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
+                  <input
+                    type="radio"
+                    name="course_trained_side"
+                    value="black"
+                    checked={courseTrainedSide === 'black'}
+                    onChange={(e) => setCourseTrainedSide(e.target.value)}
+                    className="text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>Black moves only</span>
+                </label>
+                <label className="inline-flex items-center gap-1.5 cursor-pointer text-slate-400 hover:text-white">
+                  <input
+                    type="radio"
+                    name="course_trained_side"
+                    value="both"
+                    checked={courseTrainedSide === 'both'}
+                    onChange={(e) => setCourseTrainedSide(e.target.value)}
+                    className="text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span>Both sides</span>
+                </label>
+              </div>
+            )}
 
             <div className="space-y-1">
               <label className="block text-xs font-semibold uppercase text-slate-400">Description & Goals</label>
@@ -821,9 +893,8 @@ export default function AdminDashboard() {
                   )}
                 </div>
 
-                {/* Chapter description */}
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   value={ch.description || ''}
                   onChange={(e) => {
                     const copy = [...chapters];
@@ -831,8 +902,45 @@ export default function AdminDashboard() {
                     setChapters(copy);
                   }}
                   placeholder="Chapter description or learning objective (optional)"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 placeholder:text-slate-600 resize-none"
                 />
+
+                {courseType === 'walkthrough' && (
+                  <div className="flex items-center gap-4 flex-wrap text-xs bg-slate-950/40 border border-slate-800/60 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <label className="text-slate-400 font-semibold">Study Orientation:</label>
+                      <select
+                        value={ch.orientation || courseOrientation}
+                        onChange={(e) => {
+                          const copy = [...chapters];
+                          copy[idx].orientation = e.target.value;
+                          setChapters(copy);
+                        }}
+                        className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="white">White (Board from White)</option>
+                        <option value="black">Black (Board from Black)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-slate-400 font-semibold">Trained side:</label>
+                      <select
+                        value={ch.trained_side || courseTrainedSide}
+                        onChange={(e) => {
+                          const copy = [...chapters];
+                          copy[idx].trained_side = e.target.value;
+                          setChapters(copy);
+                        }}
+                        className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="white">White moves only</option>
+                        <option value="black">Black moves only</option>
+                        <option value="both">Both sides</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
 
                 {courseType === 'video' ? (
                   <div>
@@ -871,6 +979,16 @@ export default function AdminDashboard() {
                         placeholder="1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 *"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                       />
+                      <div className="mt-2">
+                        <EngineVariationTools
+                          pgn={ch.pgn || ''}
+                          onPgnChange={(nextPgn) => {
+                            const copy = [...chapters];
+                            copy[idx].pgn = nextPgn;
+                            setChapters(copy);
+                          }}
+                        />
+                      </div>
                     </div>
 
                     <div>

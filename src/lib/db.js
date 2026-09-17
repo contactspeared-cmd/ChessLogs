@@ -48,6 +48,8 @@ export function normalizeChapter(chapter) {
   const packed = unpackChapterAnnotations(chapter.annotations);
   return {
     ...chapter,
+    orientation: chapter.orientation || 'white',
+    trained_side: chapter.trained_side || 'white',
     description: chapter.description || packed.description || '',
     annotations: packed.moments,
   };
@@ -325,6 +327,8 @@ export async function saveCourse(courseData, chaptersData = []) {
           title: courseData.title,
           description: courseData.description,
           type: courseData.type,
+          orientation: courseData.orientation || 'white',
+          trained_side: courseData.trained_side || 'white',
           created_by: courseData.created_by,
         })
         .select()
@@ -338,6 +342,8 @@ export async function saveCourse(courseData, chaptersData = []) {
           title: courseData.title,
           description: courseData.description,
           type: courseData.type,
+          orientation: courseData.orientation || 'white',
+          trained_side: courseData.trained_side || 'white',
         })
         .eq('id', courseId);
       if (cErr) throw cErr;
@@ -347,7 +353,7 @@ export async function saveCourse(courseData, chaptersData = []) {
     if (chaptersData.length > 0) {
       await supabase.from('course_chapters').delete().eq('course_id', courseId);
 
-      const buildRows = (includeDescriptionColumn) =>
+      const buildRows = (includeExtraColumns) =>
         chaptersData.map((ch, idx) => {
           const moments = Array.isArray(ch.annotations)
             ? ch.annotations
@@ -362,13 +368,15 @@ export async function saveCourse(courseData, chaptersData = []) {
             // Pack description into annotations so it survives without the column migration
             annotations: packChapterAnnotations(description, moments),
           };
-          if (includeDescriptionColumn) {
+          if (includeExtraColumns) {
             row.description = description;
+            row.orientation = ch.orientation || courseData.orientation || 'white';
+            row.trained_side = ch.trained_side || courseData.trained_side || 'white';
           }
           return row;
         });
 
-      // Include description column when migrated; fall back if schema cache lacks it.
+      // Include extra columns when migrated; fall back if schema cache lacks them.
       let { error: chErr } = await supabase.from('course_chapters').insert(buildRows(true));
       if (chErr && isSupabaseSchemaError(chErr)) {
         ({ error: chErr } = await supabase.from('course_chapters').insert(buildRows(false)));
@@ -389,9 +397,13 @@ export async function saveCourse(courseData, chaptersData = []) {
     updatedCourse = {
       ...courseData,
       id: courseId,
+      orientation: courseData.orientation || 'white',
+      trained_side: courseData.trained_side || 'white',
       created_at: new Date().toISOString(),
       chapters: chaptersData.map((ch, idx) => ({
         ...ch,
+        orientation: ch.orientation || courseData.orientation || 'white',
+        trained_side: ch.trained_side || courseData.trained_side || 'white',
         id: ch.id || `chap-${Date.now()}-${idx}`,
         order_index: idx + 1,
       })),
@@ -402,8 +414,12 @@ export async function saveCourse(courseData, chaptersData = []) {
     updatedCourse = {
       ...courses[idx],
       ...courseData,
+      orientation: courseData.orientation || courses[idx]?.orientation || 'white',
+      trained_side: courseData.trained_side || courses[idx]?.trained_side || 'white',
       chapters: chaptersData.map((ch, i) => ({
         ...ch,
+        orientation: ch.orientation || courseData.orientation || 'white',
+        trained_side: ch.trained_side || courseData.trained_side || 'white',
         id: ch.id || `chap-${Date.now()}-${i}`,
         order_index: i + 1,
       })),
@@ -529,28 +545,60 @@ export async function markChapterComplete(courseId, studentId, chapterId, mode =
   };
 
   if (isSupabaseConfigured) {
-    const { data: assignment } = await supabase
+    const { data: assignment, error: fetchErr } = await supabase
       .from('course_assignments')
       .select('*')
       .eq('course_id', courseId)
       .eq('student_id', studentId)
       .maybeSingle();
 
+    if (fetchErr) {
+      console.error('Failed to query course assignment:', fetchErr);
+      return false;
+    }
+
     if (assignment) {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('course_assignments')
         .update({ progress: applyProgress(assignment.progress) })
         .eq('id', assignment.id);
+      if (updateErr) {
+        console.error('Failed to update course progress:', updateErr);
+        return false;
+      }
+      return true;
+    }
+
+    // Auto-provision assignment so self-enrolled / unassigned student progress is saved
+    const { error: insertErr } = await supabase
+      .from('course_assignments')
+      .insert({
+        course_id: courseId,
+        student_id: studentId,
+        progress: applyProgress({}),
+      });
+    if (insertErr) {
+      console.error('Failed to insert initial course assignment:', insertErr);
+      return false;
     }
     return true;
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-  const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
-  if (match) {
-    match.progress = applyProgress(match.progress);
-    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+  const matchIndex = assignments.findIndex(
+    (a) => a.course_id === courseId && a.student_id === studentId
+  );
+  if (matchIndex >= 0) {
+    assignments[matchIndex].progress = applyProgress(assignments[matchIndex].progress);
+  } else {
+    assignments.push({
+      id: `local_assign_${Date.now()}`,
+      course_id: courseId,
+      student_id: studentId,
+      progress: applyProgress({}),
+    });
   }
+  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   return true;
 }
 
@@ -570,18 +618,39 @@ export async function savePreferredStudyMode(courseId, studentId, mode) {
       .eq('course_id', courseId)
       .eq('student_id', studentId)
       .maybeSingle();
-    if (!assignment) return false;
+
+    if (assignment) {
+      await supabase
+        .from('course_assignments')
+        .update({ progress: apply(assignment.progress) })
+        .eq('id', assignment.id);
+      return true;
+    }
+
     await supabase
       .from('course_assignments')
-      .update({ progress: apply(assignment.progress) })
-      .eq('id', assignment.id);
+      .insert({
+        course_id: courseId,
+        student_id: studentId,
+        progress: apply({}),
+      });
     return true;
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-  const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
-  if (!match) return false;
-  match.progress = apply(match.progress);
+  const matchIndex = assignments.findIndex(
+    (a) => a.course_id === courseId && a.student_id === studentId
+  );
+  if (matchIndex >= 0) {
+    assignments[matchIndex].progress = apply(assignments[matchIndex].progress);
+  } else {
+    assignments.push({
+      id: `local_assign_${Date.now()}`,
+      course_id: courseId,
+      student_id: studentId,
+      progress: apply({}),
+    });
+  }
   localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   return true;
 }

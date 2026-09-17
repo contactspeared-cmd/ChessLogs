@@ -14,13 +14,14 @@
 export const ENGINE_CONFIG = {
   version: 'Stockfish 18 NNUE (lite-wasm)',
   workerUrl: '/stockfish/stockfish.js',
+  rating_adjustment_enabled: false,
 
   fastReview: {
     name: 'Fast Review',
     description: 'Quick game-wide scan for classifications & accuracy calculation',
     depth: 12,
     movetime: 250, // ms limit per move
-    multiPv: 2, // allows checking if a move is the "only good move"
+    multiPv: 3, // Great/Brilliant need 2nd+ PV headroom (A.5)
     hash: 32, // MB
   },
 
@@ -94,7 +95,15 @@ export const CLASSIFICATIONS = {
     symbol: '★',
     color: '#95bb4a',
     bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-    description: 'The top engine move, or within ~2 expected points of it',
+    description: 'The top engine move, or essentially equal to it',
+  },
+  EXCELLENT: {
+    id: 'excellent',
+    label: 'Excellent',
+    symbol: '★',
+    color: '#95bb4a',
+    bg: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    description: 'Nearly as good as the top engine move (loses <= 2% win chance)',
   },
   GOOD: {
     id: 'good',
@@ -119,6 +128,14 @@ export const CLASSIFICATIONS = {
     color: '#e58f2a',
     bg: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
     description: 'Clearly weakens the position: loses about 10–20 expected points',
+  },
+  MISS: {
+    id: 'miss',
+    label: 'Miss',
+    symbol: '✕',
+    color: '#ea5252',
+    bg: 'bg-red-500/20 text-red-300 border-red-500/40',
+    description: 'Missed opportunity to capitalize on opponent mistake or win',
   },
   BLUNDER: {
     id: 'blunder',

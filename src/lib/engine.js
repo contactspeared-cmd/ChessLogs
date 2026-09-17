@@ -9,10 +9,13 @@ import {
  * Converts a centipawn evaluation score to winning probability (0% - 100%)
  * based on standard CAPS / Lichess win probability model.
  */
-export function cpToWinPercent(cp) {
+export function cpToWinPercent(cp, isMate = false, mateIn = null) {
+  if (isMate && mateIn !== null && mateIn !== undefined) {
+    return mateIn > 0 ? 100 : 0;
+  }
   if (typeof cp !== 'number') return 50;
-  // Clip extreme centipawn values
-  const clipped = Math.max(-1500, Math.min(1500, cp));
+  // Clip extreme centipawn values per A.1
+  const clipped = Math.max(-1000, Math.min(1000, cp));
   return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * clipped)) - 1);
 }
 
@@ -316,9 +319,10 @@ export function isCriticalEvalSwing(evalBefore, evalAfter) {
 }
 
 /**
- * Classifies a move with strict gates for special labels and EPL buckets otherwise.
- *
- * Order: Book → Brilliant → Great → Best/Good/Inaccuracy/Mistake/Blunder
+ * Classifies a move per Section A specifications:
+ * - A.3: Core six-tier win%-loss thresholds
+ * - A.3a: Decided-position dampening (caps severity at Mistake if position is already winning/lost)
+ * - A.4: Special classifications overlay (Book -> Brilliant -> Great -> Miss -> SixTier)
  */
 export function classifyMove({
   evalBefore, // cp from mover's perspective before move
@@ -331,53 +335,102 @@ export function classifyMove({
   isBookCandidate,
   winProbBefore,
   winProbAfter,
+  opponentPreviousClassification,
+  bestMoveIsMate = false,
+  playedMoveIsMate = false,
 }) {
-  const epl = expectedPointsLost(winProbBefore, winProbAfter);
+  // Step 2: Compute Win% loss
+  const winpctLoss = Math.max(0, winProbBefore - winProbAfter);
   const isTopMove = playedMoveUci === bestMoveUci;
-  const isNearBest = isTopMove || epl <= T.excellentMaxEpl;
 
-  // Book: only engine-approved opening moves while still in book (not blind ply count)
-  if (isBookCandidate) {
-    return CLASSIFICATIONS.BOOK;
+  // Step 3: Core Six-Tier Classification (A.3)
+  let sixTier = CLASSIFICATIONS.BLUNDER;
+  if (isTopMove || winpctLoss <= 0.5) {
+    sixTier = CLASSIFICATIONS.BEST;
+  } else if (winpctLoss <= 2) {
+    sixTier = CLASSIFICATIONS.EXCELLENT;
+  } else if (winpctLoss <= 5) {
+    sixTier = CLASSIFICATIONS.GOOD;
+  } else if (winpctLoss <= 10) {
+    sixTier = CLASSIFICATIONS.INACCURACY;
+  } else if (winpctLoss <= 20) {
+    sixTier = CLASSIFICATIONS.MISTAKE;
+  } else {
+    sixTier = CLASSIFICATIONS.BLUNDER;
   }
 
-  // Brilliant: best/near-best piece sac, position not bad after, not already winning before
+  // A.3a Decided-position dampening (required):
+  // If the position is already lopsided before the move, cap severity at Mistake
+  if (
+    (winProbBefore >= 95 && winProbAfter >= 85) ||
+    (winProbBefore <= 5 && winProbAfter <= 15)
+  ) {
+    if (sixTier === CLASSIFICATIONS.BLUNDER) {
+      sixTier = CLASSIFICATIONS.MISTAKE;
+    }
+  }
+
+  // Step 4: Special Classifications Overlay (A.4)
+
+  // A.4a Book: engine-approved opening moves
+  if (isBookCandidate) {
+    return {
+      display: CLASSIFICATIONS.BOOK,
+      sixTier,
+      winpctLoss,
+    };
+  }
+
+  // A.4b Brilliant (!!): piece sacrifice, sound, not forced, not already trivially winning
+  // not_forced: a safe non-sacrificial alternative existed (i.e. this wasn't the only good move)
+  const soundnessHolds =
+    winpctLoss <= 1 || (evalAfter >= T.brilliantMinEvalAfter && winpctLoss <= 2);
+  const notForced = !isOnlyGoodMove;
   if (
     isSacrifice &&
-    isNearBest &&
-    epl <= T.brilliantMaxEpl &&
-    evalAfter >= T.brilliantMinEvalAfter &&
-    evalBefore < T.brilliantMaxEvalBefore
+    soundnessHolds &&
+    notForced &&
+    winProbBefore < 95 &&
+    (sixTier === CLASSIFICATIONS.BEST || sixTier === CLASSIFICATIONS.EXCELLENT)
   ) {
-    return CLASSIFICATIONS.BRILLIANT;
+    return {
+      display: CLASSIFICATIONS.BRILLIANT,
+      sixTier,
+      winpctLoss,
+    };
   }
 
-  // Great: best/near-best + only good move OR critical swing
-  if (
-    isNearBest &&
-    epl <= T.greatMaxEpl &&
-    (isOnlyGoodMove || isCriticalSwing)
-  ) {
-    return CLASSIFICATIONS.GREAT;
+  // A.4c Great (!): Best move that is the only good move (>=10 win% gap) or critical eval swing
+  if (sixTier === CLASSIFICATIONS.BEST && (isOnlyGoodMove || isCriticalSwing)) {
+    return {
+      display: CLASSIFICATIONS.GREAT,
+      sixTier,
+      winpctLoss,
+    };
   }
 
-  // Expected-points buckets (Chess.com Classification V2)
-  if (isTopMove || epl <= T.bestMaxEpl) {
-    return CLASSIFICATIONS.BEST;
+  // A.4d Miss: Failed to capitalize on opponent mistake or missed forced tactic/mate
+  const opponentMadeError =
+    opponentPreviousClassification === 'mistake' ||
+    opponentPreviousClassification === 'blunder';
+  const missedMate = bestMoveIsMate && !playedMoveIsMate;
+  const isMiss =
+    (opponentMadeError && winProbBefore >= 55 && winpctLoss > 10) ||
+    (missedMate && winProbBefore >= 55 && winpctLoss > 5);
+
+  if (isMiss) {
+    return {
+      display: CLASSIFICATIONS.MISS,
+      sixTier,
+      winpctLoss,
+    };
   }
-  if (epl <= T.excellentMaxEpl) {
-    return CLASSIFICATIONS.BEST;
-  }
-  if (epl <= T.goodMaxEpl) {
-    return CLASSIFICATIONS.GOOD;
-  }
-  if (epl <= T.inaccuracyMaxEpl) {
-    return CLASSIFICATIONS.INACCURACY;
-  }
-  if (epl <= T.mistakeMaxEpl) {
-    return CLASSIFICATIONS.MISTAKE;
-  }
-  return CLASSIFICATIONS.BLUNDER;
+
+  return {
+    display: sixTier,
+    sixTier,
+    winpctLoss,
+  };
 }
 
 /**
@@ -463,8 +516,8 @@ export async function runFastReview(pgn, onProgress = null) {
   let blackMoveCount = 0;
 
   const classificationCounts = {
-    white: { brilliant: 0, great: 0, best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, book: 0 },
-    black: { brilliant: 0, great: 0, best: 0, good: 0, inaccuracy: 0, mistake: 0, blunder: 0, book: 0 },
+    white: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, miss: 0, blunder: 0, book: 0 },
+    black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, miss: 0, blunder: 0, book: 0 },
   };
 
   // 1. Initial starting position eval
@@ -475,6 +528,7 @@ export async function runFastReview(pgn, onProgress = null) {
 
   // Stay in book only while both sides keep playing engine-approved opening moves
   let stillInBook = true;
+  let previousClassificationId = null;
 
   for (let i = 0; i < totalMoves; i++) {
     const move = history[i];
@@ -485,7 +539,11 @@ export async function runFastReview(pgn, onProgress = null) {
     // Normalised eval before move from current player's perspective
     // Note: Stockfish reports score from perspective of side to move in current fen
     const evalBeforePlayer = currentEval.scoreCp;
-    const winProbBefore = cpToWinPercent(evalBeforePlayer);
+    const winProbBefore = cpToWinPercent(
+      evalBeforePlayer,
+      currentEval.isMate,
+      currentEval.mateIn
+    );
     const isSacrifice = checkMaterialSacrifice(reviewBoard, move);
 
     // Apply move on review board
@@ -500,7 +558,11 @@ export async function runFastReview(pgn, onProgress = null) {
 
     // After the move, it is opponent's turn, so invert score to get mover's perspective
     const evalAfterPlayer = -evalAfterObj.scoreCp;
-    const winProbAfter = cpToWinPercent(evalAfterPlayer);
+    const winProbAfter = cpToWinPercent(
+      evalAfterPlayer,
+      evalAfterObj.isMate,
+      evalAfterObj.mateIn !== null ? -evalAfterObj.mateIn : null
+    );
 
     // Calculate move accuracy
     const moveAccuracy = calculateMoveAccuracy(winProbBefore, winProbAfter);
@@ -512,12 +574,17 @@ export async function runFastReview(pgn, onProgress = null) {
       blackMoveCount++;
     }
 
-    // Great-move: MultiPV #2 drops eval by a large margin vs best line
+    // Great-move: MultiPV #2 loses 10+ win% vs the actual best move (A.4c)
     const secondLine = currentEval.lines?.[1];
-    const isOnlyGoodMove =
-      Boolean(secondLine) &&
-      Math.max(0, (currentEval.scoreCp || 0) - (secondLine.scoreCp || 0)) >
-        T.onlyMoveGapCp;
+    let isOnlyGoodMove = false;
+    if (secondLine) {
+      const winProbSecond = cpToWinPercent(
+        secondLine.scoreCp,
+        secondLine.isMate,
+        secondLine.mateIn
+      );
+      isOnlyGoodMove = (winProbBefore - winProbSecond) >= 10;
+    }
 
     const isCriticalSwing = isCriticalEvalSwing(
       evalBeforePlayer,
@@ -536,8 +603,8 @@ export async function runFastReview(pgn, onProgress = null) {
       stillInBook = false;
     }
 
-    // Determine classification
-    const classification = classifyMove({
+    // Determine classification (Section A overlay pipeline)
+    const classificationResult = classifyMove({
       evalBefore: evalBeforePlayer,
       evalAfter: evalAfterPlayer,
       playedMoveUci,
@@ -548,12 +615,25 @@ export async function runFastReview(pgn, onProgress = null) {
       isBookCandidate,
       winProbBefore,
       winProbAfter,
+      opponentPreviousClassification: previousClassificationId,
+      bestMoveIsMate: Boolean(currentEval.isMate && currentEval.mateIn > 0),
+      playedMoveIsMate: Boolean(evalAfterObj.isMate && evalAfterObj.mateIn < 0),
     });
 
+    const displayClassification = classificationResult.display || classificationResult;
+    const sixTierClassification = classificationResult.sixTier || displayClassification;
+    // Miss (A.4d) keys off the opponent's underlying mistake/blunder grade, not overlays
+    previousClassificationId = sixTierClassification.id;
+
     const playerKey = isWhite ? 'white' : 'black';
-    if (classificationCounts[playerKey][classification.id] !== undefined) {
-      classificationCounts[playerKey][classification.id]++;
+    if (classificationCounts[playerKey][displayClassification.id] !== undefined) {
+      classificationCounts[playerKey][displayClassification.id]++;
     }
+
+    // White's view of mate (positive = White mating, negative = White mated)
+    const whiteMateIn = evalAfterObj.isMate
+      ? (isWhite ? -evalAfterObj.mateIn : evalAfterObj.mateIn)
+      : null;
 
     moveClassifications.push({
       ply: i + 1,
@@ -565,13 +645,28 @@ export async function runFastReview(pgn, onProgress = null) {
       fenAfter,
       evalBefore: evalBeforePlayer,
       evalAfter: evalAfterPlayer,
+      eval_before_cp: evalBeforePlayer,
+      eval_after_played_cp: evalAfterPlayer,
+      eval_after_best_cp: evalBeforePlayer,
+      winpct_before: Math.round(winProbBefore * 10) / 10,
+      winpct_after_played: Math.round(winProbAfter * 10) / 10,
+      winpct_after_best: Math.round(winProbBefore * 10) / 10,
+      winpct_loss: Math.round(classificationResult.winpctLoss * 10) / 10,
+      six_tier_label: sixTierClassification.label,
+      display_label: displayClassification.label,
+      is_book: displayClassification.id === 'book',
+      is_sacrifice: isSacrifice,
+      engine_depth: ENGINE_CONFIG.fastReview.depth,
+      multipv_used: ENGINE_CONFIG.fastReview.multiPv,
       // Evaluation from White's perspective for global eval graph/bar
       evalWhiteView: isWhite ? evalAfterPlayer : -evalAfterPlayer,
+      isMate: Boolean(evalAfterObj.isMate),
+      mateIn: whiteMateIn,
       bestMoveUci: currentEval.bestMove,
-      classification: classification.id,
-      classificationLabel: classification.label,
-      classificationSymbol: classification.symbol,
-      classificationColor: classification.color,
+      classification: displayClassification.id,
+      classificationLabel: displayClassification.label,
+      classificationSymbol: displayClassification.symbol,
+      classificationColor: displayClassification.color,
       accuracy: moveAccuracy,
       expectedPointsLost: Math.round(expectedPointsLost(winProbBefore, winProbAfter) * 1000) / 1000,
     });
@@ -584,7 +679,7 @@ export async function runFastReview(pgn, onProgress = null) {
         currentMove: i + 1,
         totalMoves,
         percent: Math.round(((i + 1) / totalMoves) * 100),
-        currentClassification: classification,
+        currentClassification: displayClassification,
       });
     }
   }

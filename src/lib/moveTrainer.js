@@ -58,6 +58,28 @@ export function inferTrainColor(chapters = []) {
 }
 
 /**
+ * Resolve trained color from admin `trained_side` (white|black|both),
+ * falling back to inferTrainColor when unset.
+ * Returns 'w' | 'b' | 'both'.
+ */
+export function resolveTrainColor(chapters = [], trainedSide = null) {
+  const side = String(trainedSide || '').toLowerCase();
+  if (side === 'white') return 'w';
+  if (side === 'black') return 'b';
+  if (side === 'both') return 'both';
+  return inferTrainColor(chapters);
+}
+
+/** True when a move matches the configured trained side. */
+export function isTrainedMoveColor(moveColor, trainedSide) {
+  const side = String(trainedSide || 'both').toLowerCase();
+  if (side === 'both') return true;
+  if (side === 'white' || side === 'w') return moveColor === 'w';
+  if (side === 'black' || side === 'b') return moveColor === 'b';
+  return true;
+}
+
+/**
  * Build a single card for a key move at a given ply in a chapter PGN.
  */
 function buildCardFromPly(chapter, history, ply, keyMove, comment, source) {
@@ -136,9 +158,12 @@ export function buildAnnotationCards(chapters = []) {
 
 /**
  * Full-variation cards: every move for the trainee's color across chapters with PGN.
+ * trainColor: 'w' | 'b' | 'both'
  */
 export function buildLineCards(chapters = [], trainColor = 'b') {
   const cards = [];
+  const courseColor =
+    trainColor === 'w' || trainColor === 'b' || trainColor === 'both' ? trainColor : 'b';
 
   for (const chapter of chapters) {
     if (!chapter?.pgn) continue;
@@ -146,9 +171,12 @@ export function buildLineCards(chapters = [], trainColor = 'b') {
       const chess = new Chess();
       chess.loadPgn(chapter.pgn);
       const history = chess.history({ verbose: true });
+      const effective = chapter.trained_side
+        ? resolveTrainColor([chapter], chapter.trained_side)
+        : courseColor;
 
       history.forEach((move, idx) => {
-        if (move.color !== trainColor) return;
+        if (effective !== 'both' && move.color !== effective) return;
         const ply = idx + 1;
         const anno = (chapter.annotations || []).find((a) => Number(a.ply) === ply);
         const card = buildCardFromPly(
@@ -159,7 +187,12 @@ export function buildLineCards(chapters = [], trainColor = 'b') {
           anno?.comment || null,
           'line'
         );
-        if (card) cards.push(card);
+        if (card) {
+          if (chapter.orientation === 'white' || chapter.orientation === 'black') {
+            card.orientation = chapter.orientation;
+          }
+          cards.push(card);
+        }
       });
     } catch (err) {
       console.warn('Skip chapter for line trainer:', chapter?.title, err);
@@ -170,10 +203,14 @@ export function buildLineCards(chapters = [], trainColor = 'b') {
 }
 
 /**
- * Preferred deck: annotations if any exist, otherwise full line for inferred color.
+ * Preferred deck: annotations if any exist, otherwise full line for inferred/configured color.
  */
-export function buildCourseCards(chapters = [], { mode = 'auto', trainColor } = {}) {
-  const color = trainColor || inferTrainColor(chapters);
+export function buildCourseCards(
+  chapters = [],
+  { mode = 'auto', trainColor, trainedSide } = {}
+) {
+  const color =
+    trainColor || resolveTrainColor(chapters, trainedSide);
   const annotations = buildAnnotationCards(chapters);
 
   if (mode === 'annotations') return annotations;

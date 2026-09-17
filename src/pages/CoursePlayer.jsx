@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 
 const MODE_STORAGE_PREFIX = 'chesslogs_study_mode_';
+const AUTO_ADVANCE_KEY = 'chesslogs_trainer_auto_advance';
 
 function normalizeSan(san) {
   return String(san || '').replace(/[+#]/g, '');
@@ -58,8 +59,35 @@ function keySquareStyles(move) {
   };
 }
 
-function applyHistoryTo(chess, history, plyCount) {
-  chess.reset();
+function resolveChapterTrainedSide(chapter, course) {
+  return chapter?.trained_side || course?.trained_side || 'both';
+}
+
+function isTrainedPly(move, trainedSide) {
+  if (!move) return false;
+  const side = String(trainedSide || 'both').toLowerCase();
+  if (side === 'both') return true;
+  if (side === 'white') return move.color === 'w';
+  if (side === 'black') return move.color === 'b';
+  return true;
+}
+
+/**
+ * Replay a history of moves onto a Chess instance starting from
+ * the chapter's actual starting position.
+ *
+ * @param {Chess} chess - Chess.js instance (mutated in-place)
+ * @param {Object[]} history - verbose move list from chess.js
+ * @param {number} plyCount - number of plies to replay
+ * @param {string|null} [startFen] - FEN of the chapter's starting position
+ *   (from the [FEN] header in the PGN).  Falls back to standard start.
+ */
+function applyHistoryTo(chess, history, plyCount, startFen = null) {
+  if (startFen) {
+    chess.load(startFen);
+  } else {
+    chess.reset();
+  }
   let last = null;
   for (let i = 0; i < plyCount; i++) {
     last = chess.move(history[i]);
@@ -86,6 +114,12 @@ export default function CoursePlayer() {
   const [history, setHistory] = useState([]);
   const [lastMove, setLastMove] = useState(null);
 
+  // Starting FEN for the current chapter (null = standard start, set for continuation chapters)
+  const [chapterStartFen, setChapterStartFen] = useState(null);
+
+  // B.7.1: Board orientation for study side perspective (auto-flips per chapter)
+  const [boardOrientation, setBoardOrientation] = useState('white');
+
   // Shared ply cursor (0 = start position, N = after N moves)
   const [plyCursor, setPlyCursor] = useState(0);
 
@@ -94,7 +128,22 @@ export default function CoursePlayer() {
   const [chapterComplete, setChapterComplete] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
+  // B.2.2: course-completion review modal
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+
+  // B.3.3: auto-advance skips the "Got it" confirmation (default off = current paced mode)
+  const [autoAdvance, setAutoAdvance] = useState(() => {
+    try {
+      return localStorage.getItem(AUTO_ADVANCE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
+
   const demoTimerRef = useRef(null);
+  const trainedSideRef = useRef('both');
+  const autoAdvanceRef = useRef(autoAdvance);
+  const chapterMetaRef = useRef({ chapter: null, isLast: false, mark: null });
 
   const clearDemoTimer = () => {
     if (demoTimerRef.current) {
@@ -114,9 +163,12 @@ export default function CoursePlayer() {
         setCourse(data);
 
         const progress = data?.progress || {};
-        setReadChapterIds(new Set(progress.read_chapter_ids || []));
-        setTrainedChapterIds(new Set(progress.trained_chapter_ids || []));
-        setCompletedChapterIds(new Set(progress.completed_chapter_ids || []));
+        const completedIds = new Set(progress.completed_chapter_ids || []);
+        const trainedIds = new Set(progress.trained_chapter_ids || []);
+        const readIds = new Set(progress.read_chapter_ids || []);
+        setReadChapterIds(readIds);
+        setTrainedChapterIds(trainedIds);
+        setCompletedChapterIds(completedIds);
 
         const storedMode =
           progress.preferred_study_mode ||
@@ -125,6 +177,20 @@ export default function CoursePlayer() {
             : null);
         if (storedMode === 'read' || storedMode === 'trainer') {
           setStudyMode(storedMode);
+        }
+
+        // B.2.1b: Resume from the furthest chapter the user has completed.
+        // Find the last chapter index whose id appears in any completion set.
+        const chapters = data?.chapters || [];
+        const doneIds = new Set([...completedIds, ...trainedIds]);
+        if (doneIds.size > 0 && chapters.length > 1) {
+          let furthest = 0;
+          chapters.forEach((ch, idx) => {
+            if (doneIds.has(ch.id)) furthest = idx;
+          });
+          // Advance to the chapter *after* the last completed one (if available)
+          const resumeIdx = Math.min(furthest + 1, chapters.length - 1);
+          setActiveChapterIndex(resumeIdx);
         }
       } catch (e) {
         console.error('Failed to load course:', e);
@@ -159,24 +225,63 @@ export default function CoursePlayer() {
 
   const syncBoard = useCallback(
     (plyCount, { highlightMove = true } = {}) => {
-      const moveObj = applyHistoryTo(chess, history, plyCount);
+      const moveObj = applyHistoryTo(chess, history, plyCount, chapterStartFen);
       setFen(chess.fen());
       setLastMove(
         highlightMove && moveObj ? { from: moveObj.from, to: moveObj.to } : null
       );
     },
-    [chess, history]
+    [chess, history, chapterStartFen]
   );
 
+  useEffect(() => {
+    trainedSideRef.current = resolveChapterTrainedSide(activeChapter, course);
+  }, [activeChapter, course]);
+
+  useEffect(() => {
+    autoAdvanceRef.current = autoAdvance;
+    try {
+      localStorage.setItem(AUTO_ADVANCE_KEY, autoAdvance ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [autoAdvance]);
+
+  const enterRecallForPly = useCallback(
+    (moves, ply, startFen) => {
+      applyHistoryTo(chess, moves, ply, startFen);
+      setFen(chess.fen());
+      setLastMove(null);
+      setPlyCursor(ply);
+      setTrainerPhase('recall');
+      const expected = moves[ply];
+      setFeedback({
+        type: 'prompt',
+        message: expected
+          ? `Your turn — play ${expected.san} on the board.`
+          : 'Your turn.',
+      });
+    },
+    [chess]
+  );
+
+  /**
+   * Walkthrough trainer entry: auto-play opposite-side moves (B.3.1),
+   * then demo the next trained move and either await confirm or auto-advance (B.3.3).
+   */
   const startTrainerDemo = useCallback(
-    (moves, startPly = 0) => {
+    (moves, startPly = 0, startFen = null) => {
       clearDemoTimer();
       setFeedback(null);
       setChapterComplete(false);
 
       if (!moves.length) {
         setPlyCursor(0);
-        chess.reset();
+        if (startFen) {
+          chess.load(startFen);
+        } else {
+          chess.reset();
+        }
         setFen(chess.fen());
         setLastMove(null);
         setTrainerPhase('complete');
@@ -184,21 +289,68 @@ export default function CoursePlayer() {
         return;
       }
 
-      // Position before the move, then animate the move
-      applyHistoryTo(chess, moves, startPly);
-      setFen(chess.fen());
-      setLastMove(null);
-      setPlyCursor(startPly);
-      setTrainerPhase('demo');
+      const trainedSide = trainedSideRef.current;
+      let ply = startPly;
 
-      demoTimerRef.current = setTimeout(() => {
-        const moveObj = chess.move(moves[startPly]);
+      const finishChapter = () => {
+        setPlyCursor(moves.length);
+        setTrainerPhase('complete');
+        setChapterComplete(true);
+        const { chapter, isLast, mark } = chapterMetaRef.current;
+        if (chapter && mark) mark(chapter, 'trained');
+        if (isLast) setShowCompletionModal(true);
+      };
+
+      const demoTrainedMove = (trainedPly) => {
+        applyHistoryTo(chess, moves, trainedPly, startFen);
         setFen(chess.fen());
-        setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
-        setTrainerPhase('awaiting_confirm');
-      }, 280);
+        setLastMove(null);
+        setPlyCursor(trainedPly);
+        setTrainerPhase('demo');
+
+        demoTimerRef.current = setTimeout(() => {
+          const moveObj = chess.move(moves[trainedPly]);
+          setFen(chess.fen());
+          setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
+
+          if (autoAdvanceRef.current) {
+            enterRecallForPly(moves, trainedPly, startFen);
+          } else {
+            setTrainerPhase('awaiting_confirm');
+          }
+        }, 280);
+      };
+
+      const autoPlayUntrainedThenDemo = () => {
+        applyHistoryTo(chess, moves, ply, startFen);
+        setFen(chess.fen());
+        setLastMove(null);
+        setPlyCursor(ply);
+
+        if (ply >= moves.length) {
+          finishChapter();
+          return;
+        }
+
+        if (!isTrainedPly(moves[ply], trainedSide)) {
+          setTrainerPhase('demo');
+          demoTimerRef.current = setTimeout(() => {
+            const moveObj = chess.move(moves[ply]);
+            setFen(chess.fen());
+            setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
+            ply += 1;
+            setPlyCursor(ply);
+            demoTimerRef.current = setTimeout(autoPlayUntrainedThenDemo, 420);
+          }, 280);
+          return;
+        }
+
+        demoTrainedMove(ply);
+      };
+
+      autoPlayUntrainedThenDemo();
     },
-    [chess]
+    [chess, enterRecallForPly]
   );
 
   const initChapter = useCallback(
@@ -211,6 +363,7 @@ export default function CoursePlayer() {
 
       if (!chapter?.pgn) {
         chess.reset();
+        setChapterStartFen(null);
         setHistory([]);
         setFen(chess.fen());
         setLastMove(null);
@@ -221,19 +374,29 @@ export default function CoursePlayer() {
         const parser = new Chess();
         parser.loadPgn(chapter.pgn);
         const fullHistory = parser.history({ verbose: true });
+
+        // Extract the [FEN] header for continuation chapters
+        const headers = typeof parser.header === 'function' ? parser.header() : {};
+        const fenHeader = headers?.FEN || null;
+        setChapterStartFen(fenHeader);
         setHistory(fullHistory);
 
         if (mode === 'read') {
-          chess.reset();
+          if (fenHeader) {
+            chess.load(fenHeader);
+          } else {
+            chess.reset();
+          }
           setFen(chess.fen());
           setLastMove(null);
           setPlyCursor(0);
         } else {
           // Defer demo start until history state settles via effect below
-          startTrainerDemo(fullHistory, 0);
+          startTrainerDemo(fullHistory, 0, fenHeader);
         }
       } catch (err) {
         console.error('Failed to parse chapter PGN:', err);
+        setChapterStartFen(null);
         setHistory([]);
       }
     },
@@ -242,6 +405,7 @@ export default function CoursePlayer() {
 
   useEffect(() => {
     if (!activeChapter) return;
+    setBoardOrientation(activeChapter.orientation || course?.orientation || 'white');
     initChapter(activeChapter, studyMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChapter?.id, studyMode]);
@@ -284,18 +448,18 @@ export default function CoursePlayer() {
     [courseId, profile?.id]
   );
 
+  useEffect(() => {
+    chapterMetaRef.current = {
+      chapter: activeChapter,
+      isLast: isLastChapter,
+      mark: doMarkComplete,
+    };
+  }, [activeChapter, isLastChapter, doMarkComplete]);
+
   // ---- Trainer: Got it → revert → recall ----
   const handleGotIt = () => {
     if (trainerPhase !== 'awaiting_confirm' || !history[plyCursor]) return;
-    // Revert to position before the demonstrated move
-    applyHistoryTo(chess, history, plyCursor);
-    setFen(chess.fen());
-    setLastMove(null);
-    setTrainerPhase('recall');
-    setFeedback({
-      type: 'prompt',
-      message: `Your turn — play ${history[plyCursor].san} on the board.`,
-    });
+    enterRecallForPly(history, plyCursor, chapterStartFen);
   };
 
   const handlePieceDrop = (sourceSquare, targetSquare) => {
@@ -349,6 +513,10 @@ export default function CoursePlayer() {
         setChapterComplete(true);
         setTrainerPhase('complete');
         doMarkComplete(activeChapter, 'trained');
+        // B.2.2: show course-completion modal when last chapter is done
+        if (isLastChapter) {
+          setShowCompletionModal(true);
+        }
         confetti({
           particleCount: 70,
           spread: 70,
@@ -357,7 +525,7 @@ export default function CoursePlayer() {
         });
       } else {
         demoTimerRef.current = setTimeout(() => {
-          startTrainerDemo(history, nextPly);
+          startTrainerDemo(history, nextPly, chapterStartFen);
         }, 650);
       }
       return true;
@@ -377,9 +545,13 @@ export default function CoursePlayer() {
       if (count >= history.length && activeChapter?.id && !readChapterIds.has(activeChapter.id)) {
         setChapterComplete(true);
         doMarkComplete(activeChapter, 'read');
+        // B.2.2: prompt to review if last chapter just completed
+        if (isLastChapter) {
+          setShowCompletionModal(true);
+        }
       }
     },
-    [history, syncBoard, activeChapter, readChapterIds, doMarkComplete]
+    [history, syncBoard, activeChapter, readChapterIds, doMarkComplete, isLastChapter]
   );
 
   const handleReadNext = () => goReadPly(plyCursor + 1);
@@ -413,6 +585,10 @@ export default function CoursePlayer() {
       origin: { y: 0.75 },
       colors: ['#22c55e', '#1ba8c2', '#f0c15c'],
     });
+    // B.2.2: prompt to review if this was the last chapter
+    if (isLastChapter) {
+      setShowCompletionModal(true);
+    }
   };
 
   const handleResetChapter = () => {
@@ -658,8 +834,8 @@ export default function CoursePlayer() {
         </aside>
 
         {/* Center: board / video */}
-        <div className="lg:col-span-5 space-y-4 order-1 lg:order-2">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+        <div className="lg:col-span-5 space-y-4 order-1 lg:order-2 min-w-0">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 overflow-hidden">
             <div>
               <h2 className="text-lg font-extrabold text-white leading-snug">
                 {activeChapter?.title || course.title}
@@ -667,9 +843,20 @@ export default function CoursePlayer() {
               {isWalkthrough && (
                 <p className="text-[11px] text-slate-500 mt-1">
                   {studyMode === 'trainer'
-                    ? 'Watch each move, confirm, then play it yourself.'
+                    ? 'Watch trained-side moves, confirm, then play them yourself. Opposite-side moves auto-play.'
                     : 'Flip through the line at your own pace — no quizzes.'}
                 </p>
+              )}
+              {isWalkthrough && studyMode === 'trainer' && (
+                <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoAdvance}
+                    onChange={(e) => setAutoAdvance(e.target.checked)}
+                    className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500/40"
+                  />
+                  Auto-advance (skip “Got it” confirmation)
+                </label>
               )}
             </div>
 
@@ -698,9 +885,10 @@ export default function CoursePlayer() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col items-center">
+              <div className="w-full max-w-full overflow-hidden flex flex-col items-center">
                 <ChessboardView
                   position={fen}
+                  boardOrientation={boardOrientation}
                   onPieceDrop={handlePieceDrop}
                   lastMove={lastMove}
                   customSquareStyles={boardKeyStyles}
@@ -709,10 +897,18 @@ export default function CoursePlayer() {
 
                 <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                   <button
+                    onClick={() => setBoardOrientation((prev) => (prev === 'white' ? 'black' : 'white'))}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+                    title="Flip Board Perspective"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    Flip
+                  </button>
+
+                  <button
                     onClick={handleResetChapter}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
                     Reset
                   </button>
 
@@ -816,12 +1012,24 @@ export default function CoursePlayer() {
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <button
-                    onClick={() => navigate('/courses')}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700"
-                  >
-                    Back to Courses
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setActiveChapterIndex(0);
+                        setShowCompletionModal(false);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Review Course
+                    </button>
+                    <button
+                      onClick={() => navigate('/courses')}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all"
+                    >
+                      Back to Courses
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -835,7 +1043,7 @@ export default function CoursePlayer() {
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Chapter overview
               </h3>
-              <p className="text-sm text-slate-200 leading-relaxed">
+              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
                 {activeChapter?.description?.trim() ||
                   'No chapter description yet. Coaches can add one in the course builder.'}
               </p>
@@ -891,6 +1099,47 @@ export default function CoursePlayer() {
           </div>
         </aside>
       </div>
+
+      {/* B.2.2 Course Completion Review Modal */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
+              <Award className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Course Completed! 🎉</h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                You've completed all chapters of <strong className="text-slate-200">{course.title}</strong>. Would you like to review the course again or return to your courses?
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveChapterIndex(0);
+                  setShowCompletionModal(false);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Review Course (From Ch. 1)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  navigate('/courses');
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all"
+              >
+                Back to Courses
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

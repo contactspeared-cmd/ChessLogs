@@ -1,4 +1,4 @@
-export default function EvalBar({ scoreCp = 0, isMate = false, mateIn = null, orientation = 'white' }) {
+export default function EvalBar({ scoreCp = 0, isMate = false, mateIn = null, orientation = 'white', winPercent = null }) {
   // Convert centipawns or mate into a 0 - 100 percentage for the white portion of the bar
   let whitePercent = 50;
   let label = '0.0';
@@ -11,12 +11,15 @@ export default function EvalBar({ scoreCp = 0, isMate = false, mateIn = null, or
       whitePercent = 0;
       label = `-M${Math.abs(mateIn || 1)}`;
     }
+  } else if (typeof winPercent === 'number' && !Number.isNaN(winPercent)) {
+    whitePercent = Math.max(3, Math.min(97, winPercent));
+    const evalInPawns = (scoreCp / 100).toFixed(1);
+    label = scoreCp > 0 ? `+${evalInPawns}` : evalInPawns;
   } else {
-    // Sigmoid mapping centered at 0
-    // +500 cp -> ~90%, -500 cp -> ~10%
-    const clipped = Math.max(-1200, Math.min(1200, scoreCp));
-    whitePercent = 50 + 50 * (2 / (1 + Math.exp(-0.0035 * clipped)) - 1);
-    whitePercent = Math.max(4, Math.min(96, whitePercent));
+    // Section A.1 Lichess Win% formula
+    const clipped = Math.max(-1000, Math.min(1000, scoreCp));
+    whitePercent = 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * clipped)) - 1);
+    whitePercent = Math.max(3, Math.min(97, whitePercent));
 
     const evalInPawns = (scoreCp / 100).toFixed(1);
     label = scoreCp > 0 ? `+${evalInPawns}` : evalInPawns;

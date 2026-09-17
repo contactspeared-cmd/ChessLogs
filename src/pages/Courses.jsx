@@ -122,7 +122,7 @@ export default function Courses() {
                     <h2 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
                       {course.title}
                     </h2>
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed whitespace-pre-line">
                       {course.description || 'Comprehensive training module.'}
                     </p>
                   </div>

@@ -123,6 +123,9 @@ export default function Analysis() {
   // Loaded game metadata
   const [currentGame, setCurrentGame] = useState(null);
 
+  // Live evaluation state for EvalBar (B.1.1)
+  const [liveEval, setLiveEval] = useState(null);
+
   // Custom arrows on board: [[from, to, color]] or [{ startSquare, endSquare, color }]
   const [arrows, setArrows] = useState([]);
 
@@ -454,6 +457,44 @@ export default function Analysis() {
     };
   }, [fen, deepAnalysisEnabled]);
 
+  // B.1.1: Live per-ply evaluation for EvalBar when reviewData is absent or board diverges
+  useEffect(() => {
+    const hasReviewedPly = Boolean(
+      reviewData?.moveClassifications?.some((m) => m.ply === currentPly)
+    );
+    if (hasReviewedPly || deepAnalysisEnabled) return;
+
+    let active = true;
+    async function evaluateLivePosition() {
+      try {
+        const engine = getEngineInstance();
+        const info = await engine.evaluatePosition(fen, {
+          depth: 10,
+          movetime: 180,
+          multiPv: 1,
+        });
+        if (!active) return;
+        const isWhiteTurn = fen.split(' ')[1] === 'w';
+        const scoreWhite = isWhiteTurn ? info.scoreCp : -info.scoreCp;
+        const mateWhite = info.isMate
+          ? (isWhiteTurn ? info.mateIn : -info.mateIn)
+          : null;
+        setLiveEval({
+          scoreCp: scoreWhite,
+          isMate: info.isMate,
+          mateIn: mateWhite,
+        });
+      } catch (err) {
+        console.warn('Live eval error:', err);
+      }
+    }
+
+    evaluateLivePosition();
+    return () => {
+      active = false;
+    };
+  }, [fen, currentPly, reviewData, deepAnalysisEnabled]);
+
   // Update arrows based on current ply classification & best move
   useEffect(() => {
     const newArrows = [];
@@ -481,17 +522,26 @@ export default function Analysis() {
     (m) => m.ply === currentPly
   );
 
-  // Score to display in EvalBar
+  // Score to display in EvalBar (B.1.1: normalized to White's view across all modes)
   let activeScoreCp = 0;
   let activeIsMate = false;
   let activeMateIn = null;
 
   if (deepAnalysisEnabled && deepEngineInfo) {
-    activeScoreCp = deepEngineInfo.scoreCp;
+    const isWhiteTurn = fen.split(' ')[1] === 'w';
+    activeScoreCp = isWhiteTurn ? deepEngineInfo.scoreCp : -deepEngineInfo.scoreCp;
     activeIsMate = deepEngineInfo.isMate;
-    activeMateIn = deepEngineInfo.mateIn;
+    activeMateIn = deepEngineInfo.isMate
+      ? (isWhiteTurn ? deepEngineInfo.mateIn : -deepEngineInfo.mateIn)
+      : null;
   } else if (currentClassification) {
     activeScoreCp = currentClassification.evalWhiteView;
+    activeIsMate = Boolean(currentClassification.isMate);
+    activeMateIn = currentClassification.mateIn ?? null;
+  } else if (liveEval) {
+    activeScoreCp = liveEval.scoreCp;
+    activeIsMate = liveEval.isMate;
+    activeMateIn = liveEval.mateIn;
   }
 
   // Convert UCI → SAN for display
@@ -626,7 +676,7 @@ export default function Analysis() {
               <Award className="w-4 h-4 text-cyan-400" />
               <span>
                 {reviewData.moveClassifications.filter((m) =>
-                  ['brilliant', 'great', 'blunder'].includes(m.classification)
+                  ['brilliant', 'great', 'miss', 'blunder'].includes(m.classification)
                 ).length}{' '}
                 Critical Moves
               </span>

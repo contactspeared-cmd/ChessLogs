@@ -17,7 +17,7 @@ import {
   createInitialSrsState,
   sansEqual,
   TRAINER_GRADES,
-  inferTrainColor,
+  resolveTrainColor,
 } from '../lib/moveTrainer';
 import {
   ArrowLeft,
@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 
 const SESSION_LIMIT = 20;
+const AUTO_ADVANCE_KEY = 'chesslogs_srs_auto_advance';
 
 export default function MoveTrainer() {
   const { id: courseId } = useParams();
@@ -45,6 +46,16 @@ export default function MoveTrainer() {
   const [loading, setLoading] = useState(true);
   const [deckMode, setDeckMode] = useState('auto'); // auto | annotations | line
   const [srsMap, setSrsMap] = useState({});
+
+  // B.3.3: default ON preserves legacy SRS timer auto-grade behavior
+  const [autoAdvance, setAutoAdvance] = useState(() => {
+    try {
+      const stored = localStorage.getItem(AUTO_ADVANCE_KEY);
+      return stored === null ? true : stored === '1';
+    } catch {
+      return true;
+    }
+  });
 
   // Session state
   const [phase, setPhase] = useState('lobby'); // lobby | training | summary
@@ -58,16 +69,23 @@ export default function MoveTrainer() {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [awaitingGrade, setAwaitingGrade] = useState(false);
+  const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  const [pendingGrade, setPendingGrade] = useState(null);
   const [sessionStats, setSessionStats] = useState({
     correct: 0,
     wrong: 0,
     reviewed: 0,
   });
 
+  const trainedSide = course?.trained_side || course?.chapters?.[0]?.trained_side || null;
+
   const cards = useMemo(() => {
     if (!course?.chapters) return [];
-    return buildCourseCards(course.chapters, { mode: deckMode });
-  }, [course, deckMode]);
+    return buildCourseCards(course.chapters, {
+      mode: deckMode,
+      trainedSide,
+    });
+  }, [course, deckMode, trainedSide]);
 
   const deckStats = useMemo(
     () => getTrainerStats(cards, srsMap),
@@ -124,6 +142,8 @@ export default function MoveTrainer() {
         setFailedAttempts(0);
         setRevealed(false);
         setAwaitingGrade(false);
+        setAwaitingConfirm(false);
+        setPendingGrade(null);
       } catch (err) {
         console.error('Failed to load card position:', err);
       }
@@ -238,12 +258,19 @@ export default function MoveTrainer() {
         setAwaitingGrade(true);
         setTimeout(() => playOpponentReply(), 500);
 
-        // Auto-grade: first-try Good, after misses Hard
         const grade =
           failedAttempts === 0 ? TRAINER_GRADES.GOOD : TRAINER_GRADES.HARD;
-        setTimeout(() => {
-          gradeCurrentCard(grade, failedAttempts > 0);
-        }, 1100);
+
+        if (autoAdvance) {
+          // Legacy auto-grade path (B.3.3 opt-out of confirmation)
+          setTimeout(() => {
+            gradeCurrentCard(grade, failedAttempts > 0);
+          }, 1100);
+        } else {
+          // B.3.2: wait for explicit confirmation before advancing
+          setPendingGrade({ grade, didFailFirst: failedAttempts > 0 });
+          setAwaitingConfirm(true);
+        }
         return true;
       }
 
@@ -303,6 +330,23 @@ export default function MoveTrainer() {
     gradeCurrentCard(TRAINER_GRADES.AGAIN, true);
   };
 
+  const confirmAndAdvance = () => {
+    if (!pendingGrade) return;
+    const { grade, didFailFirst } = pendingGrade;
+    setAwaitingConfirm(false);
+    setPendingGrade(null);
+    gradeCurrentCard(grade, didFailFirst);
+  };
+
+  const toggleAutoAdvance = (checked) => {
+    setAutoAdvance(checked);
+    try {
+      localStorage.setItem(AUTO_ADVANCE_KEY, checked ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-32 text-center text-slate-400 text-sm">
@@ -325,7 +369,9 @@ export default function MoveTrainer() {
     );
   }
 
-  const trainColor = inferTrainColor(course.chapters || []);
+  const trainColor = resolveTrainColor(course.chapters || [], trainedSide);
+  const trainColorLabel =
+    trainColor === 'both' ? 'Both sides' : trainColor === 'w' ? 'White' : 'Black';
   const progressPct =
     queue.length > 0
       ? Math.round((queueIndex / queue.length) * 100)
@@ -378,7 +424,7 @@ export default function MoveTrainer() {
                 {[
                   { id: 'auto', label: 'Auto (key moves → full line)' },
                   { id: 'annotations', label: 'Coach key moves only' },
-                  { id: 'line', label: `Full variation (${trainColor === 'w' ? 'White' : 'Black'})` },
+                  { id: 'line', label: `Full variation (${trainColorLabel})` },
                 ].map((opt) => (
                   <button
                     key={opt.id}
@@ -394,6 +440,25 @@ export default function MoveTrainer() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Session pacing
+              </p>
+              <label className="inline-flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={autoAdvance}
+                  onChange={(e) => toggleAutoAdvance(e.target.checked)}
+                  className="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/40"
+                />
+                Auto-advance after correct moves (skip confirmation)
+              </label>
+              <p className="text-[11px] text-slate-500">
+                Training side: <span className="text-slate-300 font-semibold">{trainColorLabel}</span>
+                {trainedSide ? ' (from course settings)' : ' (inferred from annotations)'}
+              </p>
             </div>
 
             {cards.length === 0 ? (
@@ -459,7 +524,7 @@ export default function MoveTrainer() {
               </div>
             </div>
 
-            <div className="flex flex-col items-center">
+            <div className="w-full max-w-full overflow-hidden flex flex-col items-center">
               <ChessboardView
                 position={fen}
                 onPieceDrop={handlePieceDrop}
@@ -521,6 +586,17 @@ export default function MoveTrainer() {
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
               </button>
+
+              {awaitingConfirm && (
+                <button
+                  type="button"
+                  onClick={confirmAndAdvance}
+                  className="ml-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                >
+                  Correct — continue
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
 
               {revealed && (
                 <button
