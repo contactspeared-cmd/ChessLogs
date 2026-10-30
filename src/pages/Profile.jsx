@@ -25,6 +25,7 @@ import {
 export default function Profile() {
   const { profile, updateProfile } = useAuth();
 
+  const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [firstName, setFirstName] = useState(profile?.first_name || '');
   const [middleInitial, setMiddleInitial] = useState(profile?.middle_initial || '');
   const [lastName, setLastName] = useState(profile?.last_name || '');
@@ -44,14 +45,6 @@ export default function Profile() {
   const [statsData, setStatsData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Computed composite display name
-  const compositeDisplayName = formatCompositeName({
-    firstName,
-    middleInitial,
-    lastName,
-    suffix,
-  });
-
   // Generate verification code when input changes
   useEffect(() => {
     if (chesscomInput) {
@@ -62,6 +55,7 @@ export default function Profile() {
   // Sync state if profile changes
   useEffect(() => {
     if (profile) {
+      setDisplayName(profile.display_name || '');
       setFirstName(profile.first_name || '');
       setMiddleInitial(profile.middle_initial || '');
       setLastName(profile.last_name || '');
@@ -101,19 +95,21 @@ export default function Profile() {
     setIsSaving(true);
     setSaveSuccess(false);
     try {
-      const computed = formatCompositeName({
+      const computedDefault = formatCompositeName({
         firstName,
         middleInitial,
         lastName,
         suffix,
       });
+      const finalDisplayName = displayName.trim() || computedDefault;
+
       await updateProfile({
+        display_name: finalDisplayName,
         first_name: firstName.trim(),
         middle_initial: middleInitial.trim().toUpperCase(),
         last_name: lastName.trim(),
         suffix: suffix.trim(),
         date_of_birth: dateOfBirth,
-        display_name: computed,
         bio,
       });
       setSaveSuccess(true);
@@ -245,7 +241,42 @@ export default function Profile() {
 
             {/* Profile Edit Form */}
             <form onSubmit={handleSaveProfile} className="mt-6 space-y-4 pt-6 border-t border-slate-800">
-              <div className="space-y-3">
+              {/* User Configurable Display Name */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Display Name
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const auto = formatCompositeName({
+                        firstName,
+                        middleInitial,
+                        lastName,
+                        suffix,
+                      });
+                      if (auto) setDisplayName(auto);
+                    }}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    Auto-fill from Full Name
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  placeholder="Your display name or handle"
+                  required
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Configure how your name appears on the dashboard, leaderboard, and coach records.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
                   Full Name Composite
                 </span>
@@ -292,31 +323,23 @@ export default function Profile() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-12 gap-2 items-center">
-                  <div className="col-span-4">
-                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
-                      Suffix
-                    </label>
-                    <select
-                      value={suffix}
-                      onChange={(e) => setSuffix(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      <option value="">None</option>
-                      <option value="Jr.">Jr.</option>
-                      <option value="Sr.">Sr.</option>
-                      <option value="II">II</option>
-                      <option value="III">III</option>
-                      <option value="IV">IV</option>
-                      <option value="V">V</option>
-                    </select>
-                  </div>
-
-                  <div className="col-span-8">
-                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-emerald-400 truncate">
-                      {compositeDisplayName || 'Chess Player'}
-                    </div>
-                  </div>
+                <div className="w-full sm:w-1/2">
+                  <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                    Suffix
+                  </label>
+                  <select
+                    value={suffix}
+                    onChange={(e) => setSuffix(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="">None</option>
+                    <option value="Jr.">Jr.</option>
+                    <option value="Sr.">Sr.</option>
+                    <option value="II">II</option>
+                    <option value="III">III</option>
+                    <option value="IV">IV</option>
+                    <option value="V">V</option>
+                  </select>
                 </div>
               </div>
 

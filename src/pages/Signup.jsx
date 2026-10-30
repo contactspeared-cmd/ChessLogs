@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { formatCompositeName } from '../lib/authStore';
 import {
   UserPlus,
   AlertCircle,
@@ -39,14 +38,6 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  // Live computed display name
-  const previewDisplayName = formatCompositeName({
-    firstName,
-    middleInitial,
-    lastName,
-    suffix,
-  });
 
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
   const passwordsMismatch = password && confirmPassword && password !== confirmPassword;
@@ -209,35 +200,23 @@ export default function Signup() {
             </div>
 
             {/* Suffix Selection */}
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-              <div className="sm:col-span-4">
-                <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
-                  Suffix <span className="text-slate-500">(Optional)</span>
-                </label>
-                <select
-                  value={suffix}
-                  onChange={(e) => setSuffix(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                >
-                  <option value="">None</option>
-                  <option value="Jr.">Jr.</option>
-                  <option value="Sr.">Sr.</option>
-                  <option value="II">II</option>
-                  <option value="III">III</option>
-                  <option value="IV">IV</option>
-                  <option value="V">V</option>
-                </select>
-              </div>
-
-              {/* Dynamic Composite Display Name Preview */}
-              <div className="sm:col-span-8 pt-4 sm:pt-0">
-                <div className="px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs flex items-center justify-between">
-                  <span className="text-slate-400 font-mono text-[11px]">Display Name:</span>
-                  <span className="font-bold text-emerald-400 font-mono">
-                    {previewDisplayName}
-                  </span>
-                </div>
-              </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                Suffix <span className="text-slate-500">(Optional)</span>
+              </label>
+              <select
+                value={suffix}
+                onChange={(e) => setSuffix(e.target.value)}
+                className="w-full sm:w-1/3 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+              >
+                <option value="">None</option>
+                <option value="Jr.">Jr.</option>
+                <option value="Sr.">Sr.</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+                <option value="V">V</option>
+              </select>
             </div>
           </div>
 
