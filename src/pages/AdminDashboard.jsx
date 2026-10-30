@@ -13,6 +13,7 @@ import {
   updateStudentProfile,
   replaceSyncedChesscomGames,
 } from '../lib/db';
+import { formatCompositeName } from '../lib/authStore';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -44,6 +45,11 @@ export default function AdminDashboard() {
 
   // Edit student state
   const [isEditingStudent, setIsEditingStudent] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editMI, setEditMI] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editSuffix, setEditSuffix] = useState('');
+  const [editDob, setEditDob] = useState('');
   const [editName, setEditName] = useState('');
   const [editChesscom, setEditChesscom] = useState('');
   const [savingStudent, setSavingStudent] = useState(false);
@@ -122,6 +128,11 @@ export default function AdminDashboard() {
 
   const handleStartEditStudent = (student) => {
     setIsEditingStudent(!isEditingStudent);
+    setEditFirstName(student.first_name || '');
+    setEditMI(student.middle_initial || '');
+    setEditLastName(student.last_name || '');
+    setEditSuffix(student.suffix || '');
+    setEditDob(student.date_of_birth || '');
     setEditName(student.display_name || '');
     setEditChesscom(student.chesscom_username || '');
   };
@@ -133,8 +144,20 @@ export default function AdminDashboard() {
     try {
       const nextUsername = editChesscom.trim().toLowerCase();
       const prevUsername = (selectedStudent.chesscom_username || '').toLowerCase();
+      const computedName = formatCompositeName({
+        firstName: editFirstName,
+        middleInitial: editMI,
+        lastName: editLastName,
+        suffix: editSuffix,
+      }) || editName.trim() || selectedStudent.display_name;
+
       const updated = await updateStudentProfile(selectedStudent.id, {
-        display_name: editName.trim() || selectedStudent.display_name,
+        first_name: editFirstName.trim(),
+        middle_initial: editMI.trim().toUpperCase(),
+        last_name: editLastName.trim(),
+        suffix: editSuffix.trim(),
+        date_of_birth: editDob,
+        display_name: computedName,
         chesscom_username: nextUsername,
       });
       if (prevUsername !== nextUsername) {
@@ -423,7 +446,14 @@ export default function AdminDashboard() {
                               />
                               <div>
                                 <div className="font-bold text-white">{student.display_name}</div>
-                                <div className="text-[11px] text-slate-400">{student.bio || 'Club Student'}</div>
+                                <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                                  {student.email && <span>{student.email}</span>}
+                                  {student.date_of_birth && (
+                                    <span className="font-mono text-emerald-400/80">
+                                      • DOB: {student.date_of_birth}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -507,10 +537,19 @@ export default function AdminDashboard() {
                           {selectedStudent.role || 'student'}
                         </span>
                       </h3>
-                      <p className="text-xs text-slate-400">
-                        {selectedStudent.chesscom_username ? `@${selectedStudent.chesscom_username}` : 'No handle linked'}
-                        {selectedStudent.created_at ? ` • Joined ${new Date(selectedStudent.created_at).toLocaleDateString()}` : ''}
-                      </p>
+                      <div className="text-xs text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                        {selectedStudent.email && (
+                          <span className="text-slate-300 font-mono text-[11px]">{selectedStudent.email}</span>
+                        )}
+                        {selectedStudent.date_of_birth && (
+                          <span className="text-emerald-400 font-mono text-[11px]">
+                            DOB: {selectedStudent.date_of_birth}
+                          </span>
+                        )}
+                        <span>
+                          {selectedStudent.chesscom_username ? `@${selectedStudent.chesscom_username}` : 'No handle linked'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <button
@@ -530,28 +569,80 @@ export default function AdminDashboard() {
                     <h5 className="text-xs font-bold uppercase text-emerald-400 tracking-wider">
                       Edit Student Account
                     </h5>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Display Name</label>
+
+                    {/* Composite Name Fields */}
+                    <div className="grid grid-cols-12 gap-2">
+                      <div className="col-span-5">
+                        <label className="block text-[10px] text-slate-400 mb-1">First Name</label>
                         <input
                           type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          value={editFirstName}
+                          onChange={(e) => setEditFirstName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                           required
                         />
                       </div>
+                      <div className="col-span-2">
+                        <label className="block text-[10px] text-slate-400 mb-1">M.I.</label>
+                        <input
+                          type="text"
+                          maxLength={2}
+                          value={editMI}
+                          onChange={(e) => setEditMI(e.target.value.toUpperCase())}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white text-center font-bold focus:outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+                      <div className="col-span-5">
+                        <label className="block text-[10px] text-slate-400 mb-1">Last Name</label>
+                        <input
+                          type="text"
+                          value={editLastName}
+                          onChange={(e) => setEditLastName(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Chess.com Username</label>
+                        <label className="block text-[10px] text-slate-400 mb-1">Suffix</label>
+                        <select
+                          value={editSuffix}
+                          onChange={(e) => setEditSuffix(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="">None</option>
+                          <option value="Jr.">Jr.</option>
+                          <option value="Sr.">Sr.</option>
+                          <option value="II">II</option>
+                          <option value="III">III</option>
+                          <option value="IV">IV</option>
+                          <option value="V">V</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">Date of Birth</label>
+                        <input
+                          type="date"
+                          value={editDob}
+                          onChange={(e) => setEditDob(e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-400 mb-1">Chess.com Username</label>
                         <input
                           type="text"
                           value={editChesscom}
                           onChange={(e) => setEditChesscom(e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                           placeholder="e.g. hikaru"
                         />
                       </div>
                     </div>
+
                     <div className="flex justify-end gap-2 pt-1">
                       <button
                         type="button"

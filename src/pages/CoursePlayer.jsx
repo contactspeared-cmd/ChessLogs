@@ -1110,7 +1110,7 @@ export default function CoursePlayer() {
             <div>
               <h3 className="text-lg font-bold text-white">Course Completed! 🎉</h3>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                You've completed all chapters of <strong className="text-slate-200">{course.title}</strong>. Would you like to review the course again or return to your courses?
+                You&apos;ve completed all chapters of <strong className="text-slate-200">{course.title}</strong>. Would you like to review the course again or return to your courses?
               </p>
             </div>
 

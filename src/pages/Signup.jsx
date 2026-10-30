@@ -1,92 +1,159 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { UserPlus, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
+import { formatCompositeName } from '../lib/authStore';
+import {
+  UserPlus,
+  AlertCircle,
+  CheckCircle2,
+  Sparkles,
+  Eye,
+  EyeOff,
+  User,
+  Calendar,
+  Mail,
+  Lock,
+} from 'lucide-react';
 
 export default function Signup() {
-  const { signUpWithEmail, signInWithGoogle, signInWithChesscom } = useAuth();
+  const { signUpWithEmail, signInWithChesscom } = useAuth();
   const navigate = useNavigate();
 
-  const [displayName, setDisplayName] = useState('');
+  // Name Composite fields
+  const [firstName, setFirstName] = useState('');
+  const [middleInitial, setMiddleInitial] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [suffix, setSuffix] = useState('');
+
+  // Personal & Account details
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [email, setEmail] = useState('');
+  const [chesscomUsername, setChesscomUsername] = useState('');
+
+  // Password fields
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // States
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Quick Chess.com student access
-  const [chesscomUsername, setChesscomUsername] = useState('');
-  const [chesscomLoading, setChesscomLoading] = useState(false);
+  // Chess.com quick access toggle
+  const [showChesscomQuick, setShowChesscomQuick] = useState(false);
+  const [quickUsername, setQuickUsername] = useState('');
+  const [quickLoading, setQuickLoading] = useState(false);
+
+  // Live computed display name
+  const previewDisplayName = formatCompositeName({
+    firstName,
+    middleInitial,
+    lastName,
+    suffix,
+  });
+
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
+  const passwordsMismatch = password && confirmPassword && password !== confirmPassword;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
+
+    // Field validations
+    if (!firstName.trim()) {
+      setError('First Name is required.');
+      return;
+    }
+    if (!middleInitial.trim()) {
+      setError('Middle Initial (MI) is required.');
+      return;
+    }
+    if (!lastName.trim()) {
+      setError('Last Name is required.');
+      return;
+    }
+    if (!dateOfBirth) {
+      setError('Date of Birth is required.');
+      return;
+    }
+    if (!email.trim()) {
+      setError('Email address is required.');
+      return;
+    }
+    if (!password) {
+      setError('Password is required.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await signUpWithEmail(email.trim(), password, displayName.trim(), 'student');
-      if (res?.needsConfirmation || !res?.session) {
-        setSuccessMessage(
-          'Registration successful! Please check your email inbox to confirm your account before logging in.'
-        );
-      } else {
+      await signUpWithEmail({
+        firstName: firstName.trim(),
+        middleInitial: middleInitial.trim().toUpperCase(),
+        lastName: lastName.trim(),
+        suffix: suffix.trim(),
+        dateOfBirth,
+        email: email.trim(),
+        chesscomUsername: chesscomUsername.trim(),
+        password,
+        confirmPassword,
+      });
+
+      setSuccessMessage('Account created successfully! Redirecting to your dashboard...');
+      setTimeout(() => {
         navigate('/dashboard');
-      }
+      }, 700);
     } catch (err) {
-      setError(err.message || 'Failed to create account.');
+      setError(err.message || 'Failed to create site account. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChesscomSignup = async (e) => {
+  const handleQuickChesscom = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMessage('');
-    if (!chesscomUsername.trim()) {
+    if (!quickUsername.trim()) {
       setError('Please enter your Chess.com username.');
       return;
     }
-    setChesscomLoading(true);
+    setQuickLoading(true);
     try {
-      await signInWithChesscom(chesscomUsername.trim());
+      await signInWithChesscom(quickUsername.trim());
       navigate('/dashboard');
     } catch (err) {
-      setError(
-        err.message || `Chess.com username "${chesscomUsername}" not found. Please verify spelling.`
-      );
+      setError(err.message || `Chess.com username "${quickUsername}" not found. Please verify spelling.`);
     } finally {
-      setChesscomLoading(false);
+      setQuickLoading(false);
     }
   };
 
-  const handleGoogleSignup = async () => {
-    setError('');
-    setSuccessMessage('');
-    setGoogleLoading(true);
-    try {
-      const res = await signInWithGoogle();
-      if (res?.user) {
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to sign up with Google.');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
+  // Restrict DOB to past dates
+  const todayDate = new Date().toISOString().split('T')[0];
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+    <div className="min-h-[90vh] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
+        {/* Brand Header */}
         <div className="text-center space-y-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
             <span className="text-2xl font-black text-slate-950">♞</span>
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-white">Create ChessLogs Account</h1>
-          <p className="text-xs text-slate-400">
-            Join as a student to sync games, review with Stockfish, and complete assigned courses.
+          <h1 className="text-2xl font-black tracking-tight text-white">Create Site Account</h1>
+          <p className="text-xs text-slate-400 max-w-md mx-auto">
+            Create your permanent ChessLogs student profile with complete identity records, Stockfish analysis, and curriculum access.
           </p>
         </div>
 
@@ -104,135 +171,291 @@ export default function Signup() {
           </div>
         )}
 
-        {/* Option 1: Fast Chess.com Registration */}
-        <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center gap-1.5">
-              <span>♟</span>
-              <span>Fast Sign Up with Chess.com</span>
-            </span>
-            <span className="text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-              Recommended
-            </span>
+        {/* Primary Account Creation Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Section 1: Composite Name */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Full Name Composite</span>
+              </span>
+              <span className="text-[11px] text-slate-400">
+                *Required fields
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              {/* First Name */}
+              <div className="sm:col-span-5">
+                <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                  First Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="e.g. Alex"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  required
+                />
+              </div>
+
+              {/* Middle Initial */}
+              <div className="sm:col-span-2">
+                <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                  M.I. <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  value={middleInitial}
+                  onChange={(e) => setMiddleInitial(e.target.value.toUpperCase())}
+                  placeholder="M"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white text-center font-bold uppercase focus:outline-none focus:border-emerald-500 transition-colors"
+                  required
+                />
+              </div>
+
+              {/* Last Name */}
+              <div className="sm:col-span-5">
+                <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                  Last Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="e.g. Rivera"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Suffix Selection */}
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+              <div className="sm:col-span-4">
+                <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1">
+                  Suffix <span className="text-slate-500">(Optional)</span>
+                </label>
+                <select
+                  value={suffix}
+                  onChange={(e) => setSuffix(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                >
+                  <option value="">None</option>
+                  <option value="Jr.">Jr.</option>
+                  <option value="Sr.">Sr.</option>
+                  <option value="II">II</option>
+                  <option value="III">III</option>
+                  <option value="IV">IV</option>
+                  <option value="V">V</option>
+                </select>
+              </div>
+
+              {/* Dynamic Composite Display Name Preview */}
+              <div className="sm:col-span-8 pt-4 sm:pt-0">
+                <div className="px-3.5 py-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-xs flex items-center justify-between">
+                  <span className="text-slate-400 font-mono text-[11px]">Display Name:</span>
+                  <span className="font-bold text-emerald-400 font-mono">
+                    {previewDisplayName}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <form onSubmit={handleChesscomSignup} className="space-y-2.5">
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-slate-500 font-mono text-xs">@</span>
+
+          <div className="border-t border-slate-800/80 pt-3" />
+
+          {/* Section 2: Date of Birth & Chess.com */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Date of Birth <span className="text-rose-400">*</span></span>
+              </label>
               <input
-                type="text"
-                value={chesscomUsername}
-                onChange={(e) => setChesscomUsername(e.target.value)}
-                placeholder="Your Chess.com username"
-                className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-7 pr-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                type="date"
+                max={todayDate}
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                required
               />
             </div>
-            <button
-              type="submit"
-              disabled={chesscomLoading}
-              className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{chesscomLoading ? 'Verifying...' : 'Continue with Chess.com'}</span>
-            </button>
-          </form>
-        </div>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-800" />
+            {/* Chess.com Username */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-emerald-400 font-bold">♟</span>
+                  <span>Chess.com Username</span>
+                </span>
+                <span className="text-[10px] text-slate-500">Optional</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-slate-500 font-mono text-sm">@</span>
+                <input
+                  type="text"
+                  value={chesscomUsername}
+                  onChange={(e) => setChesscomUsername(e.target.value)}
+                  placeholder="e.g. hikaru, magnus"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3.5 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+            </div>
           </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-slate-900 px-3 text-slate-500 font-semibold">Or with Email</span>
-          </div>
-        </div>
 
-        {/* Option 2: Email & Password Registration */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Section 3: Email Address */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
-              Full Name or Handle
-            </label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="e.g. Alex Rivera"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
-              Email Address
+            <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Email Address <span className="text-rose-400">*</span></span>
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="player@chesslogs.com"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+              placeholder="student@chesslogs.com"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
               required
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
-              required
-              minLength={6}
-            />
+          {/* Section 4: Password & Confirm Password */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Password */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Password <span className="text-rose-400">*</span></span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Min 6 characters"
+                  minLength={6}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase text-slate-400 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Confirm Password <span className="text-rose-400">*</span></span>
+                </span>
+                {passwordsMatch && (
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Match
+                  </span>
+                )}
+                {passwordsMismatch && (
+                  <span className="text-[10px] text-rose-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Mismatch
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-type password"
+                  className={`w-full bg-slate-950 border rounded-xl pl-3.5 pr-10 py-2.5 text-sm text-white focus:outline-none transition-colors ${
+                    passwordsMismatch
+                      ? 'border-rose-500/60 focus:border-rose-500'
+                      : passwordsMatch
+                      ? 'border-emerald-500/60 focus:border-emerald-500'
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold transition-all border border-slate-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 flex items-center justify-center gap-2 mt-2"
           >
             <UserPlus className="w-4 h-4" />
-            <span>{loading ? 'Creating account...' : 'Create Student Account'}</span>
+            <span>{loading ? 'Creating Your Account...' : 'Create ChessLogs Account'}</span>
           </button>
         </form>
 
-        {/* Google OAuth Button */}
-        <button
-          type="button"
-          onClick={handleGoogleSignup}
-          disabled={googleLoading}
-          className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#EA4335"
-              d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
-            />
-            <path
-              fill="#4285F4"
-              d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8s.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16c1.8 3.7 5.6 7 10.1 7z"
-            />
-          </svg>
-          <span>{googleLoading ? 'Connecting to Google...' : 'Sign up with Google'}</span>
-        </button>
+        {/* Secondary Option: Quick Chess.com Sign In Accordion */}
+        <div className="pt-2 border-t border-slate-800/80">
+          <button
+            type="button"
+            onClick={() => setShowChesscomQuick(!showChesscomQuick)}
+            className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <span>♟</span>
+            <span>{showChesscomQuick ? 'Hide Quick Chess.com Access' : 'Or quick access with your Chess.com Handle'}</span>
+          </button>
 
-        <p className="text-center text-xs text-slate-400">
+          {showChesscomQuick && (
+            <div className="mt-3 p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
+              <p className="text-[11px] text-slate-400">
+                Instantly connect using your public Chess.com handle without creating a custom password:
+              </p>
+              <form onSubmit={handleQuickChesscom} className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-2.5 text-slate-500 font-mono text-xs">@</span>
+                  <input
+                    type="text"
+                    value={quickUsername}
+                    onChange={(e) => setQuickUsername(e.target.value)}
+                    placeholder="Chess.com username"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={quickLoading}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{quickLoading ? 'Verifying...' : 'Sign In'}</span>
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+
+        {/* Link to Login */}
+        <p className="text-center text-xs text-slate-400 pt-1">
           Already have an account?{' '}
-          <Link to="/login" className="text-emerald-400 hover:underline font-semibold">
-            Sign In
+          <Link to="/login" className="text-emerald-400 hover:underline font-bold">
+            Sign In here
           </Link>
         </p>
       </div>

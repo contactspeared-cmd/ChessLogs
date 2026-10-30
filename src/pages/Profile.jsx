@@ -6,6 +6,7 @@ import {
   generateVerificationCode,
 } from '../lib/chesscom';
 import { replaceSyncedChesscomGames } from '../lib/db';
+import { formatCompositeName } from '../lib/authStore';
 import { APP_CONFIG } from '../config/engine';
 import {
   ShieldCheck,
@@ -24,7 +25,11 @@ import {
 export default function Profile() {
   const { profile, updateProfile } = useAuth();
 
-  const [displayName, setDisplayName] = useState(profile?.display_name || '');
+  const [firstName, setFirstName] = useState(profile?.first_name || '');
+  const [middleInitial, setMiddleInitial] = useState(profile?.middle_initial || '');
+  const [lastName, setLastName] = useState(profile?.last_name || '');
+  const [suffix, setSuffix] = useState(profile?.suffix || '');
+  const [dateOfBirth, setDateOfBirth] = useState(profile?.date_of_birth || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [chesscomInput, setChesscomInput] = useState(profile?.chesscom_username || '');
   const [verificationCode, setVerificationCode] = useState('');
@@ -39,6 +44,14 @@ export default function Profile() {
   const [statsData, setStatsData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
+  // Computed composite display name
+  const compositeDisplayName = formatCompositeName({
+    firstName,
+    middleInitial,
+    lastName,
+    suffix,
+  });
+
   // Generate verification code when input changes
   useEffect(() => {
     if (chesscomInput) {
@@ -49,7 +62,11 @@ export default function Profile() {
   // Sync state if profile changes
   useEffect(() => {
     if (profile) {
-      setDisplayName(profile.display_name || '');
+      setFirstName(profile.first_name || '');
+      setMiddleInitial(profile.middle_initial || '');
+      setLastName(profile.last_name || '');
+      setSuffix(profile.suffix || '');
+      setDateOfBirth(profile.date_of_birth || '');
       setBio(profile.bio || '');
       setChesscomInput(profile.chesscom_username || '');
     }
@@ -84,8 +101,19 @@ export default function Profile() {
     setIsSaving(true);
     setSaveSuccess(false);
     try {
+      const computed = formatCompositeName({
+        firstName,
+        middleInitial,
+        lastName,
+        suffix,
+      });
       await updateProfile({
-        display_name: displayName,
+        first_name: firstName.trim(),
+        middle_initial: middleInitial.trim().toUpperCase(),
+        last_name: lastName.trim(),
+        suffix: suffix.trim(),
+        date_of_birth: dateOfBirth,
+        display_name: computed,
         bio,
       });
       setSaveSuccess(true);
@@ -217,17 +245,90 @@ export default function Profile() {
 
             {/* Profile Edit Form */}
             <form onSubmit={handleSaveProfile} className="mt-6 space-y-4 pt-6 border-t border-slate-800">
+              <div className="space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Full Name Composite
+                </span>
+
+                <div className="grid grid-cols-12 gap-2">
+                  <div className="col-span-5">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                      M.I.
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={middleInitial}
+                      onChange={(e) => setMiddleInitial(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center font-bold focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <div className="col-span-5">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                      Last Name
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-4">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                      Suffix
+                    </label>
+                    <select
+                      value={suffix}
+                      onChange={(e) => setSuffix(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option value="">None</option>
+                      <option value="Jr.">Jr.</option>
+                      <option value="Sr.">Sr.</option>
+                      <option value="II">II</option>
+                      <option value="III">III</option>
+                      <option value="IV">IV</option>
+                      <option value="V">V</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-8">
+                    <div className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-mono text-emerald-400 truncate">
+                      {compositeDisplayName || 'Chess Player'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                  Display Name
+                  Date of Birth
                 </label>
                 <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                  placeholder="Your full name or handle"
-                  required
                 />
               </div>
 
@@ -236,7 +337,7 @@ export default function Profile() {
                   Coach Bio & Goals
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"

@@ -1,7 +1,13 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { DEMO_PROFILES } from '../data/initialData';
 import { fetchChesscomProfile } from '../lib/chesscom';
+import {
+  createSiteAccount,
+  verifySiteCredentials,
+  updateSiteAccount,
+  findSiteAccountById,
+  getSiteAccounts,
+} from '../lib/authStore';
 
 const AuthContext = createContext(null);
 
@@ -12,22 +18,44 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load profile from Supabase given a user ID
+  // Load profile from Supabase or Local Site Accounts
   const fetchProfile = useCallback(async (userId) => {
-    if (!isSupabaseConfigured) return null;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      console.warn('Error fetching Supabase profile:', err);
-      return null;
+    // 1. Check local site accounts store first
+    const siteAcc = findSiteAccountById(userId);
+    if (siteAcc) {
+      const safe = { ...siteAcc };
+      delete safe.password_hash;
+      delete safe.salt;
+      return safe;
     }
+
+    // 2. If Supabase is active, query remote profiles table
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single();
+
+        if (!error && data) return data;
+      } catch (err) {
+        console.warn('Supabase fetchProfile fallback:', err);
+      }
+    }
+
+    // 3. Fallback to active profile in localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.id === userId) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
   }, []);
 
   // Initialize auth state
@@ -35,53 +63,62 @@ export function AuthProvider({ children }) {
     let mounted = true;
 
     async function initialize() {
+      // Ensure seed accounts exist in storage
+      getSiteAccounts();
+
+      let restored = false;
+
+      // 1. Try Supabase session if configured
       if (isSupabaseConfigured) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Supabase getSession timeout')), 2500)
+          );
+          const { data: { session } } = await Promise.race([
+            supabase.auth.getSession(),
+            timeoutPromise,
+          ]);
+
           if (session?.user && mounted) {
             setUser(session.user);
             const userProfile = await fetchProfile(session.user.id);
             setProfile(userProfile);
-          } else {
-            // Restore local session (e.g. Chess.com player login) if present
-            const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
-            if (saved && mounted) {
-              try {
-                const parsed = JSON.parse(saved);
-                setUser({ id: parsed.id, email: parsed.email || `${parsed.chesscom_username || parsed.role}@chesslogs.local` });
-                setProfile(parsed);
-              } catch {
-                setUser(null);
-                setProfile(null);
-              }
-            } else if (mounted) {
-              setUser(null);
-              setProfile(null);
-            }
+            restored = true;
           }
         } catch (e) {
-          console.error('Failed to get Supabase session:', e);
-          if (mounted) {
-            setUser(null);
-            setProfile(null);
-          }
+          console.warn('Supabase session initialization skipped or failed:', e?.message || e);
         }
-      } else {
+      }
+
+      // 2. If not restored via Supabase, restore local active profile
+      if (!restored && mounted) {
         const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
-        if (saved && mounted) {
+        if (saved) {
           try {
             const parsed = JSON.parse(saved);
-            setUser({ id: parsed.id, email: parsed.email || `${parsed.chesscom_username || parsed.role}@chesslogs.local` });
-            setProfile(parsed);
+            if (parsed && parsed.id) {
+              // Ensure we load the freshest version from site accounts
+              const fresh = findSiteAccountById(parsed.id) || parsed;
+              const safe = { ...fresh };
+              delete safe.password_hash;
+              delete safe.salt;
+              setUser({
+                id: safe.id,
+                email: safe.email || `${safe.chesscom_username || safe.role}@chesslogs.local`,
+              });
+              setProfile(safe);
+              restored = true;
+            }
           } catch {
             setUser(null);
             setProfile(null);
           }
-        } else if (mounted) {
-          // No auto-login: user must sign in deliberately
-          setUser(null);
-          setProfile(null);
         }
+      }
+
+      if (!restored && mounted) {
+        setUser(null);
+        setProfile(null);
       }
 
       if (mounted) setLoading(false);
@@ -92,22 +129,25 @@ export function AuthProvider({ children }) {
     // Listen to Supabase auth state change if configured
     let subscription = null;
     if (isSupabaseConfigured) {
-      const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (!mounted) return;
-        if (session?.user) {
-          setUser(session.user);
-          const p = await fetchProfile(session.user.id);
-          setProfile(p);
-        } else {
-          // Only clear if active profile is not a local Chess.com player
-          const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
-          if (!saved) {
-            setUser(null);
-            setProfile(null);
+      try {
+        const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+          if (!mounted) return;
+          if (session?.user) {
+            setUser(session.user);
+            const p = await fetchProfile(session.user.id);
+            setProfile(p);
+          } else {
+            const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
+            if (!saved) {
+              setUser(null);
+              setProfile(null);
+            }
           }
-        }
-      });
-      subscription = data.subscription;
+        });
+        subscription = data?.subscription;
+      } catch (err) {
+        console.warn('Could not subscribe to Supabase auth state change:', err);
+      }
     }
 
     return () => {
@@ -118,68 +158,127 @@ export function AuthProvider({ children }) {
 
   // Sign in with email & password
   const signInWithEmail = async (email, password) => {
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      setUser(data.user);
-      const p = await fetchProfile(data.user.id);
-      setProfile(p);
-      return data;
-    } else {
-      // Local demo sign in
-      const role = email.toLowerCase().includes('admin') || email.toLowerCase().includes('coach') ? 'admin' : 'student';
-      const matched = DEMO_PROFILES.find((p) => p.role === role) || DEMO_PROFILES[1];
-      setUser({ id: matched.id, email });
-      setProfile(matched);
-      localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(matched));
-      return { user: { id: matched.id, email } };
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    // 1. Try Site Account verification first (fast, reliable, offline-capable)
+    try {
+      const siteResult = await verifySiteCredentials(cleanEmail, password);
+      if (siteResult?.user && siteResult?.profile) {
+        setUser(siteResult.user);
+        setProfile(siteResult.profile);
+        localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteResult.profile));
+        return siteResult;
+      }
+    } catch (siteErr) {
+      // If site account wasn't found or password wrong, check if Supabase is active
+      if (isSupabaseConfigured) {
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (!error && data?.user) {
+            setUser(data.user);
+            const p = await fetchProfile(data.user.id);
+            setProfile(p);
+            if (p) {
+              localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(p));
+            }
+            return data;
+          }
+        } catch (supaErr) {
+          console.warn('Supabase signInWithPassword fallback error:', supaErr);
+        }
+      }
+      // Re-throw the clean error from site account check
+      throw siteErr;
     }
   };
 
-  // Sign up with email & password (public signup is always student)
-  const signUpWithEmail = async (email, password, displayName, _role = 'student') => {
-    const role = 'student';
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: displayName, role },
-        },
-      });
-      if (error) throw error;
-      if (data.user) {
-        setUser(data.user);
-        if (data.session) {
-          // create or fetch profile
-          const { data: prof } = await supabase
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              display_name: displayName,
-              role,
-            })
-            .select()
-            .single();
-          setProfile(prof);
-        }
-      }
-      return data;
-    } else {
-      const newProfile = {
-        id: `user-${Date.now()}`,
-        role,
-        display_name: displayName || 'New Student',
-        avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-        chesscom_username: '',
-        bio: '',
-        created_at: new Date().toISOString(),
-      };
-      setUser({ id: newProfile.id, email });
-      setProfile(newProfile);
-      localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(newProfile));
-      return { user: { id: newProfile.id, email } };
+  /**
+   * Sign up with complete user details:
+   * Composite name (First Name, MI, Last Name required*), Suffix, Date of Birth,
+   * Email, Chess.com username, Password and Confirm Password.
+   */
+  const signUpWithEmail = async ({
+    firstName,
+    middleInitial,
+    lastName,
+    suffix = '',
+    dateOfBirth,
+    email,
+    chesscomUsername = '',
+    password,
+    confirmPassword,
+    role = 'student',
+  }) => {
+    // 1. Confirm password check
+    if (!password) {
+      throw new Error('Password is required.');
     }
+    if (confirmPassword !== undefined && password !== confirmPassword) {
+      throw new Error('Passwords do not match. Please re-enter.');
+    }
+
+    // 2. Create native site account
+    const { user: siteUser, profile: siteProfile } = await createSiteAccount({
+      firstName,
+      middleInitial,
+      lastName,
+      suffix,
+      dateOfBirth,
+      email,
+      chesscomUsername,
+      password,
+      role,
+    });
+
+    // 3. Best-effort mirror into Supabase Auth if reachable
+    if (isSupabaseConfigured) {
+      try {
+        const { data: supaData, error: supaErr } = await supabase.auth.signUp({
+          email: siteUser.email,
+          password,
+          options: {
+            data: {
+              first_name: siteProfile.first_name,
+              middle_initial: siteProfile.middle_initial,
+              last_name: siteProfile.last_name,
+              suffix: siteProfile.suffix,
+              date_of_birth: siteProfile.date_of_birth,
+              full_name: siteProfile.display_name,
+              display_name: siteProfile.display_name,
+              chesscom_username: siteProfile.chesscom_username,
+              role: 'student',
+            },
+          },
+        });
+
+        if (!supaErr && supaData?.user) {
+          // If Supabase created a user with a different ID, we can optionally link it
+          await supabase.from('profiles').upsert({
+            id: supaData.user.id,
+            first_name: siteProfile.first_name,
+            middle_initial: siteProfile.middle_initial,
+            last_name: siteProfile.last_name,
+            suffix: siteProfile.suffix,
+            date_of_birth: siteProfile.date_of_birth,
+            display_name: siteProfile.display_name,
+            chesscom_username: siteProfile.chesscom_username,
+            role: 'student',
+          });
+        }
+      } catch (supaErr) {
+        console.warn('Could not mirror account to Supabase (site account remains fully active):', supaErr);
+      }
+    }
+
+    // 4. Set active user & profile in React context & storage
+    setUser(siteUser);
+    setProfile(siteProfile);
+    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteProfile));
+
+    return { user: siteUser, profile: siteProfile, session: true };
   };
 
   // Sign in using Chess.com account (verifies against Chess.com API)
@@ -199,6 +298,11 @@ export function AuthProvider({ children }) {
     let finalProfile = {
       id: finalId,
       role: 'student',
+      first_name: liveProfile.name ? liveProfile.name.split(' ')[0] : cleanUsername,
+      middle_initial: '',
+      last_name: liveProfile.name ? liveProfile.name.split(' ').slice(1).join(' ') : '',
+      suffix: '',
+      date_of_birth: '',
       display_name: liveProfile.name || cleanUsername,
       avatar_url:
         liveProfile.avatar ||
@@ -208,66 +312,19 @@ export function AuthProvider({ children }) {
       created_at: new Date().toISOString(),
     };
 
-    // If Supabase is configured, create/sync Supabase Auth user and Profile
-    if (isSupabaseConfigured) {
-      const authEmail = `${cleanUsername}@chess.com`;
-      const authPassword = `ChessLogs@${cleanUsername}!2026`;
-
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: authEmail,
-          password: authPassword,
-        });
-
-        let authUser = signInData?.user;
-
-        if (signInError || !authUser) {
-          const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-            email: authEmail,
-            password: authPassword,
-            options: {
-              data: {
-                full_name: liveProfile.name || cleanUsername,
-                role: 'student',
-                avatar_url: liveProfile.avatar || null,
-                chesscom_username: cleanUsername,
-              },
-            },
-          });
-
-          if (!signUpError && signUpData?.user) {
-            authUser = signUpData.user;
-          }
-        }
-
-        if (authUser) {
-          finalId = authUser.id;
-          finalProfile.id = authUser.id;
-
-          const { data: profData, error: profError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: authUser.id,
-              display_name: liveProfile.name || cleanUsername,
-              avatar_url: liveProfile.avatar || null,
-              chesscom_username: cleanUsername,
-              bio: liveProfile.location ? `Chess.com member from ${liveProfile.location}` : '',
-              role: 'student',
-              updated_at: new Date().toISOString(),
-            })
-            .select()
-            .single();
-
-          if (!profError && profData) {
-            finalProfile = profData;
-          }
-        }
-      } catch (err) {
-        console.warn('Could not sync Chess.com user to Supabase Auth, using local session:', err);
-      }
+    // Check if an existing site account has this Chess.com username
+    const allAccounts = getSiteAccounts();
+    const existing = allAccounts.find(
+      (a) => a.chesscom_username && a.chesscom_username.toLowerCase() === cleanUsername
+    );
+    if (existing) {
+      finalProfile = { ...existing };
+      delete finalProfile.password_hash;
+      delete finalProfile.salt;
+      finalId = existing.id;
     }
 
-    // Always register in local students storage so coach command center sees them
+    // Register in local students storage so coach command center sees them
     try {
       const STORAGE_STUDENTS = 'chesslogs_students';
       const existingStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
@@ -288,7 +345,7 @@ export function AuthProvider({ children }) {
 
     const sessionUser = {
       id: finalProfile.id,
-      email: `${cleanUsername}@chess.com`,
+      email: finalProfile.email || `${cleanUsername}@chess.com`,
     };
 
     setUser(sessionUser);
@@ -300,27 +357,6 @@ export function AuthProvider({ children }) {
   // Google OAuth
   const signInWithGoogle = async () => {
     if (isSupabaseConfigured) {
-      // Check if Google provider is enabled in Supabase to give clear feedback
-      try {
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-        const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-        const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
-          headers: { apikey: supabaseAnonKey },
-        });
-        if (res.ok) {
-          const settings = await res.json();
-          if (settings?.external && settings.external.google === false) {
-            throw new Error(
-              'Google Sign-In is not enabled yet in your Supabase project dashboard. Please enable Google under Authentication > Providers in Supabase, or sign in using your Email or Chess.com username below.'
-            );
-          }
-        }
-      } catch (err) {
-        if (err.message?.includes('Google Sign-In is not enabled')) {
-          throw err;
-        }
-      }
-
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -333,6 +369,11 @@ export function AuthProvider({ children }) {
       const mockGoogleUser = {
         id: `google-${Date.now()}`,
         role: 'student',
+        first_name: 'Google',
+        middle_initial: '',
+        last_name: 'Student',
+        suffix: '',
+        date_of_birth: '',
         display_name: 'Google Student',
         avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
         chesscom_username: '',
@@ -364,23 +405,29 @@ export function AuthProvider({ children }) {
   const updateProfile = async (updates) => {
     if (!profile) return null;
 
-    const updatedProfile = { ...profile, ...updates, updated_at: new Date().toISOString() };
+    // 1. Update in site accounts store
+    const updated = updateSiteAccount(profile.id, updates);
+    const resolvedProfile = updated || {
+      ...profile,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
 
+    // 2. Best-effort Supabase update if configured
     if (isSupabaseConfigured && user) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id)
-        .select()
-        .single();
-      if (error) throw error;
-      setProfile(data);
-      return data;
-    } else {
-      setProfile(updatedProfile);
-      localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(updatedProfile));
-      return updatedProfile;
+      try {
+        await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id);
+      } catch (err) {
+        console.warn('Supabase profile update skipped/failed:', err);
+      }
     }
+
+    setProfile(resolvedProfile);
+    localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(resolvedProfile));
+    return resolvedProfile;
   };
 
   const isAdmin = profile?.role === 'admin';

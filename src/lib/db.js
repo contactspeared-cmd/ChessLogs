@@ -1013,6 +1013,20 @@ export async function saveGameReview(gameId, reviewData) {
 
 export async function getAllStudents() {
   const localStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+  const siteAccounts = JSON.parse(localStorage.getItem('chesslogs_site_accounts') || '[]');
+  
+  // Merge any student accounts from the native site accounts store
+  siteAccounts.filter((a) => a.role === 'student').forEach((sa) => {
+    const idx = localStudents.findIndex(
+      (s) => s.id === sa.id || (s.email && sa.email && s.email.toLowerCase() === sa.email.toLowerCase())
+    );
+    if (idx >= 0) {
+      localStudents[idx] = { ...sa, ...localStudents[idx] };
+    } else {
+      localStudents.push(sa);
+    }
+  });
+
   const localGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const localAssignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
 
@@ -1111,6 +1125,20 @@ export async function deleteStudent(studentId) {
   );
   localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(filtered));
 
+  // Also clean up from site accounts store
+  try {
+    const rawSite = localStorage.getItem('chesslogs_site_accounts');
+    if (rawSite) {
+      const siteAccounts = JSON.parse(rawSite);
+      const filteredSite = siteAccounts.filter(
+        (a) => a.id !== studentId && (!a.chesscom_username || `chesscom-${a.chesscom_username.toLowerCase()}` !== studentId.toLowerCase())
+      );
+      localStorage.setItem('chesslogs_site_accounts', JSON.stringify(filteredSite));
+    }
+  } catch {
+    // ignore
+  }
+
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const filteredGames = games.filter(
     (g) => g.student_id !== studentId && (!studentId.startsWith('chesscom-') || g.student_id !== studentId)
@@ -1165,8 +1193,23 @@ export async function updateStudentProfile(studentId, updates) {
   if (idx >= 0) {
     students[idx] = { ...students[idx], ...updates };
     localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
-    return students[idx];
   }
-  return null;
+
+  // Also sync to native site accounts store
+  try {
+    const rawSite = localStorage.getItem('chesslogs_site_accounts');
+    if (rawSite) {
+      const siteAccounts = JSON.parse(rawSite);
+      const sIdx = siteAccounts.findIndex((a) => a.id === studentId);
+      if (sIdx >= 0) {
+        siteAccounts[sIdx] = { ...siteAccounts[sIdx], ...updates };
+        localStorage.setItem('chesslogs_site_accounts', JSON.stringify(siteAccounts));
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return idx >= 0 ? students[idx] : null;
 }
 

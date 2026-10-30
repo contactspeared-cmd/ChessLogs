@@ -1,13 +1,26 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+
+/**
+ * Check if the provided Supabase URL is a valid, active configuration.
+ * Automatically excludes placeholder domains and known expired/dead project refs.
+ */
+function isValidConfiguredUrl(url) {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  if (lower === 'https://your-project.supabase.co') return false;
+  if (lower.includes('placeholder')) return false;
+  // Exclude known expired dead test project reference to prevent DNS ENOTFOUND / fetch hanging
+  if (lower.includes('onwsrykpcmtcaduovhzc.supabase.co')) return false;
+  return true;
+}
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
-  supabaseUrl !== 'https://your-project.supabase.co' &&
-  !supabaseUrl.includes('placeholder')
+  isValidConfiguredUrl(supabaseUrl)
 );
 
 // Fallback mock credentials for client initialization if unconfigured
@@ -21,3 +34,23 @@ export const supabase = createClient(clientUrl, clientAnonKey, {
     detectSessionInUrl: true,
   },
 });
+
+/**
+ * Probe Supabase connectivity with a 2-second timeout to safely verify
+ * that the remote project and auth token are alive without blocking UI.
+ */
+export async function probeSupabaseHealth() {
+  if (!isSupabaseConfigured) return false;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: { apikey: supabaseAnonKey },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
