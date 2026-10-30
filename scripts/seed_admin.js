@@ -10,9 +10,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
   process.exit(1);
 }
 
-const adminEmail = process.argv[2] || process.env.ADMIN_EMAIL || 'coach@chesslogs.com';
+const adminEmail = process.argv[2] || process.env.ADMIN_EMAIL || 'satoalt33@gmail.com';
 const adminPassword = process.argv[3] || process.env.ADMIN_PASSWORD || 'ChessLogsAdmin2026!';
-const displayName = process.argv[4] || process.env.ADMIN_NAME || 'Head Coach';
+const displayName = process.argv[4] || process.env.ADMIN_NAME || 'Coach Admin';
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: { autoRefreshToken: false, persistSession: false },

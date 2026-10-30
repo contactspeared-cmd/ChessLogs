@@ -65,27 +65,29 @@ export function generateSalt() {
 }
 
 /**
- * Seed initial system administrator account if none exist.
+ * Seed initial system administrator account for Coach Admin (satoalt33@gmail.com).
  */
 const DEFAULT_SALT = 'cl_salt_2026';
+// Pre-computed SHA-256 hash for 'ChessLogsAdmin2026!' with salt 'cl_salt_2026'
+const ADMIN_HASH = '69226bbed9175da60bd820400f9711108f8bef8380233e5501b2656fa98b643b';
 
 const SEED_ACCOUNTS = [
   {
-    id: 'coach-kasparov-uuid',
+    id: 'admin-satoalt33-uuid',
     email: 'satoalt33@gmail.com',
     secondary_emails: ['coach@chesslogs.com'],
-    first_name: 'Super',
+    first_name: 'Coach',
     middle_initial: 'A',
     last_name: 'Admin',
     suffix: '',
-    date_of_birth: '1985-01-01',
-    display_name: 'Super Admin',
+    date_of_birth: '1990-01-01',
+    display_name: 'Coach Admin',
     role: 'admin',
     chesscom_username: '',
-    bio: 'ChessLogs Head Coach and Administrator.',
+    bio: 'ChessLogs Head Coach & System Administrator.',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     salt: DEFAULT_SALT,
-    password_hash: null,
+    password_hash: ADMIN_HASH,
     created_at: '2026-01-01T00:00:00.000Z',
   },
 ];
@@ -97,16 +99,42 @@ export function getSiteAccounts() {
   if (typeof window === 'undefined') return SEED_ACCOUNTS;
   try {
     const raw = localStorage.getItem(STORAGE_ACCOUNTS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(SEED_ACCOUNTS));
-      return SEED_ACCOUNTS;
+    let accounts = raw ? JSON.parse(raw) : [];
+
+    // Purge legacy dummy profiles
+    const DUMMY_IDS = new Set(['student-alex-uuid', 'student-elena-uuid', 'coach-kasparov-uuid']);
+    const DUMMY_EMAILS = new Set(['alex@chesslogs.com', 'elena@chesslogs.com']);
+    accounts = accounts.filter(
+      (a) => !DUMMY_IDS.has(a.id) && !DUMMY_EMAILS.has(a.email?.toLowerCase())
+    );
+
+    // Ensure the coach admin account for satoalt33@gmail.com exists and is active
+    let admin = accounts.find((a) => a.email?.toLowerCase() === 'satoalt33@gmail.com');
+    if (!admin) {
+      accounts.unshift(SEED_ACCOUNTS[0]);
+    } else {
+      admin.role = 'admin';
+      if (!admin.password_hash) {
+        admin.password_hash = ADMIN_HASH;
+        admin.salt = DEFAULT_SALT;
+      }
     }
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(SEED_ACCOUNTS));
-      return SEED_ACCOUNTS;
+
+    localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(accounts));
+
+    // Also purge legacy dummy students from student roster in storage
+    const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
+    if (rawStudents) {
+      const parsedStudents = JSON.parse(rawStudents);
+      const cleanStudents = parsedStudents.filter(
+        (s) => !DUMMY_IDS.has(s.id) && !DUMMY_EMAILS.has(s.email?.toLowerCase())
+      );
+      if (cleanStudents.length !== parsedStudents.length) {
+        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(cleanStudents));
+      }
     }
-    return parsed;
+
+    return accounts;
   } catch (err) {
     console.warn('Failed to read site accounts from localStorage:', err);
     return SEED_ACCOUNTS;

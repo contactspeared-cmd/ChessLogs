@@ -1,5 +1,4 @@
 import { supabase, isSupabaseConfigured } from './supabase';
-import { DEMO_COURSES, DEMO_GAMES, DEMO_PROFILES } from '../data/initialData';
 
 const STORAGE_COURSES = 'chesslogs_courses';
 const STORAGE_GAMES = 'chesslogs_games';
@@ -158,36 +157,74 @@ function setGamesSafely(gamesArray) {
   }
 }
 
-// Initialize mock storage if empty
+// Initialize clean storage and purge legacy dummy data
 function initMockStorage() {
-  if (!localStorage.getItem(STORAGE_COURSES)) {
-    localStorage.setItem(STORAGE_COURSES, JSON.stringify(DEMO_COURSES));
+  const DUMMY_STUDENT_IDS = new Set(['student-alex-uuid', 'student-elena-uuid', 'coach-kasparov-uuid']);
+  const DUMMY_GAME_IDS = new Set(['sample-game-1', 'sample-game-2']);
+  const DUMMY_COURSE_IDS = new Set(['course-sicilian-mastery', 'course-endgame-fundamentals']);
+
+  // Courses
+  const rawCourses = localStorage.getItem(STORAGE_COURSES);
+  if (!rawCourses) {
+    localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
+  } else {
+    try {
+      const courses = JSON.parse(rawCourses);
+      const cleanCourses = courses.filter((c) => !DUMMY_COURSE_IDS.has(c.id));
+      if (cleanCourses.length !== courses.length) {
+        localStorage.setItem(STORAGE_COURSES, JSON.stringify(cleanCourses));
+      }
+    } catch {
+      localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
+    }
   }
-  if (!localStorage.getItem(STORAGE_GAMES)) {
-    localStorage.setItem(STORAGE_GAMES, JSON.stringify(DEMO_GAMES));
+
+  // Games
+  const rawGames = localStorage.getItem(STORAGE_GAMES);
+  if (!rawGames) {
+    localStorage.setItem(STORAGE_GAMES, JSON.stringify([]));
+  } else {
+    try {
+      const games = JSON.parse(rawGames);
+      const cleanGames = games.filter((g) => !DUMMY_GAME_IDS.has(g.id) && !DUMMY_STUDENT_IDS.has(g.student_id));
+      if (cleanGames.length !== games.length) {
+        localStorage.setItem(STORAGE_GAMES, JSON.stringify(cleanGames));
+      }
+    } catch {
+      localStorage.setItem(STORAGE_GAMES, JSON.stringify([]));
+    }
   }
-  if (!localStorage.getItem(STORAGE_STUDENTS)) {
-    localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(DEMO_PROFILES));
+
+  // Students
+  const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
+  if (!rawStudents) {
+    localStorage.setItem(STORAGE_STUDENTS, JSON.stringify([]));
+  } else {
+    try {
+      const students = JSON.parse(rawStudents);
+      const cleanStudents = students.filter((s) => !DUMMY_STUDENT_IDS.has(s.id));
+      if (cleanStudents.length !== students.length) {
+        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(cleanStudents));
+      }
+    } catch {
+      localStorage.setItem(STORAGE_STUDENTS, JSON.stringify([]));
+    }
   }
-  if (!localStorage.getItem(STORAGE_ASSIGNMENTS)) {
-    // Assign courses to student Alex
-    const assignments = [
-      {
-        id: 'assign-1',
-        course_id: DEMO_COURSES[0].id,
-        student_id: 'student-alex-uuid',
-        assigned_at: new Date().toISOString(),
-        progress: { completed_chapter_ids: [DEMO_COURSES[0].chapters[0].id] },
-      },
-      {
-        id: 'assign-2',
-        course_id: DEMO_COURSES[1].id,
-        student_id: 'student-alex-uuid',
-        assigned_at: new Date().toISOString(),
-        progress: { completed_chapter_ids: [] },
-      },
-    ];
-    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+
+  // Assignments
+  const rawAssignments = localStorage.getItem(STORAGE_ASSIGNMENTS);
+  if (!rawAssignments) {
+    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify([]));
+  } else {
+    try {
+      const assignments = JSON.parse(rawAssignments);
+      const cleanAssignments = assignments.filter((a) => !DUMMY_STUDENT_IDS.has(a.student_id) && !DUMMY_COURSE_IDS.has(a.course_id));
+      if (cleanAssignments.length !== assignments.length) {
+        localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(cleanAssignments));
+      }
+    } catch {
+      localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify([]));
+    }
   }
 }
 
@@ -770,14 +807,6 @@ export async function getGameById(gameId) {
     return {
       ...found,
       review: found.review || reviews[found.id] || null,
-    };
-  }
-
-  const demoFound = DEMO_GAMES.find((g) => g.id === gameId || g.chesscom_game_id === gameId);
-  if (demoFound) {
-    return {
-      ...demoFound,
-      review: demoFound.review || reviews[demoFound.id] || null,
     };
   }
 
