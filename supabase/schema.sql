@@ -10,7 +10,7 @@ create extension if not exists "uuid-ossp";
 -- ------------------------------------------------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  role text not null default 'student' check (role in ('admin', 'student')),
+  role text not null default 'student' check (role in ('admin', 'coach', 'student')),
   first_name text,
   middle_initial text,
   last_name text,
@@ -20,6 +20,10 @@ create table if not exists public.profiles (
   avatar_url text,
   chesscom_username text,
   bio text,
+  elo_rating integer,
+  min_student_elo integer not null default 0,
+  coaching_standards text,
+  current_elo integer not null default 1200,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -30,9 +34,62 @@ alter table public.profiles add column if not exists middle_initial text;
 alter table public.profiles add column if not exists last_name text;
 alter table public.profiles add column if not exists suffix text;
 alter table public.profiles add column if not exists date_of_birth date;
+alter table public.profiles add column if not exists elo_rating integer;
+alter table public.profiles add column if not exists min_student_elo integer not null default 0;
+alter table public.profiles add column if not exists coaching_standards text;
+alter table public.profiles add column if not exists current_elo integer not null default 1200;
 
 create index if not exists idx_profiles_role on public.profiles(role);
 create index if not exists idx_profiles_chesscom on public.profiles(chesscom_username);
+
+create table if not exists public.coach_credentials (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references public.profiles(id) on delete cascade,
+  verified_by_admin_id uuid references public.profiles(id) on delete set null,
+  credential_type text not null,
+  issuer text,
+  document_url text,
+  verification_status text not null default 'pending'
+    check (verification_status in ('pending', 'verified', 'rejected')),
+  rejection_reason text,
+  submitted_at timestamptz not null default now(),
+  verified_at timestamptz
+);
+
+create index if not exists idx_coach_credentials_coach on public.coach_credentials(coach_id);
+create index if not exists idx_coach_credentials_status on public.coach_credentials(verification_status);
+
+create table if not exists public.student_requirements (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  reviewed_by_admin_id uuid references public.profiles(id) on delete set null,
+  requirement_type text not null,
+  document_url text,
+  review_status text not null default 'pending'
+    check (review_status in ('pending', 'approved', 'rejected')),
+  review_notes text,
+  submitted_at timestamptz not null default now(),
+  reviewed_at timestamptz
+);
+
+create index if not exists idx_student_requirements_student on public.student_requirements(student_id);
+create index if not exists idx_student_requirements_status on public.student_requirements(review_status);
+
+create table if not exists public.student_coach_enrollments (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references public.profiles(id) on delete cascade,
+  coach_id uuid not null references public.profiles(id) on delete cascade,
+  reviewed_by_admin_id uuid references public.profiles(id) on delete set null,
+  applied_at timestamptz not null default now(),
+  review_status text not null default 'pending'
+    check (review_status in ('pending', 'approved', 'rejected')),
+  review_notes text,
+  reviewed_at timestamptz,
+  constraint student_coach_enrollments_unique unique (student_id, coach_id)
+);
+
+create index if not exists idx_student_coach_enrollments_lookup on public.student_coach_enrollments(student_id, coach_id);
+create index if not exists idx_student_coach_enrollments_status on public.student_coach_enrollments(review_status);
 
 create table if not exists public.courses (
   id uuid primary key default gen_random_uuid(),
@@ -42,9 +99,16 @@ create table if not exists public.courses (
   created_by uuid references public.profiles(id) on delete set null,
   orientation text default 'white',
   trained_side text default 'white',
+  min_elo integer not null default 0 check (min_elo >= 0),
+  max_elo integer not null default 3000 check (max_elo >= min_elo),
+  is_published boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.courses add column if not exists min_elo integer not null default 0;
+alter table public.courses add column if not exists max_elo integer not null default 3000;
+alter table public.courses add column if not exists is_published boolean not null default true;
 
 create table if not exists public.course_chapters (
   id uuid primary key default gen_random_uuid(),
@@ -69,6 +133,11 @@ create table if not exists public.course_assignments (
   course_id uuid not null references public.courses(id) on delete cascade,
   student_id uuid not null references public.profiles(id) on delete cascade,
   assigned_at timestamptz not null default now(),
+  status text not null default 'active'
+    check (status in ('active', 'paused', 'completed', 'dropped')),
+  progress_pct numeric(5,2) not null default 0
+    check (progress_pct between 0 and 100),
+  last_accessed_at timestamptz,
   -- progress shape:
   -- {
   --   completed_chapter_ids: [],  -- legacy / overall (trained or video)
@@ -80,6 +149,10 @@ create table if not exists public.course_assignments (
   progress jsonb not null default '{"completed_chapter_ids": [], "read_chapter_ids": [], "trained_chapter_ids": []}'::jsonb,
   constraint course_assignments_unique unique (course_id, student_id)
 );
+
+alter table public.course_assignments add column if not exists status text not null default 'active';
+alter table public.course_assignments add column if not exists progress_pct numeric(5,2) not null default 0;
+alter table public.course_assignments add column if not exists last_accessed_at timestamptz;
 
 create index if not exists idx_assignments_student on public.course_assignments(student_id);
 
@@ -135,6 +208,19 @@ stable
 as $$
   select coalesce(
     (select role = 'admin' from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+
+create or replace function public.is_coach()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select coalesce(
+    (select role in ('coach', 'admin') from public.profiles where id = auth.uid()),
     false
   );
 $$;
@@ -208,6 +294,9 @@ alter table public.course_chapters enable row level security;
 alter table public.course_assignments enable row level security;
 alter table public.games enable row level security;
 alter table public.game_reviews enable row level security;
+alter table public.coach_credentials enable row level security;
+alter table public.student_requirements enable row level security;
+alter table public.student_coach_enrollments enable row level security;
 
 -- Profiles
 drop policy if exists "Users can view their own profile or admin can view all" on public.profiles;
@@ -351,3 +440,59 @@ create policy "Students can update reviews for their games"
         and games.student_id = auth.uid()
     )
   );
+
+-- Coach Credentials
+drop policy if exists "Admins can manage all credentials" on public.coach_credentials;
+create policy "Admins can manage all credentials"
+  on public.coach_credentials for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Coaches can view and submit their own credentials" on public.coach_credentials;
+create policy "Coaches can view and submit their own credentials"
+  on public.coach_credentials for select
+  using (coach_id = auth.uid());
+
+drop policy if exists "Coaches can insert their own credentials" on public.coach_credentials;
+create policy "Coaches can insert their own credentials"
+  on public.coach_credentials for insert
+  with check (coach_id = auth.uid());
+
+-- Student Requirements
+drop policy if exists "Admins can manage all student requirements" on public.student_requirements;
+create policy "Admins can manage all student requirements"
+  on public.student_requirements for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Students can view and submit their own requirements" on public.student_requirements;
+create policy "Students can view and submit their own requirements"
+  on public.student_requirements for select
+  using (student_id = auth.uid());
+
+drop policy if exists "Students can insert their own requirements" on public.student_requirements;
+create policy "Students can insert their own requirements"
+  on public.student_requirements for insert
+  with check (student_id = auth.uid());
+
+-- Student Coach Enrollments
+drop policy if exists "Admins can manage all coach enrollments" on public.student_coach_enrollments;
+create policy "Admins can manage all coach enrollments"
+  on public.student_coach_enrollments for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+drop policy if exists "Coaches can view enrollments submitted to them" on public.student_coach_enrollments;
+create policy "Coaches can view enrollments submitted to them"
+  on public.student_coach_enrollments for select
+  using (coach_id = auth.uid());
+
+drop policy if exists "Students can view and submit their own coach applications" on public.student_coach_enrollments;
+create policy "Students can view and submit their own coach applications"
+  on public.student_coach_enrollments for select
+  using (student_id = auth.uid());
+
+drop policy if exists "Students can apply to coaches" on public.student_coach_enrollments;
+create policy "Students can apply to coaches"
+  on public.student_coach_enrollments for insert
+  with check (student_id = auth.uid());
