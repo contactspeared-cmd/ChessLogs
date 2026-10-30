@@ -6,7 +6,6 @@ import {
   UserPlus,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
   Eye,
   EyeOff,
   User,
@@ -16,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function Signup() {
-  const { signUpWithEmail, signInWithChesscom } = useAuth();
+  const { signUpWithEmail } = useAuth();
   const navigate = useNavigate();
 
   // Name Composite fields
@@ -40,11 +39,6 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-
-  // Chess.com quick access toggle
-  const [showChesscomQuick, setShowChesscomQuick] = useState(false);
-  const [quickUsername, setQuickUsername] = useState('');
-  const [quickLoading, setQuickLoading] = useState(false);
 
   // Live computed display name
   const previewDisplayName = formatCompositeName({
@@ -118,25 +112,6 @@ export default function Signup() {
       setError(err.message || 'Failed to create site account. Please try again.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleQuickChesscom = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccessMessage('');
-    if (!quickUsername.trim()) {
-      setError('Please enter your Chess.com username.');
-      return;
-    }
-    setQuickLoading(true);
-    try {
-      await signInWithChesscom(quickUsername.trim());
-      navigate('/dashboard');
-    } catch (err) {
-      setError(err.message || `Chess.com username "${quickUsername}" not found. Please verify spelling.`);
-    } finally {
-      setQuickLoading(false);
     }
   };
 
@@ -410,46 +385,6 @@ export default function Signup() {
             <span>{loading ? 'Creating Your Account...' : 'Create ChessLogs Account'}</span>
           </button>
         </form>
-
-        {/* Secondary Option: Quick Chess.com Sign In Accordion */}
-        <div className="pt-2 border-t border-slate-800/80">
-          <button
-            type="button"
-            onClick={() => setShowChesscomQuick(!showChesscomQuick)}
-            className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <span>♟</span>
-            <span>{showChesscomQuick ? 'Hide Quick Chess.com Access' : 'Or quick access with your Chess.com Handle'}</span>
-          </button>
-
-          {showChesscomQuick && (
-            <div className="mt-3 p-4 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-3">
-              <p className="text-[11px] text-slate-400">
-                Instantly connect using your public Chess.com handle without creating a custom password:
-              </p>
-              <form onSubmit={handleQuickChesscom} className="flex gap-2">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-2.5 text-slate-500 font-mono text-xs">@</span>
-                  <input
-                    type="text"
-                    value={quickUsername}
-                    onChange={(e) => setQuickUsername(e.target.value)}
-                    placeholder="Chess.com username"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={quickLoading}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{quickLoading ? 'Verifying...' : 'Sign In'}</span>
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
 
         {/* Link to Login */}
         <p className="text-center text-xs text-slate-400 pt-1">

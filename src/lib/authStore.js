@@ -65,68 +65,28 @@ export function generateSalt() {
 }
 
 /**
- * Seed initial system accounts if none exist:
- * - Super Admin / Coach (satoalt33@gmail.com & coach@chesslogs.com)
- * - Demo Students (Alex Rivera Jr., Elena Rostova)
+ * Seed initial system administrator account if none exist.
  */
 const DEFAULT_SALT = 'cl_salt_2026';
 
-// Synchronous default accounts with precomputed hashes for standard demo logins:
-// Admin: ChessLogsAdmin2026!
-// Students: Student123!
 const SEED_ACCOUNTS = [
   {
     id: 'coach-kasparov-uuid',
     email: 'satoalt33@gmail.com',
     secondary_emails: ['coach@chesslogs.com'],
-    first_name: 'Garry',
-    middle_initial: 'K',
-    last_name: 'Kasparov',
+    first_name: 'Super',
+    middle_initial: 'A',
+    last_name: 'Admin',
     suffix: '',
-    date_of_birth: '1963-04-13',
+    date_of_birth: '1985-01-01',
     display_name: 'Super Admin',
     role: 'admin',
-    chesscom_username: 'magnuscarlsen',
-    bio: 'Grandmaster head coach specializing in tactical breakthroughs and opening preparation.',
+    chesscom_username: '',
+    bio: 'ChessLogs Head Coach and Administrator.',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     salt: DEFAULT_SALT,
-    // Will be verified against both hashed and direct password for developer convenience
     password_hash: null,
     created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'student-alex-uuid',
-    email: 'alex@chesslogs.com',
-    first_name: 'Alex',
-    middle_initial: 'M',
-    last_name: 'Rivera',
-    suffix: 'Jr.',
-    date_of_birth: '2005-04-12',
-    display_name: 'Alex M. Rivera Jr.',
-    role: 'student',
-    chesscom_username: 'hikaru',
-    bio: 'Club player working towards 2000 Elo on Chess.com. Focusing on Sicilian defense and pawn structure.',
-    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    salt: DEFAULT_SALT,
-    password_hash: null,
-    created_at: '2026-02-15T00:00:00.000Z',
-  },
-  {
-    id: 'student-elena-uuid',
-    email: 'elena@chesslogs.com',
-    first_name: 'Elena',
-    middle_initial: 'V',
-    last_name: 'Rostova',
-    suffix: '',
-    date_of_birth: '2004-09-21',
-    display_name: 'Elena V. Rostova',
-    role: 'student',
-    chesscom_username: 'danielnaroditsky',
-    bio: 'Intermediate player mastering king safety and tactical forks in open games.',
-    avatar_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    salt: DEFAULT_SALT,
-    password_hash: null,
-    created_at: '2026-03-01T00:00:00.000Z',
   },
 ];
 
@@ -342,22 +302,11 @@ export async function verifySiteCredentials(email, password) {
     }
   }
 
-  // Case 2: Seed admin convenience check (ChessLogsAdmin2026! or default password)
+  // Case 2: Seed admin initial sign in verification
   if (!isValid) {
-    if (account.role === 'admin' && (password === 'ChessLogsAdmin2026!' || password === 'admin123')) {
+    if (account.role === 'admin' && password === 'ChessLogsAdmin2026!') {
       isValid = true;
-      // Upgrade account with proper hash on successful sign in
-      const salt = generateSalt();
-      account.salt = salt;
-      account.password_hash = await hashPassword(password, salt);
-      const accounts = getSiteAccounts();
-      const idx = accounts.findIndex((a) => a.id === account.id);
-      if (idx >= 0) {
-        accounts[idx] = account;
-        saveSiteAccounts(accounts);
-      }
-    } else if (account.role === 'student' && (password === 'Student123!' || password === 'password' || password === '123456')) {
-      isValid = true;
+      // Upgrade account with secure SHA-256 hash on first sign in
       const salt = generateSalt();
       account.salt = salt;
       account.password_hash = await hashPassword(password, salt);
