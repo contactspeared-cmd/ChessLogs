@@ -82,6 +82,11 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const [assignSuccess, setAssignSuccess] = useState(false);
   const [assignError, setAssignError] = useState('');
 
+  // Delete Confirmation Modal
+  const [deletingCourse, setDeletingCourse] = useState(null);
+  const [deleteConfirmTitle, setDeleteConfirmTitle] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+
   // Coaching Standards & Credentials Form State
   const [minStudentElo, setMinStudentElo] = useState(profile?.min_student_elo || 1200);
   const [coachingStandards, setCoachingStandards] = useState(
@@ -267,13 +272,27 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     }
   };
 
-  const handleDeleteCourse = async (courseId) => {
-    if (!window.confirm('Are you sure you want to delete this curriculum module?')) return;
+  const handleOpenDeleteModal = (course) => {
+    setDeletingCourse(course);
+    setDeleteConfirmTitle('');
+    setDeleteError('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCourse) return;
+    if (deleteConfirmTitle.trim().toLowerCase() !== deletingCourse.title.trim().toLowerCase()) {
+      setDeleteError('Course title does not match. Please type the exact title to confirm.');
+      return;
+    }
     try {
-      await deleteCourse(courseId);
+      await deleteCourse(deletingCourse.id);
+      setDeletingCourse(null);
+      setDeleteConfirmTitle('');
+      setDeleteError('');
       await loadDashboardData();
     } catch (err) {
       console.error('Failed to delete course:', err);
+      setDeleteError(err?.message || 'Failed to delete course. Please try again.');
     }
   };
 
@@ -780,46 +799,69 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                       {course.description || 'No description provided.'}
                     </p>
 
-                    <div className="text-[11px] text-slate-400 pt-2 flex items-center gap-2 flex-wrap">
+                    <div className="text-[11px] text-slate-400 pt-1 flex items-center gap-2 flex-wrap">
                       <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                        Elo {course.min_elo || 0} - {course.max_elo || 3000}
+                        Elo {course.min_elo || 0} – {course.max_elo || 3000}
                       </span>
                       <span className="capitalize px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                         Side: {course.trained_side || 'white'}
                       </span>
+                      {/* Assigned students count badge */}
+                      {(() => {
+                        const assignedCount = students.filter((s) =>
+                          (s.assignments || []).some((a) => a.course_id === course.id)
+                        ).length;
+                        return assignedCount > 0 ? (
+                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {assignedCount} assigned
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-slate-800/60 text-slate-500 border border-slate-700">
+                            Unassigned
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5">
+                  <div className="mt-5 pt-4 border-t border-slate-800 space-y-2">
+                    {/* Primary actions row */}
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEditCourse(course)}
-                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                        title="Edit course"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+                        title="Edit course details and chapters"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-3.5 h-3.5 text-amber-400" />
+                        Edit Course
                       </button>
                       <button
-                        onClick={() => handleDeleteCourse(course.id)}
-                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
-                        title="Delete course"
+                        onClick={() => handleOpenAssignModal(course)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold border border-amber-500/20 transition-colors"
+                        title="Assign or re-assign this course to students"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Users className="w-3.5 h-3.5" />
+                        Assign / Re-assign
                       </button>
                     </div>
 
+                    {/* Secondary actions row */}
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleOpenAssignModal(course)}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold border border-amber-500/20 transition-colors"
+                        onClick={() => navigate(`/courses/${course.id}`)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition-colors"
                       >
-                        Assign to Cohort
+                        <Eye className="w-3.5 h-3.5" />
+                        Preview
                       </button>
                       <button
-                        onClick={() => navigate(`/courses/${course.id}`)}
-                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                        onClick={() => handleOpenDeleteModal(course)}
+                        className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold border border-rose-500/20 transition-colors"
+                        title="Delete this course permanently"
                       >
-                        View
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
                       </button>
                     </div>
                   </div>
@@ -1415,6 +1457,93 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
+      {/* DELETE COURSE CONFIRMATION MODAL */}
+      {deletingCourse && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                <Trash2 className="w-5 h-5 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Delete Course</h3>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                  This action is <span className="text-rose-400 font-semibold">permanent and irreversible</span>.
+                  All chapter data and student assignments linked to this course will be removed.
+                </p>
+              </div>
+            </div>
+
+            {/* Course info preview */}
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                Course to delete
+              </div>
+              <div className="font-bold text-white text-sm">{deletingCourse.title}</div>
+              <div className="text-[11px] text-slate-400">
+                {deletingCourse.chapters?.length || 0} chapters ·{' '}
+                {students.filter((s) =>
+                  (s.assignments || []).some((a) => a.course_id === deletingCourse.id)
+                ).length}{' '}
+                students assigned
+              </div>
+            </div>
+
+            {/* Confirmation input */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-300">
+                Type the course title to confirm deletion:
+              </label>
+              <input
+                type="text"
+                placeholder={deletingCourse.title}
+                value={deleteConfirmTitle}
+                onChange={(e) => {
+                  setDeleteConfirmTitle(e.target.value);
+                  setDeleteError('');
+                }}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors placeholder:text-slate-600"
+                autoFocus
+              />
+              {deleteError && (
+                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  {deleteError}
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeletingCourse(null);
+                  setDeleteConfirmTitle('');
+                  setDeleteError('');
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={
+                  deleteConfirmTitle.trim().toLowerCase() !==
+                  deletingCourse.title.trim().toLowerCase()
+                }
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* INSPECT STUDENT MODAL */}
       {selectedStudent && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1522,8 +1651,16 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-white">Assign Curriculum Module</h3>
-                <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{assigningCourse.title}</p>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-amber-400" />
+                  Assign / Re-assign Students
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 font-mono">
+                  {assigningCourse.title}
+                </p>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Check students to assign · Uncheck to remove assignment
+                </p>
               </div>
               <button
                 onClick={() => setAssigningCourse(null)}
@@ -1568,28 +1705,51 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-800 rounded-2xl p-2 bg-slate-950">
-                {students.map((s) => {
-                  const isChecked = selectedStudentIds.includes(s.id);
-                  return (
-                    <div
-                      key={s.id}
-                      onClick={() => handleToggleStudentSelection(s.id)}
-                      className="p-2.5 rounded-xl hover:bg-slate-900 cursor-pointer flex items-center justify-between text-xs transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        {isChecked ? (
-                          <CheckSquare className="w-4 h-4 text-amber-400 shrink-0" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-600 shrink-0" />
-                        )}
-                        <span className="font-semibold text-white">{s.display_name}</span>
+                {students.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-500">
+                    No students enrolled yet.
+                  </div>
+                ) : (
+                  students.map((s) => {
+                    const isChecked = selectedStudentIds.includes(s.id);
+                    const wasAlreadyAssigned = students
+                      .filter((st) =>
+                        (st.assignments || []).some((a) => a.course_id === assigningCourse?.id)
+                      )
+                      .map((st) => st.id)
+                      .includes(s.id);
+                    return (
+                      <div
+                        key={s.id}
+                        onClick={() => handleToggleStudentSelection(s.id)}
+                        className={`p-2.5 rounded-xl cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                          isChecked
+                            ? 'bg-amber-500/10 border border-amber-500/20'
+                            : 'hover:bg-slate-900 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {isChecked ? (
+                            <CheckSquare className="w-4 h-4 text-amber-400 shrink-0" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-600 shrink-0" />
+                          )}
+                          <div>
+                            <span className="font-semibold text-white">{s.display_name}</span>
+                            {wasAlreadyAssigned && (
+                              <span className="ml-2 text-[10px] text-emerald-400 font-semibold uppercase tracking-wide">
+                                Currently Assigned
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono">
+                          {s.current_elo || 1200} Elo
+                        </span>
                       </div>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        {s.current_elo || 1200} Elo
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </div>
 
