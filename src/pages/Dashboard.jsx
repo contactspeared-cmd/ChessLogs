@@ -6,6 +6,8 @@ import { fetchChesscomStats } from '../lib/chesscom';
 import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
 import StatCard from '../components/StatCard';
+import CoachDashboard from '../components/dashboard/CoachDashboard';
+import AdminDashboard from './AdminDashboard';
 import {
   Trophy,
   BookOpen,
@@ -14,11 +16,17 @@ import {
   ArrowRight,
   Sparkles,
   Zap,
+  Eye,
+  ArrowLeft,
+  GraduationCap,
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, isAdmin, isCoach } = useAuth();
   const navigate = useNavigate();
+
+  // Preview Student View mode for Admin / Coach
+  const [previewStudent, setPreviewStudent] = useState(false);
 
   const [courses, setCourses] = useState([]);
   const [games, setGames] = useState([]);
@@ -52,7 +60,17 @@ export default function Dashboard() {
     loadDashboardData();
   }, [profile]);
 
-  // Calculate statistics
+  // If Admin and not in preview mode, render redesigned Admin Command Center
+  if (isAdmin && !previewStudent) {
+    return <AdminDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
+  }
+
+  // If Coach and not in preview mode, render overhauled Coach Command Studio
+  if (isCoach && !previewStudent) {
+    return <CoachDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
+  }
+
+  // Calculate statistics for standard User / Student UI (Kept as is)
   const totalGames = games.length;
   const wins = games.filter((g) => g.result === 'win').length;
   const losses = games.filter((g) => g.result === 'loss').length;
@@ -70,12 +88,31 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Learner Preview Alert Banner for Coach / Admin */}
+      {previewStudent && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 text-xs text-amber-300 font-semibold">
+            <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Previewing Student / Learner Portal View ({isAdmin ? 'Administrator Mode' : 'Coach Mode'})
+            </span>
+          </div>
+          <button
+            onClick={() => setPreviewStudent(false)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>{isAdmin ? 'Back to Command Center' : 'Back to Coach Studio'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-              {profile?.role === 'admin' ? 'Coach Command View' : 'Student Improvement Portal'}
+              {profile?.role === 'admin' ? 'Admin Command View' : 'Student Improvement Portal'}
             </span>
             {profile?.chesscom_username && (
               <span className="text-xs text-slate-400 font-mono">
@@ -187,13 +224,19 @@ export default function Dashboard() {
                     className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-sm transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                           {course.type === 'walkthrough' ? 'Interactive Board' : 'Video'}
                         </span>
                         <span className="text-xs text-slate-400 font-mono">
                           {completed} of {total} chapters
                         </span>
+                        {course.coach_name && (
+                          <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3 text-amber-400" />
+                            <span>Coach {course.coach_name}</span>
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-bold text-white group-hover:text-emerald-400 transition-colors text-sm">
                         {course.title}

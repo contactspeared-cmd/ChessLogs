@@ -1,4 +1,16 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { api } from './api';
+import {
+  getAllAccounts,
+  updateAccountRole,
+  getCoachCredentials,
+  submitCoachCredential,
+  reviewCoachCredential,
+  getStudentEnrollments,
+  applyStudentEnrollment,
+  reviewStudentEnrollment,
+  getStudentRequirements,
+  reviewStudentRequirement,
+} from './authStore';
 
 const STORAGE_COURSES = 'chesslogs_courses';
 const STORAGE_GAMES = 'chesslogs_games';
@@ -6,8 +18,8 @@ const STORAGE_ASSIGNMENTS = 'chesslogs_assignments';
 const STORAGE_REVIEWS = 'chesslogs_reviews';
 const STORAGE_STUDENTS = 'chesslogs_students';
 
-// Runtime toggle: set to false when we detect Supabase schema/cache issues
-let runtimeSupabaseEnabled = true;
+// Runtime toggle for backend connectivity
+let runtimeBackendEnabled = true;
 
 /**
  * Unpack chapter annotations jsonb.
@@ -71,19 +83,8 @@ export function normalizeCourseProgress(progress) {
       p.preferred_study_mode === 'read' || p.preferred_study_mode === 'trainer'
         ? p.preferred_study_mode
         : null,
+    trainer: p.trainer && typeof p.trainer === 'object' ? p.trainer : { cards: {} },
   };
-}
-
-function isSupabaseSchemaError(err) {
-  if (!err) return false;
-  const code = err.code || '';
-  const msg = (err.message || '').toLowerCase();
-  return (
-    String(code) === 'PGRST204' ||
-    msg.includes("could not find the '") ||
-    msg.includes('schema cache') ||
-    msg.includes('could not find')
-  );
 }
 
 // Max attempts/limits when trimming local games to fit storage quota
@@ -105,7 +106,6 @@ function isQuotaExceededError(err) {
 }
 
 function minimalGame(game) {
-  // Keep only small index fields to preserve identity and basic metadata
   return {
     id: game.id,
     student_id: game.student_id,
@@ -134,7 +134,6 @@ function setGamesSafely(gamesArray) {
     return;
   } catch (err) {
     if (!isQuotaExceededError(err)) throw err;
-    // Try progressively trimming / stripping large fields until it fits
     for (let limit of GAME_TRIM_LIMITS) {
       const trimmed = gamesArray.slice(0, Math.min(limit, gamesArray.length)).map(stripLargeFields);
       try {
@@ -142,118 +141,24 @@ function setGamesSafely(gamesArray) {
         return;
       } catch (e2) {
         if (!isQuotaExceededError(e2)) throw e2;
-        // next iteration will reduce further
       }
     }
 
-    // As a last resort, store only minimal metadata for the most recent game
     try {
       const minimal = gamesArray.slice(0, 5).map(minimalGame);
       localStorage.setItem(STORAGE_GAMES, JSON.stringify(minimal));
     } catch (finalErr) {
-      // If even this fails, give up (do not crash app) and emit console.warn
       console.warn('Unable to persist games to localStorage due to quota limits.', finalErr);
     }
   }
 }
 
-// Initialize clean storage and purge legacy dummy data
-function initMockStorage() {
-  const DUMMY_STUDENT_IDS = new Set(['student-alex-uuid', 'student-elena-uuid', 'coach-kasparov-uuid']);
-  const DUMMY_GAME_IDS = new Set(['sample-game-1', 'sample-game-2']);
-  const DUMMY_COURSE_IDS = new Set(['course-sicilian-mastery', 'course-endgame-fundamentals']);
-
-  // Courses
-  const rawCourses = localStorage.getItem(STORAGE_COURSES);
-  if (!rawCourses) {
-    localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
-  } else {
-    try {
-      const courses = JSON.parse(rawCourses);
-      const cleanCourses = courses.filter((c) => !DUMMY_COURSE_IDS.has(c.id));
-      if (cleanCourses.length !== courses.length) {
-        localStorage.setItem(STORAGE_COURSES, JSON.stringify(cleanCourses));
-      }
-    } catch {
-      localStorage.setItem(STORAGE_COURSES, JSON.stringify([]));
-    }
-  }
-
-  // Games
-  const rawGames = localStorage.getItem(STORAGE_GAMES);
-  if (!rawGames) {
-    localStorage.setItem(STORAGE_GAMES, JSON.stringify([]));
-  } else {
-    try {
-      const games = JSON.parse(rawGames);
-      const cleanGames = games.filter((g) => !DUMMY_GAME_IDS.has(g.id) && !DUMMY_STUDENT_IDS.has(g.student_id));
-      if (cleanGames.length !== games.length) {
-        localStorage.setItem(STORAGE_GAMES, JSON.stringify(cleanGames));
-      }
-    } catch {
-      localStorage.setItem(STORAGE_GAMES, JSON.stringify([]));
-    }
-  }
-
-  // Students
-  const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
-  if (!rawStudents) {
-    localStorage.setItem(STORAGE_STUDENTS, JSON.stringify([]));
-  } else {
-    try {
-      const students = JSON.parse(rawStudents);
-      const cleanStudents = students.filter((s) => !DUMMY_STUDENT_IDS.has(s.id));
-      if (cleanStudents.length !== students.length) {
-        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(cleanStudents));
-      }
-    } catch {
-      localStorage.setItem(STORAGE_STUDENTS, JSON.stringify([]));
-    }
-  }
-
-  // Assignments
-  const rawAssignments = localStorage.getItem(STORAGE_ASSIGNMENTS);
-  if (!rawAssignments) {
-    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify([]));
-  } else {
-    try {
-      const assignments = JSON.parse(rawAssignments);
-      const cleanAssignments = assignments.filter((a) => !DUMMY_STUDENT_IDS.has(a.student_id) && !DUMMY_COURSE_IDS.has(a.course_id));
-      if (cleanAssignments.length !== assignments.length) {
-        localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(cleanAssignments));
-      }
-    } catch {
-      localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify([]));
-    }
-  }
-}
-
-if (typeof window !== 'undefined') {
-  initMockStorage();
-}
-
+// Legacy toggle compatibility
 export async function shouldUseSupabase() {
-  if (!isSupabaseConfigured) return false;
-  if (!runtimeSupabaseEnabled) return false;
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    // Quick probe to detect schema/cache issues (some Supabase projects may be missing
-    // recent schema changes which cause errors like PGRST204). If we detect such an error,
-    // disable Supabase usage for this session and fall back to localStorage.
-    try {
-      const { error: probeError } = await supabase.from('games').select('id').limit(1);
-      if (probeError && isSupabaseSchemaError(probeError)) {
-        runtimeSupabaseEnabled = false;
-        console.warn('Disabling Supabase for this session due to schema mismatch:', probeError.message || probeError);
-        return false;
-      }
-    } catch (probeErr) {
-      // ignore probe failure and proceed; the main auth check will still determine usage
-    }
-    return Boolean(session?.user);
-  } catch {
-    return false;
-  }
+  return false;
+}
+export async function shouldUseBackend() {
+  return runtimeBackendEnabled;
 }
 
 /**
@@ -262,84 +167,192 @@ export async function shouldUseSupabase() {
  * -----------------------------------------------------------------------------
  */
 
+export const SEED_COURSES = [
+  {
+    id: 'course-sicilian-defense',
+    title: 'Mastering the Sicilian Defense: Open Variations & Pawn Structures',
+    description:
+      'Authored by GM & Coach Magnus Carlsen. Master key tactical pawn breaks, active piece placement, and dynamic counter-play in open Sicilian games.',
+    type: 'walkthrough',
+    orientation: 'black',
+    trained_side: 'black',
+    min_elo: 1300,
+    max_elo: 2400,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    chapters: [
+      {
+        id: 'ch-sicilian-1',
+        course_id: 'course-sicilian-defense',
+        order_index: 0,
+        title: 'Chapter 1: Sicilian Dragon & Yugoslav Setup',
+        description: 'Key attacking lines and pawn levers against White castling queenside.',
+        orientation: 'black',
+        trained_side: 'black',
+        pgn: '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3 Bg7 7. f3 O-O 8. Qd2 Nc6 *',
+        annotations: [
+          { ply: 16, keyMove: 'Nc6', comment: 'Solid knight development pressuring central squares.' },
+        ],
+      },
+      {
+        id: 'ch-sicilian-2',
+        course_id: 'course-sicilian-defense',
+        order_index: 1,
+        title: 'Chapter 2: Najdorf 6. Be2 Classical Strategy',
+        description: 'Navigating positional nuances and dynamic e5 thrusts.',
+        orientation: 'black',
+        trained_side: 'black',
+        pgn: '1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2 e5 7. Nb3 Be7 *',
+        annotations: [
+          { ply: 12, keyMove: 'e5', comment: 'Signature thematic push establishing strong space in the center.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-endgame-fundamentals',
+    title: 'Rook & Pawn Endgames: Lucena & Philidor Mastery',
+    description:
+      'Authored by Coach Magnus Carlsen. Essential endgame techniques and building bridges every competitive tournament player must execute with absolute accuracy.',
+    type: 'walkthrough',
+    orientation: 'white',
+    trained_side: 'white',
+    min_elo: 1200,
+    max_elo: 2200,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    chapters: [
+      {
+        id: 'ch-endgame-1',
+        course_id: 'course-endgame-fundamentals',
+        order_index: 0,
+        title: 'Chapter 1: The Lucena Technique & Bridge Building',
+        description: 'Technique to convert 7th-rank rook and pawn endings.',
+        orientation: 'white',
+        trained_side: 'white',
+        pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ *',
+        annotations: [
+          { ply: 12, keyMove: 'Bb4+', comment: 'Key tactical check to verify conversion principles.' },
+        ],
+      },
+    ],
+  },
+];
+
+export function enrichCourseWithCoach(course) {
+  if (!course) return course;
+  const accounts = getAllAccounts();
+  const coach =
+    accounts.find((a) => a.id === course.created_by) ||
+    accounts.find((a) => a.role === 'coach') || {
+      id: 'coach-magnus-uuid',
+      display_name: 'Magnus C. Carlsen',
+      avatar_url:
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+      chesscom_username: 'magnuscarlsen',
+      role: 'coach',
+    };
+
+  return {
+    ...course,
+    coach_name: course.coach_name || coach.display_name,
+    coach_avatar: course.coach_avatar || coach.avatar_url,
+    coach_role: course.coach_role || coach.role || 'coach',
+    coach_chesscom: course.coach_chesscom || coach.chesscom_username,
+  };
+}
+
 export async function getCourses(userProfile) {
-  if (await shouldUseSupabase()) {
-    if (userProfile?.role === 'admin') {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*, chapters:course_chapters(*)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []).map((course) => ({
+  try {
+    const data = await api.courses.getAll(userProfile?.role || 'student', userProfile?.id);
+    if (Array.isArray(data) && data.length > 0) {
+      return data.map((course) => enrichCourseWithCoach({
         ...course,
         chapters: normalizeChapters(course.chapters),
-      }));
-    } else {
-      // Student: only assigned courses
-      const { data, error } = await supabase
-        .from('courses')
-        .select(
-          '*, chapters:course_chapters(*), assignments:course_assignments!inner(student_id, progress)'
-        )
-        .eq('assignments.student_id', userProfile?.id);
-      if (error) throw error;
-      return (data || []).map((course) => ({
-        ...course,
-        chapters: normalizeChapters(course.chapters),
-        progress: normalizeCourseProgress(
-          course.assignments?.[0]?.progress || { completed_chapter_ids: [] }
-        ),
+        progress: normalizeCourseProgress(course.progress),
       }));
     }
+  } catch (err) {
+    console.warn('PHP API getCourses failed, falling back to local storage:', err);
   }
 
-  // Mock
-  const rawCourses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
-  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  // Fallback to local storage
+  let rawCourses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
+  let assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
 
-  if (userProfile?.role === 'admin') {
-    return rawCourses.map((c) => ({ ...c, chapters: normalizeChapters(c.chapters) }));
+  // Seed courses if storage is empty
+  if (rawCourses.length === 0) {
+    rawCourses = [...SEED_COURSES];
+    localStorage.setItem(STORAGE_COURSES, JSON.stringify(rawCourses));
   }
 
-  // Filter for student
+  // Ensure initial assignments exist for student
+  if (userProfile?.id && assignments.filter((a) => a.student_id === userProfile.id).length === 0) {
+    const initialStudentAssignments = rawCourses.map((c) => ({
+      id: `assign-${c.id}-${userProfile.id}`,
+      course_id: c.id,
+      student_id: userProfile.id,
+      assigned_at: '2026-02-01T10:00:00.000Z',
+      assigned_by: c.created_by || 'coach-magnus-uuid',
+      progress: {
+        completed_chapter_ids: [c.chapters?.[0]?.id].filter(Boolean),
+        read_chapter_ids: [c.chapters?.[0]?.id].filter(Boolean),
+        trained_chapter_ids: [],
+        trainer: { cards: {} },
+      },
+    }));
+    assignments.push(...initialStudentAssignments);
+    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+  }
+
+  if (userProfile?.role === 'admin' || userProfile?.role === 'coach') {
+    return rawCourses.map((c) => enrichCourseWithCoach({ ...c, chapters: normalizeChapters(c.chapters) }));
+  }
+
   const studentAssignments = assignments.filter((a) => a.student_id === userProfile?.id);
   const assignedCourseIds = new Set(studentAssignments.map((a) => a.course_id));
 
-  return rawCourses
+  const list = rawCourses
     .filter((c) => assignedCourseIds.has(c.id))
     .map((c) => {
       const assign = studentAssignments.find((a) => a.course_id === c.id);
-      return {
+      return enrichCourseWithCoach({
         ...c,
+        assigned_at: assign?.assigned_at,
         chapters: normalizeChapters(c.chapters),
         progress: normalizeCourseProgress(assign?.progress || { completed_chapter_ids: [] }),
-      };
+      });
     });
+
+  return list.length > 0
+    ? list
+    : rawCourses.map((c) =>
+        enrichCourseWithCoach({
+          ...c,
+          chapters: normalizeChapters(c.chapters),
+          progress: normalizeCourseProgress(null),
+        })
+      );
 }
 
 export async function getCourseById(courseId, studentId = null) {
-  if (isSupabaseConfigured) {
-    const { data, error } = await supabase
-      .from('courses')
-      .select('*, chapters:course_chapters(*)')
-      .eq('id', courseId)
-      .single();
-    if (error) throw error;
-    if (data) {
+  try {
+    const data = await api.courses.getById(courseId, studentId);
+    if (data && data.id) {
       data.chapters = normalizeChapters(data.chapters);
-      if (studentId) {
-        const { data: assignment } = await supabase
-          .from('course_assignments')
-          .select('progress')
-          .eq('course_id', courseId)
-          .eq('student_id', studentId)
-          .maybeSingle();
-        data.progress = normalizeCourseProgress(assignment?.progress);
-      } else {
-        data.progress = normalizeCourseProgress(data.progress);
-      }
+      data.progress = normalizeCourseProgress(data.progress);
+      return enrichCourseWithCoach(data);
     }
-    return data;
+  } catch (err) {
+    console.warn('PHP API getCourseById failed, falling back to local storage:', err);
   }
 
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
@@ -351,80 +364,22 @@ export async function getCourseById(courseId, studentId = null) {
     const assign = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
     normalized.progress = normalizeCourseProgress(assign?.progress);
   }
-  return normalized;
+  return enrichCourseWithCoach(normalized);
 }
 
 export async function saveCourse(courseData, chaptersData = []) {
-  if (isSupabaseConfigured) {
-    let courseId = courseData.id;
-    if (!courseId) {
-      const { data: newCourse, error: cErr } = await supabase
-        .from('courses')
-        .insert({
-          title: courseData.title,
-          description: courseData.description,
-          type: courseData.type,
-          orientation: courseData.orientation || 'white',
-          trained_side: courseData.trained_side || 'white',
-          created_by: courseData.created_by,
-        })
-        .select()
-        .single();
-      if (cErr) throw cErr;
-      courseId = newCourse.id;
-    } else {
-      const { error: cErr } = await supabase
-        .from('courses')
-        .update({
-          title: courseData.title,
-          description: courseData.description,
-          type: courseData.type,
-          orientation: courseData.orientation || 'white',
-          trained_side: courseData.trained_side || 'white',
-        })
-        .eq('id', courseId);
-      if (cErr) throw cErr;
+  try {
+    const saved = await api.courses.save(courseData, chaptersData);
+    if (saved && saved.id) {
+      saved.chapters = normalizeChapters(saved.chapters);
+      saved.progress = normalizeCourseProgress(saved.progress);
+      return saved;
     }
-
-    // Replace chapters
-    if (chaptersData.length > 0) {
-      await supabase.from('course_chapters').delete().eq('course_id', courseId);
-
-      const buildRows = (includeExtraColumns) =>
-        chaptersData.map((ch, idx) => {
-          const moments = Array.isArray(ch.annotations)
-            ? ch.annotations
-            : unpackChapterAnnotations(ch.annotations).moments;
-          const description = (ch.description || '').trim() || null;
-          const row = {
-            course_id: courseId,
-            order_index: idx + 1,
-            title: ch.title,
-            video_url: ch.video_url || null,
-            pgn: ch.pgn || null,
-            // Pack description into annotations so it survives without the column migration
-            annotations: packChapterAnnotations(description, moments),
-          };
-          if (includeExtraColumns) {
-            row.description = description;
-            row.orientation = ch.orientation || courseData.orientation || 'white';
-            row.trained_side = ch.trained_side || courseData.trained_side || 'white';
-          }
-          return row;
-        });
-
-      // Include extra columns when migrated; fall back if schema cache lacks them.
-      let { error: chErr } = await supabase.from('course_chapters').insert(buildRows(true));
-      if (chErr && isSupabaseSchemaError(chErr)) {
-        ({ error: chErr } = await supabase.from('course_chapters').insert(buildRows(false)));
-      }
-      if (chErr) throw chErr;
-    }
-
-    return getCourseById(courseId);
+  } catch (err) {
+    console.warn('PHP API saveCourse failed, saving to local storage:', err);
   }
 
-  // Mock save
+  // Fallback to local storage
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
   let courseId = courseData.id;
   let updatedCourse;
@@ -471,10 +426,10 @@ export async function saveCourse(courseData, chaptersData = []) {
 }
 
 export async function deleteCourse(courseId) {
-  if (isSupabaseConfigured) {
-    const { error } = await supabase.from('courses').delete().eq('id', courseId);
-    if (error) throw error;
-    return true;
+  try {
+    await api.courses.delete(courseId);
+  } catch (err) {
+    console.warn('PHP API deleteCourse failed, falling back to local storage:', err);
   }
 
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
@@ -495,42 +450,11 @@ export async function assignCourseToStudents(courseId, studentIds) {
     throw new Error('Select at least 1 student to assign this course.');
   }
 
-  if (isSupabaseConfigured) {
-    const selected = new Set(ids);
-
-    // Sync roster: drop assignments for students no longer selected
-    const { data: existing, error: existingError } = await supabase
-      .from('course_assignments')
-      .select('id, student_id')
-      .eq('course_id', courseId);
-    if (existingError) throw existingError;
-
-    const toRemove = (existing || [])
-      .filter((row) => !selected.has(row.student_id))
-      .map((row) => row.id);
-
-    if (toRemove.length > 0) {
-      const { error: removeError } = await supabase
-        .from('course_assignments')
-        .delete()
-        .in('id', toRemove);
-      if (removeError) throw removeError;
-    }
-
-    const alreadyAssigned = new Set((existing || []).map((row) => row.student_id));
-    const toAdd = ids.filter((sid) => !alreadyAssigned.has(sid));
-
-    if (toAdd.length > 0) {
-      const rows = toAdd.map((sid) => ({
-        course_id: courseId,
-        student_id: sid,
-        progress: { completed_chapter_ids: [] },
-      }));
-      const { error } = await supabase.from('course_assignments').insert(rows);
-      if (error) throw error;
-    }
-
+  try {
+    await api.assignments.assign(courseId, ids);
     return true;
+  } catch (err) {
+    console.warn('PHP API assignCourseToStudents failed, updating local storage:', err);
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
@@ -559,14 +483,14 @@ function addUniqueId(list = [], id) {
   return list.includes(id) ? list : [...list, id];
 }
 
-/**
- * Mark chapter progress for a study mode.
- * @param {'trained'|'read'|'video'|undefined} mode
- *   - trained: active-recall Trainer completion
- *   - read: passive Read walkthrough completion
- *   - video / omitted: legacy single completion (also used for video chapters)
- */
 export async function markChapterComplete(courseId, studentId, chapterId, mode = 'video') {
+  try {
+    await api.assignments.markProgress(courseId, studentId, chapterId, mode);
+    return true;
+  } catch (err) {
+    console.warn('PHP API markChapterComplete failed, updating local storage:', err);
+  }
+
   const applyProgress = (progress) => {
     const next = normalizeCourseProgress(progress);
     if (mode === 'read') {
@@ -575,51 +499,10 @@ export async function markChapterComplete(courseId, studentId, chapterId, mode =
       next.trained_chapter_ids = addUniqueId(next.trained_chapter_ids, chapterId);
       next.completed_chapter_ids = addUniqueId(next.completed_chapter_ids, chapterId);
     } else {
-      // video / legacy
       next.completed_chapter_ids = addUniqueId(next.completed_chapter_ids, chapterId);
     }
     return next;
   };
-
-  if (isSupabaseConfigured) {
-    const { data: assignment, error: fetchErr } = await supabase
-      .from('course_assignments')
-      .select('*')
-      .eq('course_id', courseId)
-      .eq('student_id', studentId)
-      .maybeSingle();
-
-    if (fetchErr) {
-      console.error('Failed to query course assignment:', fetchErr);
-      return false;
-    }
-
-    if (assignment) {
-      const { error: updateErr } = await supabase
-        .from('course_assignments')
-        .update({ progress: applyProgress(assignment.progress) })
-        .eq('id', assignment.id);
-      if (updateErr) {
-        console.error('Failed to update course progress:', updateErr);
-        return false;
-      }
-      return true;
-    }
-
-    // Auto-provision assignment so self-enrolled / unassigned student progress is saved
-    const { error: insertErr } = await supabase
-      .from('course_assignments')
-      .insert({
-        course_id: courseId,
-        student_id: studentId,
-        progress: applyProgress({}),
-      });
-    if (insertErr) {
-      console.error('Failed to insert initial course assignment:', insertErr);
-      return false;
-    }
-    return true;
-  }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const matchIndex = assignments.findIndex(
@@ -639,39 +522,14 @@ export async function markChapterComplete(courseId, studentId, chapterId, mode =
   return true;
 }
 
-/** Persist last-used Study mode (trainer | read) for a course. */
 export async function savePreferredStudyMode(courseId, studentId, mode) {
   if (!courseId || !studentId || (mode !== 'trainer' && mode !== 'read')) return false;
 
-  const apply = (progress) => ({
-    ...normalizeCourseProgress(progress),
-    preferred_study_mode: mode,
-  });
-
-  if (isSupabaseConfigured) {
-    const { data: assignment } = await supabase
-      .from('course_assignments')
-      .select('*')
-      .eq('course_id', courseId)
-      .eq('student_id', studentId)
-      .maybeSingle();
-
-    if (assignment) {
-      await supabase
-        .from('course_assignments')
-        .update({ progress: apply(assignment.progress) })
-        .eq('id', assignment.id);
-      return true;
-    }
-
-    await supabase
-      .from('course_assignments')
-      .insert({
-        course_id: courseId,
-        student_id: studentId,
-        progress: apply({}),
-      });
+  try {
+    await api.assignments.saveStudyMode(courseId, studentId, mode);
     return true;
+  } catch (err) {
+    console.warn('PHP API savePreferredStudyMode failed, updating local storage:', err);
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
@@ -679,60 +537,30 @@ export async function savePreferredStudyMode(courseId, studentId, mode) {
     (a) => a.course_id === courseId && a.student_id === studentId
   );
   if (matchIndex >= 0) {
-    assignments[matchIndex].progress = apply(assignments[matchIndex].progress);
+    assignments[matchIndex].progress = {
+      ...normalizeCourseProgress(assignments[matchIndex].progress),
+      preferred_study_mode: mode,
+    };
   } else {
     assignments.push({
       id: `local_assign_${Date.now()}`,
       course_id: courseId,
       student_id: studentId,
-      progress: apply({}),
+      progress: { preferred_study_mode: mode },
     });
   }
   localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   return true;
 }
 
-/**
- * Persist Move Trainer SRS map inside course_assignments.progress.trainer
- * @param {string} courseId
- * @param {string} studentId
- * @param {Object} trainerProgress - { cards: { [cardId]: srsState }, lastSessionAt?, mode? }
- */
 export async function saveTrainerProgress(courseId, studentId, trainerProgress) {
   if (!courseId || !studentId) return false;
 
-  if (isSupabaseConfigured) {
-    const { data: assignment } = await supabase
-      .from('course_assignments')
-      .select('*')
-      .eq('course_id', courseId)
-      .eq('student_id', studentId)
-      .maybeSingle();
-
-    if (assignment) {
-      const nextProgress = {
-        ...(assignment.progress || { completed_chapter_ids: [] }),
-        trainer: trainerProgress,
-      };
-      const { error } = await supabase
-        .from('course_assignments')
-        .update({ progress: nextProgress })
-        .eq('id', assignment.id);
-      if (error) throw error;
-      return true;
-    }
-
-    // Auto-assign so solo practice still persists
-    const { error } = await supabase.from('course_assignments').insert({
-      course_id: courseId,
-      student_id: studentId,
-      progress: {
-        completed_chapter_ids: [],
-        trainer: trainerProgress,
-      },
-    });
-    if (error) throw error;
+  try {
+    await api.assignments.saveTrainer(courseId, studentId, trainerProgress);
     return true;
+  } catch (err) {
+    console.warn('PHP API saveTrainerProgress failed, updating local storage:', err);
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
@@ -756,20 +584,16 @@ export async function saveTrainerProgress(courseId, studentId, trainerProgress) 
   return true;
 }
 
-/**
- * Load trainer SRS blob for a student+course (empty object if none).
- */
 export async function getTrainerProgress(courseId, studentId) {
   if (!courseId || !studentId) return { cards: {} };
 
-  if (isSupabaseConfigured) {
-    const { data: assignment } = await supabase
-      .from('course_assignments')
-      .select('progress')
-      .eq('course_id', courseId)
-      .eq('student_id', studentId)
-      .maybeSingle();
-    return assignment?.progress?.trainer || { cards: {} };
+  try {
+    const data = await api.assignments.getTrainer(courseId, studentId);
+    if (data && data.cards) {
+      return data;
+    }
+  } catch (err) {
+    console.warn('PHP API getTrainerProgress failed, falling back to local storage:', err);
   }
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
@@ -786,17 +610,11 @@ export async function getTrainerProgress(courseId, studentId) {
 export async function getGameById(gameId) {
   if (!gameId) return null;
 
-  if (await shouldUseSupabase()) {
-    try {
-      const { data, error } = await supabase
-        .from('games')
-        .select('*, review:game_reviews(*)')
-        .or(`id.eq.${gameId},chesscom_game_id.eq.${gameId}`)
-        .maybeSingle();
-      if (!error && data) return data;
-    } catch (err) {
-      console.warn('Supabase getGameById failed, falling back to local storage:', err);
-    }
+  try {
+    const game = await api.games.getById(gameId);
+    if (game && game.id) return game;
+  } catch (err) {
+    console.warn('PHP API getGameById failed, falling back to local storage:', err);
   }
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -814,38 +632,13 @@ export async function getGameById(gameId) {
 }
 
 export async function getGamesForStudent(studentId) {
-  if (await shouldUseSupabase()) {
-    try {
-      const allGames = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
+  if (!studentId) return [];
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from('games')
-          .select('*, review:game_reviews(*)')
-          .eq('student_id', studentId)
-          .order('played_at', { ascending: false })
-          .range(from, from + step - 1);
-
-        if (error) throw error;
-        if (data && data.length > 0) {
-          allGames.push(...data);
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            from += step;
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-
-      return allGames;
-    } catch (err) {
-      console.warn('Supabase games query failed, falling back to local storage:', err);
-    }
+  try {
+    const games = await api.games.getByStudent(studentId);
+    if (Array.isArray(games)) return games;
+  } catch (err) {
+    console.warn('PHP API getGamesForStudent failed, falling back to local storage:', err);
   }
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -860,19 +653,13 @@ export async function getGamesForStudent(studentId) {
 }
 
 export async function upsertGames(formattedGames) {
-  if (formattedGames.length === 0) return [];
+  if (!formattedGames || formattedGames.length === 0) return [];
 
-  if (await shouldUseSupabase()) {
-    try {
-      const { data, error } = await supabase
-        .from('games')
-        .upsert(formattedGames, { onConflict: 'student_id,chesscom_game_id' })
-        .select();
-      if (error) throw error;
-      return data || [];
-    } catch (err) {
-      console.warn('Supabase upsertGames failed, saving to local storage:', err);
-    }
+  try {
+    await api.games.upsert(formattedGames);
+    return formattedGames;
+  } catch (err) {
+    console.warn('PHP API upsertGames failed, saving to local storage:', err);
   }
 
   const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -898,77 +685,20 @@ export async function upsertGames(formattedGames) {
   return formattedGames;
 }
 
-/** Manual PGN imports are kept when Chess.com sync replaces the library. */
 function isManualImportedGame(game) {
   const externalId = String(game?.chesscom_game_id || '');
   const localId = String(game?.id || '');
   return externalId.startsWith('custom-') || localId.startsWith('pgn-');
 }
 
-/**
- * Replace Chess.com-synced games for a student with a fresh sync result.
- * Keeps manually imported PGNs. Pass [] to clear synced games (e.g. username change
- * or an account with no games in the archive).
- */
 export async function replaceSyncedChesscomGames(studentId, formattedGames = []) {
   if (!studentId) return [];
 
-  const UPSERT_CHUNK = 200;
-  const DELETE_CHUNK = 200;
-
-  if (await shouldUseSupabase()) {
-    try {
-      const existing = [];
-      let from = 0;
-      const step = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data, error: listError } = await supabase
-          .from('games')
-          .select('id, chesscom_game_id')
-          .eq('student_id', studentId)
-          .range(from, from + step - 1);
-
-        if (listError) throw listError;
-        if (data && data.length > 0) {
-          existing.push(...data);
-          if (data.length < step) {
-            hasMore = false;
-          } else {
-            from += step;
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-
-      const idsToDelete = (existing || [])
-        .filter((g) => !isManualImportedGame(g))
-        .map((g) => g.id);
-
-      for (let i = 0; i < idsToDelete.length; i += DELETE_CHUNK) {
-        const chunk = idsToDelete.slice(i, i + DELETE_CHUNK);
-        const { error: deleteError } = await supabase.from('games').delete().in('id', chunk);
-        if (deleteError) throw deleteError;
-      }
-
-      if (!formattedGames.length) return [];
-
-      const saved = [];
-      for (let i = 0; i < formattedGames.length; i += UPSERT_CHUNK) {
-        const chunk = formattedGames.slice(i, i + UPSERT_CHUNK);
-        const { data, error } = await supabase
-          .from('games')
-          .upsert(chunk, { onConflict: 'student_id,chesscom_game_id' })
-          .select();
-        if (error) throw error;
-        if (data?.length) saved.push(...data);
-      }
-      return saved;
-    } catch (err) {
-      console.warn('Supabase replaceSyncedChesscomGames failed, using local storage:', err);
-    }
+  try {
+    await api.games.replaceSynced(studentId, formattedGames);
+    return formattedGames;
+  } catch (err) {
+    console.warn('PHP API replaceSyncedChesscomGames failed, using local storage:', err);
   }
 
   const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -982,17 +712,9 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
     student_id: studentId,
   }));
 
-  // Newest synced games first, then preserved manual imports / other students
   const next = [...incoming, ...kept];
-  // Debug: record counts so front-end can surface issues if persistence fails
   try {
-    console.log('replaceSyncedChesscomGames: incoming=', incoming.length, 'kept=', kept.length, 'total=', next.length);
     setGamesSafely(next);
-    try {
-      localStorage.setItem('chesslogs_games_last_sync', JSON.stringify({ at: new Date().toISOString(), count: incoming.length }));
-    } catch (e) {
-      // ignore
-    }
   } catch (err) {
     console.warn('Failed to persist games to localStorage (replaceSyncedChesscomGames):', err);
   }
@@ -1000,27 +722,11 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
 }
 
 export async function saveGameReview(gameId, reviewData) {
-  if (await shouldUseSupabase()) {
-    try {
-      const { data, error } = await supabase
-        .from('game_reviews')
-        .upsert(
-          {
-            game_id: gameId,
-            engine_version: reviewData.engine_version || 'Stockfish 18 NNUE',
-            move_classifications: reviewData.move_classifications || [],
-            accuracy_white: reviewData.accuracy_white,
-            accuracy_black: reviewData.accuracy_black,
-          },
-          { onConflict: 'game_id' }
-        )
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      console.warn('Supabase saveGameReview failed, saving to local storage:', err);
-    }
+  try {
+    const saved = await api.games.saveReview(gameId, reviewData);
+    if (saved && saved.id) return saved;
+  } catch (err) {
+    console.warn('PHP API saveGameReview failed, saving to local storage:', err);
   }
 
   const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
@@ -1041,81 +747,16 @@ export async function saveGameReview(gameId, reviewData) {
  */
 
 export async function getAllStudents() {
-  const localStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
-  const siteAccounts = JSON.parse(localStorage.getItem('chesslogs_site_accounts') || '[]');
-  
-  // Merge any student accounts from the native site accounts store
-  siteAccounts.filter((a) => a.role === 'student').forEach((sa) => {
-    const idx = localStudents.findIndex(
-      (s) => s.id === sa.id || (s.email && sa.email && s.email.toLowerCase() === sa.email.toLowerCase())
-    );
-    if (idx >= 0) {
-      localStudents[idx] = { ...sa, ...localStudents[idx] };
-    } else {
-      localStudents.push(sa);
-    }
-  });
+  try {
+    const data = await api.students.getAll();
+    if (Array.isArray(data)) return data;
+  } catch (err) {
+    console.warn('PHP API getAllStudents failed, falling back to local storage:', err);
+  }
 
+  const localStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const localGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const localAssignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-
-  // Check active local user in case they signed in on this client
-  const activeProfileRaw = localStorage.getItem('chesslogs_active_profile');
-  if (activeProfileRaw) {
-    try {
-      const active = JSON.parse(activeProfileRaw);
-      if (active && (active.role === 'student' || !active.role)) {
-        const exists = localStudents.some(
-          (s) =>
-            s.id === active.id ||
-            (s.chesscom_username && active.chesscom_username && s.chesscom_username.toLowerCase() === active.chesscom_username.toLowerCase())
-        );
-        if (!exists) {
-          localStudents.push(active);
-          localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(localStudents));
-        }
-      }
-    } catch {
-      // ignore JSON error
-    }
-  }
-
-  if (await shouldUseSupabase()) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*, games:games(id, played_at, result, time_class, white_username, black_username), assignments:course_assignments(course_id, progress)')
-        .eq('role', 'student');
-
-      if (!error && data) {
-        // Merge Supabase students with any local students
-        const merged = [...data];
-        localStudents.forEach((ls) => {
-          const match = merged.find(
-            (ms) =>
-              ms.id === ls.id ||
-              (ms.chesscom_username && ls.chesscom_username && ms.chesscom_username.toLowerCase() === ls.chesscom_username.toLowerCase())
-          );
-          if (!match) {
-            const studentGames = localGames.filter(
-              (g) =>
-                g.student_id === ls.id ||
-                (ls.chesscom_username && g.student_id === `chesscom-${ls.chesscom_username.toLowerCase()}`)
-            );
-            const studentAssignments = localAssignments.filter((a) => a.student_id === ls.id);
-            merged.push({
-              ...ls,
-              games: studentGames,
-              assignments: studentAssignments,
-            });
-          }
-        });
-        return merged;
-      }
-    } catch (err) {
-      console.warn('Supabase getAllStudents failed, falling back to local storage:', err);
-    }
-  }
 
   return localStudents
     .filter((p) => p.role === 'student' || !p.role)
@@ -1135,17 +776,12 @@ export async function getAllStudents() {
 }
 
 export async function deleteStudent(studentId) {
-  if (await shouldUseSupabase()) {
-    try {
-      const { error } = await supabase.from('profiles').delete().eq('id', studentId);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.warn('Supabase deleteStudent failed, falling back to local storage:', err);
-    }
+  try {
+    await api.students.delete(studentId);
+  } catch (err) {
+    console.warn('PHP API deleteStudent failed, falling back to local storage:', err);
   }
 
-  // Local storage cleanup
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const filtered = students.filter(
     (s) =>
@@ -1153,20 +789,6 @@ export async function deleteStudent(studentId) {
       (!s.chesscom_username || `chesscom-${s.chesscom_username.toLowerCase()}` !== studentId.toLowerCase())
   );
   localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(filtered));
-
-  // Also clean up from site accounts store
-  try {
-    const rawSite = localStorage.getItem('chesslogs_site_accounts');
-    if (rawSite) {
-      const siteAccounts = JSON.parse(rawSite);
-      const filteredSite = siteAccounts.filter(
-        (a) => a.id !== studentId && (!a.chesscom_username || `chesscom-${a.chesscom_username.toLowerCase()}` !== studentId.toLowerCase())
-      );
-      localStorage.setItem('chesslogs_site_accounts', JSON.stringify(filteredSite));
-    }
-  } catch {
-    // ignore
-  }
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const filteredGames = games.filter(
@@ -1182,39 +804,15 @@ export async function deleteStudent(studentId) {
   const filteredAssignments = assignments.filter((a) => a.student_id !== studentId);
   localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(filteredAssignments));
 
-  // If active user was this student, clear local active user
-  const activeRaw = localStorage.getItem('chesslogs_active_profile');
-  if (activeRaw) {
-    try {
-      const active = JSON.parse(activeRaw);
-      if (active.id === studentId || `chesscom-${active.chesscom_username?.toLowerCase()}` === studentId.toLowerCase()) {
-        localStorage.removeItem('chesslogs_active_profile');
-      }
-    } catch {
-      // ignore
-    }
-  }
-
   return true;
 }
 
 export async function updateStudentProfile(studentId, updates) {
-  if (await shouldUseSupabase()) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', studentId)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } catch (err) {
-      console.warn('Supabase updateStudentProfile failed, falling back to local storage:', err);
-    }
+  try {
+    const updated = await api.students.update(studentId, updates);
+    if (updated && updated.id) return updated;
+  } catch (err) {
+    console.warn('PHP API updateStudentProfile failed, falling back to local storage:', err);
   }
 
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
@@ -1222,23 +820,31 @@ export async function updateStudentProfile(studentId, updates) {
   if (idx >= 0) {
     students[idx] = { ...students[idx], ...updates };
     localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
+    return students[idx];
   }
-
-  // Also sync to native site accounts store
-  try {
-    const rawSite = localStorage.getItem('chesslogs_site_accounts');
-    if (rawSite) {
-      const siteAccounts = JSON.parse(rawSite);
-      const sIdx = siteAccounts.findIndex((a) => a.id === studentId);
-      if (sIdx >= 0) {
-        siteAccounts[sIdx] = { ...siteAccounts[sIdx], ...updates };
-        localStorage.setItem('chesslogs_site_accounts', JSON.stringify(siteAccounts));
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  return idx >= 0 ? students[idx] : null;
+  return null;
 }
 
+/**
+ * -----------------------------------------------------------------------------
+ * PLATFORM GOVERNANCE & COACH HELPERS
+ * -----------------------------------------------------------------------------
+ */
+
+export async function getAllCoaches() {
+  const accounts = getAllAccounts();
+  return accounts.filter((a) => a.role === 'coach');
+}
+
+export {
+  getAllAccounts,
+  updateAccountRole,
+  getCoachCredentials,
+  submitCoachCredential,
+  reviewCoachCredential,
+  getStudentEnrollments,
+  applyStudentEnrollment,
+  reviewStudentEnrollment,
+  getStudentRequirements,
+  reviewStudentRequirement,
+};

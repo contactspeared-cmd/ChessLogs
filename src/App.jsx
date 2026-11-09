@@ -13,6 +13,7 @@ import Courses from './pages/Courses';
 import CoursePlayer from './pages/CoursePlayer';
 import MoveTrainer from './pages/MoveTrainer';
 import AdminDashboard from './pages/AdminDashboard';
+import CoachDashboard from './components/dashboard/CoachDashboard';
 
 function AppLayout({ children }) {
   const location = useLocation();
@@ -109,6 +110,15 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <MoveTrainer />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/coach"
+              element={
+                <ProtectedRoute requireCoach>
+                  <CoachDashboard />
                 </ProtectedRoute>
               }
             />

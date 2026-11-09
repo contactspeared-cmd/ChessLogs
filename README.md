@@ -10,9 +10,10 @@ Coach–student LMS for chess improvement: assigned courses, Chess.com game sync
 
 - **Frontend**: React (Vite, JavaScript) + React Router + Tailwind CSS
 - **Lint/format**: ESLint (`eslint:recommended` + `eslint-plugin-react` + `eslint-plugin-react-hooks`) + Prettier
-- **Backend**: Supabase (Postgres + Auth + RLS). Without env vars the app runs in **demo mode** (localStorage).
+- **Backend**: PHP REST API (PDO MySQL / MariaDB). Also provides local offline fallback.
+- **Database**: MySQL / MariaDB (`chesslogs`)
 - **Chess**: `chess.js`, `react-chessboard`, Stockfish 18 NNUE via Web Worker (`public/stockfish/`)
-- **Hosting**: Vercel
+- **CLI Database Guide**: See [MYSQL_CLI_GUIDE.md](MYSQL_CLI_GUIDE.md)
 
 ## Important constraints
 
@@ -52,43 +53,60 @@ Evaluations will be **close but not identical** to Chess.com due to undisclosed 
 | Courses | Video embeds or Chessable-style walkthrough chapters; admin builder + assign |
 | Admin | Student roster, course CRUD, assign, drill into student games |
 
-## Setup
+## Setup & Running
 
-### 1. Install
+### 1. Install & Configure
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-### 2. Supabase (production / real auth)
-
-1. Create a Supabase project
-2. Run the SQL in `supabase/schema.sql` in the SQL editor
-3. Enable Email and Google providers under Authentication
-4. Fill `.env`:
-
-```bash
-VITE_SUPABASE_URL=https://xxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key   # scripts only — never ship to the client
-ADMIN_EMAIL=coach@example.com
-ADMIN_PASSWORD=...
-ADMIN_NAME="Your Name"
+Ensure your `.env` contains the database credentials (default for XAMPP):
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_NAME=chesslogs
+DB_USER=root
+DB_PASS=
 ```
 
-5. Seed the coach account:
+### 2. Database Migration
+
+Ensure MySQL is running (e.g. start MySQL in XAMPP Control Panel), then run:
 
 ```bash
-node scripts/seed_admin.js
+npm run db:migrate
 ```
+*(Or `php database/migrate.php` / `mysql -u root chesslogs < database/schema.sql`)*
 
-Public signup always creates **students**. Demo mode (no Supabase env) lets you switch coach/student from the UI for local exploration.
+This creates the `chesslogs` database, all 9 tables, indexes, constraints, and seeds the default Admin account:
+- **Admin Email**: `satoalt33@gmail.com`
+- **Admin Password**: `ChessLogsAdmin2026!`
 
-### 3. Run locally
+### 3. Run Backend & Frontend
 
+Start the PHP backend (runs on port 8000):
+```bash
+npm run backend
+```
+*(Runs `php -S 127.0.0.1:8000 api/router.php`)*
+
+In another terminal, start the Vite frontend (runs on port 3000, proxies `/api` to 8000):
 ```bash
 npm run dev
+```
+
+### 4. Viewing the Database via MySQL CLI
+
+For complete instructions and examples, see **[MYSQL_CLI_GUIDE.md](MYSQL_CLI_GUIDE.md)**.
+Quick command:
+```bash
+mysql -u root chesslogs
+```
+or via full XAMPP path in PowerShell:
+```powershell
+& "C:\xampp\mysql\bin\mysql.exe" -u root chesslogs
 ```
 
 ### 4. Quality gates

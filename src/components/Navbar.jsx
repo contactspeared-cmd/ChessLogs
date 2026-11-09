@@ -7,6 +7,7 @@ import {
   Crosshair,
   BookOpen,
   ShieldAlert,
+  GraduationCap,
   User,
   LogOut,
   ChevronDown,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, isCoach, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -29,8 +30,12 @@ export default function Navbar() {
     { name: 'Courses', path: '/courses', icon: BookOpen },
   ];
 
+  if (isCoach) {
+    navLinks.push({ name: 'Coach Studio', path: '/coach', icon: GraduationCap });
+  }
+
   if (isAdmin) {
-    navLinks.push({ name: 'Coach Admin', path: '/admin', icon: ShieldAlert });
+    navLinks.push({ name: 'Command Center', path: '/admin', icon: ShieldAlert });
   }
 
   const isActive = (path) => {
@@ -126,9 +131,17 @@ export default function Navbar() {
                   <div className="px-3.5 py-2 border-b border-slate-800">
                     <p className="font-medium text-white">{profile?.display_name}</p>
                     <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-                    <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <div
+                      className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                        isAdmin
+                          ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                          : isCoach
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      }`}
+                    >
                       <Sparkles className="w-3 h-3" />
-                      Role: {profile?.role?.toUpperCase()}
+                      Role: {(profile?.role || 'student').toUpperCase()}
                     </div>
                   </div>
 
@@ -140,13 +153,23 @@ export default function Navbar() {
                     Profile & Chess.com Link
                   </Link>
 
+                  {isCoach && (
+                    <Link
+                      to="/coach"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-amber-300 hover:text-white hover:bg-amber-500/10"
+                    >
+                      <GraduationCap className="w-4 h-4 text-amber-400" />
+                      Coach Studio
+                    </Link>
+                  )}
+
                   {isAdmin && (
                     <Link
                       to="/admin"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:text-white hover:bg-slate-800/60"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-purple-300 hover:text-white hover:bg-purple-500/10"
                     >
-                      <ShieldAlert className="w-4 h-4 text-slate-400" />
-                      Coach Command Center
+                      <ShieldAlert className="w-4 h-4 text-purple-400" />
+                      Platform Command Center
                     </Link>
                   )}
 

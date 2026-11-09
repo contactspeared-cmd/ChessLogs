@@ -27,6 +27,7 @@ export default function Signup() {
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [email, setEmail] = useState('');
   const [chesscomUsername, setChesscomUsername] = useState('');
+  const [role, setRole] = useState('student');
 
   // Password fields
   const [password, setPassword] = useState('');
@@ -93,6 +94,7 @@ export default function Signup() {
         chesscomUsername: chesscomUsername.trim(),
         password,
         confirmPassword,
+        role,
       });
 
       setSuccessMessage('Account created successfully! Redirecting to your dashboard...');
@@ -276,6 +278,50 @@ export default function Signup() {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
               required
             />
+          </div>
+
+          {/* Section: Account Purpose / Role */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold uppercase text-slate-400">
+              Account Role / Tier
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setRole('student')}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  role === 'student'
+                    ? 'bg-emerald-500/10 border-emerald-500/40 text-white'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span className="text-emerald-400">♟</span>
+                  <span>Student / Learner</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Improve rating, sync games, and study assigned curriculum.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRole('coach')}
+                className={`p-3 rounded-2xl border text-left transition-all ${
+                  role === 'coach'
+                    ? 'bg-amber-500/10 border-amber-500/40 text-white'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`}
+              >
+                <div className="font-bold text-xs flex items-center gap-1.5">
+                  <span className="text-amber-400">🎓</span>
+                  <span>Chess Coach</span>
+                </div>
+                <div className="text-[11px] text-slate-400 mt-1">
+                  Author walkthroughs, manage cohorts, and review student games.
+                </div>
+              </button>
+            </div>
           </div>
 
           {/* Section 4: Password & Confirm Password */}

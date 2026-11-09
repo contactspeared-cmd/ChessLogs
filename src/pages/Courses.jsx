@@ -126,6 +126,37 @@ export default function Courses() {
                       {course.description || 'Comprehensive training module.'}
                     </p>
                   </div>
+
+                  {/* Coach Attribution Highlight */}
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs shadow-sm">
+                    <img
+                      src={
+                        course.coach_avatar ||
+                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
+                      }
+                      alt={course.coach_name || 'Coach'}
+                      className="w-7 h-7 rounded-full object-cover border border-amber-500/40 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] uppercase font-bold text-amber-400 tracking-wider flex items-center gap-1">
+                        <GraduationCap className="w-3 h-3" />
+                        <span>Authored &amp; Assigned by</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-white text-xs truncate">
+                          {course.coach_name || 'Coach Magnus C. Carlsen'}
+                        </span>
+                        {course.coach_chesscom && (
+                          <span className="text-[10px] text-amber-300 font-mono">@{course.coach_chesscom}</span>
+                        )}
+                        {course.assigned_at && (
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            • Assigned {new Date(course.assigned_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-slate-800/80 space-y-4">

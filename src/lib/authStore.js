@@ -7,6 +7,9 @@
 const STORAGE_ACCOUNTS = 'chesslogs_site_accounts';
 const STORAGE_STUDENTS = 'chesslogs_students';
 const STORAGE_ACTIVE_PROFILE = 'chesslogs_active_profile';
+export const STORAGE_CREDENTIALS = 'chesslogs_coach_credentials';
+export const STORAGE_ENROLLMENTS = 'chesslogs_student_enrollments';
+export const STORAGE_REQUIREMENTS = 'chesslogs_student_requirements';
 
 /**
  * Format composite name according to rules:
@@ -65,30 +68,136 @@ export function generateSalt() {
 }
 
 /**
- * Seed initial system administrator account for Coach Admin (satoalt33@gmail.com).
+ * Seed initial system administrator account for Admin (satoalt33@gmail.com).
  */
 const DEFAULT_SALT = 'cl_salt_2026';
 // Pre-computed SHA-256 hash for 'ChessLogsAdmin2026!' with salt 'cl_salt_2026'
 const ADMIN_HASH = '69226bbed9175da60bd820400f9711108f8bef8380233e5501b2656fa98b643b';
+// Pre-computed SHA-256 hash for 'Coach2026!' with salt 'cl_salt_2026'
+const COACH_HASH = '3287a8b41fb8445aee716813b1962cc78ac059e561ee5244ce28df7fbe5b01b6';
+// Pre-computed SHA-256 hash for 'Student2026!' with salt 'cl_salt_2026'
+const STUDENT_HASH = 'c089c940e4e013446be55ee67c35c4c91fb703ca0fe3956608be470f0e05d3b0';
 
 const SEED_ACCOUNTS = [
   {
     id: 'admin-satoalt33-uuid',
     email: 'satoalt33@gmail.com',
-    secondary_emails: ['coach@chesslogs.com'],
-    first_name: 'Coach',
-    middle_initial: 'A',
+    secondary_emails: [],
+    first_name: 'Site',
+    middle_initial: '',
     last_name: 'Admin',
     suffix: '',
     date_of_birth: '1990-01-01',
-    display_name: 'Coach Admin',
+    display_name: 'Admin',
     role: 'admin',
     chesscom_username: '',
-    bio: 'ChessLogs Head Coach & System Administrator.',
+    bio: 'ChessLogs System Administrator. Oversees platform governance, coaches, and students.',
     avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     salt: DEFAULT_SALT,
     password_hash: ADMIN_HASH,
     created_at: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'coach-magnus-uuid',
+    email: 'coach@chesslogs.com',
+    secondary_emails: [],
+    first_name: 'Magnus',
+    middle_initial: 'C',
+    last_name: 'Carlsen',
+    suffix: '',
+    date_of_birth: '1990-11-30',
+    display_name: 'Magnus C. Carlsen',
+    role: 'coach',
+    chesscom_username: 'magnuscarlsen',
+    elo_rating: 2850,
+    min_student_elo: 1300,
+    coaching_standards: 'Focus on endgame precision, active piece placement, dynamic pawn structures, and time management.',
+    bio: 'FIDE Grandmaster, Senior Trainer, and former World Chess Champion. Mentoring competitive players.',
+    avatar_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    salt: DEFAULT_SALT,
+    password_hash: COACH_HASH,
+    created_at: '2026-01-05T00:00:00.000Z',
+  },
+  {
+    id: 'student-alex-uuid',
+    email: 'student@chesslogs.com',
+    secondary_emails: [],
+    first_name: 'Alex',
+    middle_initial: 'M',
+    last_name: 'Rivera',
+    suffix: 'Jr.',
+    date_of_birth: '2004-06-15',
+    display_name: 'Alex M. Rivera Jr.',
+    role: 'student',
+    chesscom_username: 'alexrivera_chess',
+    current_elo: 1540,
+    bio: 'Aspiring tournament competitor aiming for 1800 Rapid. Dedicated to daily tactical puzzle and opening study.',
+    avatar_url: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    salt: DEFAULT_SALT,
+    password_hash: STUDENT_HASH,
+    created_at: '2026-01-10T00:00:00.000Z',
+  },
+];
+
+const SEED_CREDENTIALS = [
+  {
+    id: 'cred-magnus-01',
+    coach_id: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_email: 'coach@chesslogs.com',
+    verified_by_admin_id: 'admin-satoalt33-uuid',
+    credential_type: 'FIDE Senior Trainer License',
+    issuer: 'FIDE Trainer Commission',
+    document_url: 'https://ratings.fide.com/trainer_certificates/FST-2024-889.pdf',
+    verification_status: 'verified',
+    rejection_reason: null,
+    submitted_at: '2026-01-06T10:00:00.000Z',
+    verified_at: '2026-01-07T14:30:00.000Z',
+  },
+  {
+    id: 'cred-sample-02',
+    coach_id: 'coach-judit-uuid',
+    coach_name: 'Judit Polgar',
+    coach_email: 'judit@chesslogs.com',
+    verified_by_admin_id: null,
+    credential_type: 'Grandmaster Coaching Certificate',
+    issuer: 'European Chess Union (ECU)',
+    document_url: 'https://ecu.online/certificates/ECU-COACH-7721.pdf',
+    verification_status: 'pending',
+    rejection_reason: null,
+    submitted_at: '2026-02-01T08:15:00.000Z',
+    verified_at: null,
+  },
+];
+
+const SEED_ENROLLMENTS = [
+  {
+    id: 'enr-alex-magnus',
+    student_id: 'student-alex-uuid',
+    student_name: 'Alex M. Rivera Jr.',
+    student_email: 'student@chesslogs.com',
+    student_elo: 1540,
+    coach_id: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    reviewed_by_admin_id: 'admin-satoalt33-uuid',
+    applied_at: '2026-01-12T09:00:00.000Z',
+    review_status: 'approved',
+    review_notes: 'Meets minimum Elo threshold (>1300). Ready for Sicilian Najdorf curriculum.',
+    reviewed_at: '2026-01-12T11:00:00.000Z',
+  },
+  {
+    id: 'enr-new-student-pending',
+    student_id: 'student-elena-uuid',
+    student_name: 'Elena V. Rostova',
+    student_email: 'elena@chesslogs.com',
+    student_elo: 1780,
+    coach_id: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    reviewed_by_admin_id: null,
+    applied_at: '2026-02-05T14:20:00.000Z',
+    review_status: 'pending',
+    review_notes: 'Application submitted for masterclass cohort. Preparing PGN game history.',
+    reviewed_at: null,
   },
 ];
 
@@ -101,22 +210,22 @@ export function getSiteAccounts() {
     const raw = localStorage.getItem(STORAGE_ACCOUNTS);
     let accounts = raw ? JSON.parse(raw) : [];
 
-    // Purge legacy dummy profiles
-    const DUMMY_IDS = new Set(['student-alex-uuid', 'student-elena-uuid', 'coach-kasparov-uuid']);
-    const DUMMY_EMAILS = new Set(['alex@chesslogs.com', 'elena@chesslogs.com']);
-    accounts = accounts.filter(
-      (a) => !DUMMY_IDS.has(a.id) && !DUMMY_EMAILS.has(a.email?.toLowerCase())
-    );
-
-    // Ensure the coach admin account for satoalt33@gmail.com exists and is active
-    let admin = accounts.find((a) => a.email?.toLowerCase() === 'satoalt33@gmail.com');
-    if (!admin) {
-      accounts.unshift(SEED_ACCOUNTS[0]);
-    } else {
-      admin.role = 'admin';
-      if (!admin.password_hash) {
-        admin.password_hash = ADMIN_HASH;
-        admin.salt = DEFAULT_SALT;
+    // Ensure all seed accounts (Admin, Coach, Student) exist and are properly registered
+    for (const seed of SEED_ACCOUNTS) {
+      const idx = accounts.findIndex(
+        (a) => a.id === seed.id || a.email?.toLowerCase() === seed.email.toLowerCase()
+      );
+      if (idx === -1) {
+        accounts.push(seed);
+      } else {
+        // Keep credentials intact if already seeded
+        accounts[idx] = {
+          ...seed,
+          ...accounts[idx],
+          role: accounts[idx].role || seed.role,
+          password_hash: accounts[idx].password_hash || seed.password_hash,
+          salt: accounts[idx].salt || seed.salt,
+        };
       }
     }
 
@@ -330,11 +439,15 @@ export async function verifySiteCredentials(email, password) {
     }
   }
 
-  // Case 2: Seed admin initial sign in verification
+  // Case 2: Seed accounts sign in verification fallback
   if (!isValid) {
-    if (account.role === 'admin' && password === 'ChessLogsAdmin2026!') {
+    const isSeedAdmin = account.email?.toLowerCase() === 'satoalt33@gmail.com' && password === 'ChessLogsAdmin2026!';
+    const isSeedCoach = account.email?.toLowerCase() === 'coach@chesslogs.com' && password === 'Coach2026!';
+    const isSeedStudent = account.email?.toLowerCase() === 'student@chesslogs.com' && password === 'Student2026!';
+
+    if (isSeedAdmin || isSeedCoach || isSeedStudent) {
       isValid = true;
-      // Upgrade account with secure SHA-256 hash on first sign in
+      // Re-hash with fresh salt on sign in
       const salt = generateSalt();
       account.salt = salt;
       account.password_hash = await hashPassword(password, salt);
@@ -455,4 +568,305 @@ export function deleteSiteAccount(id) {
   }
 
   return true;
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * USER TIER & ROLE GOVERNANCE
+ * -----------------------------------------------------------------------------
+ */
+
+/**
+ * Get all accounts across all tiers (Students, Coaches, Admins),
+ * merging registered site accounts with any student roster entries.
+ */
+export function getAllAccounts() {
+  const accounts = getSiteAccounts();
+  const rawStudents = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_STUDENTS) : null;
+  const students = rawStudents ? JSON.parse(rawStudents) : [];
+
+  const map = new Map();
+  // Add site accounts
+  accounts.forEach((acc) => {
+    map.set(acc.id, { ...acc, role: acc.role || 'student' });
+  });
+
+  // Merge student roster entries if not present
+  students.forEach((std) => {
+    if (!map.has(std.id)) {
+      map.set(std.id, {
+        ...std,
+        role: std.role || 'student',
+      });
+    }
+  });
+
+  return Array.from(map.values()).map((acc) => {
+    const safe = { ...acc };
+    delete safe.password_hash;
+    delete safe.salt;
+    return safe;
+  });
+}
+
+/**
+ * Update user tier / role (admin, coach, or student)
+ */
+export function updateAccountRole(id, newRole) {
+  if (!id || !['admin', 'coach', 'student'].includes(newRole)) return null;
+
+  const accounts = getSiteAccounts();
+  const idx = accounts.findIndex((a) => a.id === id);
+  if (idx >= 0) {
+    accounts[idx].role = newRole;
+    accounts[idx].updated_at = new Date().toISOString();
+    saveSiteAccounts(accounts);
+  }
+
+  // Update in student roster as well
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
+      if (rawStudents) {
+        const students = JSON.parse(rawStudents);
+        const sIdx = students.findIndex((s) => s.id === id);
+        if (sIdx >= 0) {
+          students[sIdx].role = newRole;
+          students[sIdx].updated_at = new Date().toISOString();
+          localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
+        }
+      }
+
+      // Update active profile if current user was modified
+      const activeRaw = localStorage.getItem(STORAGE_ACTIVE_PROFILE);
+      if (activeRaw) {
+        const active = JSON.parse(activeRaw);
+        if (active?.id === id) {
+          active.role = newRole;
+          localStorage.setItem(STORAGE_ACTIVE_PROFILE, JSON.stringify(active));
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return true;
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * COACH CREDENTIALS
+ * -----------------------------------------------------------------------------
+ */
+
+export function getCoachCredentials(coachId = null) {
+  if (typeof window === 'undefined') return SEED_CREDENTIALS;
+  try {
+    const raw = localStorage.getItem(STORAGE_CREDENTIALS);
+    let credentials = raw ? JSON.parse(raw) : [];
+    if (!raw || credentials.length === 0) {
+      credentials = [...SEED_CREDENTIALS];
+      localStorage.setItem(STORAGE_CREDENTIALS, JSON.stringify(credentials));
+    }
+    if (coachId) {
+      return credentials.filter((c) => c.coach_id === coachId);
+    }
+    return credentials;
+  } catch (err) {
+    console.warn('Failed to get coach credentials:', err);
+    return SEED_CREDENTIALS;
+  }
+}
+
+export function submitCoachCredential({
+  coachId,
+  credentialType,
+  issuer,
+  documentUrl,
+  coachName = '',
+  coachEmail = '',
+}) {
+  const credentials = getCoachCredentials();
+  const id = `cred-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+  const newEntry = {
+    id,
+    coach_id: coachId,
+    coach_name: coachName,
+    coach_email: coachEmail,
+    verified_by_admin_id: null,
+    credential_type: credentialType,
+    issuer: issuer || 'Chess Federation',
+    document_url: documentUrl,
+    verification_status: 'pending',
+    rejection_reason: null,
+    submitted_at: new Date().toISOString(),
+    verified_at: null,
+  };
+
+  credentials.unshift(newEntry);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_CREDENTIALS, JSON.stringify(credentials));
+  }
+  return newEntry;
+}
+
+export function reviewCoachCredential(credentialId, status, rejectionReason = null, adminId = 'admin-satoalt33-uuid') {
+  const credentials = getCoachCredentials();
+  const idx = credentials.findIndex((c) => c.id === credentialId);
+  if (idx === -1) return null;
+
+  credentials[idx] = {
+    ...credentials[idx],
+    verification_status: status,
+    rejection_reason: status === 'rejected' ? rejectionReason : null,
+    verified_by_admin_id: adminId,
+    verified_at: new Date().toISOString(),
+  };
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_CREDENTIALS, JSON.stringify(credentials));
+  }
+  return credentials[idx];
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * STUDENT ENROLLMENTS
+ * -----------------------------------------------------------------------------
+ */
+
+export function getStudentEnrollments(coachId = null, studentId = null) {
+  if (typeof window === 'undefined') return SEED_ENROLLMENTS;
+  try {
+    const raw = localStorage.getItem(STORAGE_ENROLLMENTS);
+    let enrollments = raw ? JSON.parse(raw) : [];
+    if (!raw || enrollments.length === 0) {
+      enrollments = [...SEED_ENROLLMENTS];
+      localStorage.setItem(STORAGE_ENROLLMENTS, JSON.stringify(enrollments));
+    }
+    if (coachId) {
+      return enrollments.filter((e) => e.coach_id === coachId);
+    }
+    if (studentId) {
+      return enrollments.filter((e) => e.student_id === studentId);
+    }
+    return enrollments;
+  } catch (err) {
+    console.warn('Failed to get student enrollments:', err);
+    return SEED_ENROLLMENTS;
+  }
+}
+
+export function applyStudentEnrollment({
+  studentId,
+  studentName = '',
+  studentEmail = '',
+  studentElo = 1200,
+  coachId,
+  coachName = '',
+  notes = '',
+}) {
+  const enrollments = getStudentEnrollments();
+  const existing = enrollments.find((e) => e.student_id === studentId && e.coach_id === coachId);
+  if (existing) {
+    return existing;
+  }
+
+  const newEntry = {
+    id: `enr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    student_id: studentId,
+    student_name: studentName,
+    student_email: studentEmail,
+    student_elo: studentElo,
+    coach_id: coachId,
+    coach_name: coachName,
+    reviewed_by_admin_id: null,
+    applied_at: new Date().toISOString(),
+    review_status: 'pending',
+    review_notes: notes,
+    reviewed_at: null,
+  };
+
+  enrollments.unshift(newEntry);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_ENROLLMENTS, JSON.stringify(enrollments));
+  }
+  return newEntry;
+}
+
+export function reviewStudentEnrollment(enrollmentId, status, reviewNotes = '', adminId = null) {
+  const enrollments = getStudentEnrollments();
+  const idx = enrollments.findIndex((e) => e.id === enrollmentId);
+  if (idx === -1) return null;
+
+  enrollments[idx] = {
+    ...enrollments[idx],
+    review_status: status,
+    review_notes: reviewNotes || enrollments[idx].review_notes,
+    reviewed_by_admin_id: adminId,
+    reviewed_at: new Date().toISOString(),
+  };
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_ENROLLMENTS, JSON.stringify(enrollments));
+  }
+  return enrollments[idx];
+}
+
+/**
+ * -----------------------------------------------------------------------------
+ * STUDENT REQUIREMENTS & VERIFICATION
+ * -----------------------------------------------------------------------------
+ */
+
+export function getStudentRequirements(studentId = null) {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_REQUIREMENTS) : null;
+    let reqs = raw ? JSON.parse(raw) : [];
+    if (studentId) {
+      return reqs.filter((r) => r.student_id === studentId);
+    }
+    return reqs;
+  } catch {
+    return [];
+  }
+}
+
+export function submitStudentRequirement({ studentId, requirementType, documentUrl }) {
+  const reqs = getStudentRequirements();
+  const newEntry = {
+    id: `req-${Date.now()}`,
+    student_id: studentId,
+    requirement_type: requirementType,
+    document_url: documentUrl,
+    review_status: 'pending',
+    review_notes: null,
+    submitted_at: new Date().toISOString(),
+    reviewed_at: null,
+  };
+  reqs.unshift(newEntry);
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_REQUIREMENTS, JSON.stringify(reqs));
+  }
+  return newEntry;
+}
+
+export function reviewStudentRequirement(requirementId, status, reviewNotes = '', adminId = null) {
+  const reqs = getStudentRequirements();
+  const idx = reqs.findIndex((r) => r.id === requirementId);
+  if (idx === -1) return null;
+
+  reqs[idx] = {
+    ...reqs[idx],
+    review_status: status,
+    review_notes: reviewNotes,
+    reviewed_by_admin_id: adminId,
+    reviewed_at: new Date().toISOString(),
+  };
+
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(STORAGE_REQUIREMENTS, JSON.stringify(reqs));
+  }
+  return reqs[idx];
 }

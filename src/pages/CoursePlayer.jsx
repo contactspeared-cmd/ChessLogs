@@ -25,6 +25,7 @@ import {
   Circle,
   Sparkles,
   Eye,
+  GraduationCap,
 } from 'lucide-react';
 
 const MODE_STORAGE_PREFIX = 'chesslogs_study_mode_';
@@ -711,7 +712,15 @@ export default function CoursePlayer() {
       <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-base font-bold text-white">{course.title}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base font-bold text-white">{course.title}</h1>
+              {course.coach_name && (
+                <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <GraduationCap className="w-3 h-3 text-amber-400" />
+                  <span>Curriculum by Coach {course.coach_name}</span>
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-slate-500 mt-0.5">
               {overallDoneCount}/{totalChapters} trained · {readCount} read · {progressPercent}%
             </p>
