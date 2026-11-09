@@ -3,13 +3,26 @@
  * Connects React frontend directly to the PHP/MySQL REST API
  */
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
+export function getApiBase() {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
+  }
+  // When running locally on dev ports where /api is not proxied (e.g. VS Code Live Server on 5500, Vite preview on 4173),
+  // route to the PHP built-in server on 127.0.0.1:8000
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    if (window.location.port !== '3000' && window.location.port !== '8000') {
+      return 'http://127.0.0.1:8000/api';
+    }
+  }
+  return '/api';
+}
 
 /**
  * Perform JSON request to the PHP backend
  */
 export async function apiRequest(endpoint, options = {}) {
-  const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  const base = getApiBase();
+  const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
   
   const headers = {
     'Accept': 'application/json',
@@ -21,17 +34,36 @@ export async function apiRequest(endpoint, options = {}) {
     options.body = JSON.stringify(options.body);
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+    });
+  } catch (netErr) {
+    const error = new Error(netErr.message || 'Network request failed');
+    error.status = 0;
+    error.isNetworkError = true;
+    throw error;
+  }
 
   const contentType = res.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');
   const data = isJson ? await res.json() : await res.text();
 
   if (!res.ok) {
-    const errorMsg = (data && data.error) ? data.error : (typeof data === 'string' && data ? data : `API Error ${res.status}`);
+    let errorMsg = (data && data.error) ? data.error : '';
+    if (!errorMsg) {
+      if (res.status === 405) {
+        errorMsg = 'Method not allowed (405). The server may not be configured to handle API requests.';
+      } else if (res.status === 404) {
+        errorMsg = 'API endpoint not found (404).';
+      } else if (typeof data === 'string' && data && !data.includes('<!DOCTYPE') && !data.includes('<html')) {
+        errorMsg = data;
+      } else {
+        errorMsg = `API Error ${res.status}`;
+      }
+    }
     const error = new Error(errorMsg);
     error.status = res.status;
     error.data = data;
@@ -46,9 +78,10 @@ export async function apiRequest(endpoint, options = {}) {
  */
 export async function checkBackendHealth() {
   try {
+    const base = getApiBase();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${API_BASE}/health.php`, { signal: controller.signal });
+    const res = await fetch(`${base}/health.php`, { signal: controller.signal });
     clearTimeout(timer);
     if (!res.ok) return false;
     const data = await res.json();

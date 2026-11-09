@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import StatisticsPanel from '../components/dashboard/StatisticsPanel';
 import {
   getAllStudents,
   getCourses,
@@ -666,158 +667,171 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
       {/* TAB 1: PLATFORM TELEMETRY & SYSTEM HEALTH */}
       {activeTab === 'telemetry' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
-              <div className="border-b border-slate-800 pb-4">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-purple-400" />
-                  <span>Platform Tier Distribution &amp; Operational Health</span>
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Real-time status of all account tiers, services, and chess calculation engines.
-                </p>
-              </div>
+        <div className="space-y-8">
+          {/* Statistics Panel with time-period filter */}
+          <StatisticsPanel
+            role="admin"
+            students={students}
+            courses={courses}
+            accounts={accounts}
+            credentials={credentials}
+            enrollments={enrollments}
+          />
 
-              {/* Tier Bars */}
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-300">
-                      Students &amp; Learners ({studentCount})
-                    </span>
-                    <span className="text-slate-400 font-mono">
-                      {totalUsers > 0 ? Math.round((studentCount / totalUsers) * 100) : 0}%
-                    </span>
+          {/* System Health Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div className="border-b border-slate-800 pb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-purple-400" />
+                    <span>Platform Tier Distribution &amp; Operational Health</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time status of all account tiers, services, and chess calculation engines.
+                  </p>
+                </div>
+
+                {/* Tier Bars */}
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-300">
+                        Students &amp; Learners ({studentCount})
+                      </span>
+                      <span className="text-slate-400 font-mono">
+                        {totalUsers > 0 ? Math.round((studentCount / totalUsers) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all"
+                        style={{
+                          width: `${totalUsers > 0 ? (studentCount / totalUsers) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all"
-                      style={{
-                        width: `${totalUsers > 0 ? (studentCount / totalUsers) * 100 : 0}%`,
-                      }}
-                    />
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-300">
+                        Coaches &amp; Mentors ({coachCount})
+                      </span>
+                      <span className="text-slate-400 font-mono">
+                        {totalUsers > 0 ? Math.round((coachCount / totalUsers) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="bg-amber-500 h-full rounded-full transition-all"
+                        style={{
+                          width: `${totalUsers > 0 ? (coachCount / totalUsers) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-300">
+                        System Administrators ({adminCount})
+                      </span>
+                      <span className="text-slate-400 font-mono">
+                        {totalUsers > 0 ? Math.round((adminCount / totalUsers) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div
+                        className="bg-purple-500 h-full rounded-full transition-all"
+                        style={{
+                          width: `${totalUsers > 0 ? (adminCount / totalUsers) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-300">
-                      Coaches &amp; Mentors ({coachCount})
-                    </span>
-                    <span className="text-slate-400 font-mono">
-                      {totalUsers > 0 ? Math.round((coachCount / totalUsers) * 100) : 0}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      className="bg-amber-500 h-full rounded-full transition-all"
-                      style={{
-                        width: `${totalUsers > 0 ? (coachCount / totalUsers) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-slate-300">
-                      System Administrators ({adminCount})
-                    </span>
-                    <span className="text-slate-400 font-mono">
-                      {totalUsers > 0 ? Math.round((adminCount / totalUsers) * 100) : 0}%
+                {/* Service Health Indicators */}
+                <div className="pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Database Engine</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      MySQL / Store OK
                     </span>
                   </div>
-                  <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
-                    <div
-                      className="bg-purple-500 h-full rounded-full transition-all"
-                      style={{
-                        width: `${totalUsers > 0 ? (adminCount / totalUsers) * 100 : 0}%`,
-                      }}
-                    />
+
+                  <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Stockfish NNUE Worker</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      WASM Ready
+                    </span>
                   </div>
-                </div>
-              </div>
 
-              {/* Service Health Indicators */}
-              <div className="pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400">Database Engine</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    MySQL / Store OK
-                  </span>
-                </div>
+                  <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Chess.com Public API</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </span>
+                  </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400">Stockfish NNUE Worker</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    WASM Ready
-                  </span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400">Chess.com Public API</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Connected
-                  </span>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
-                  <span className="text-slate-400">Spaced Repetition Scheduler</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    Active
-                  </span>
+                  <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Spaced Repetition Scheduler</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Active
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Quick Actions & Recent Platform Audit Events */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
-              <div className="border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-purple-400" />
-                  <span>Platform Audit &amp; Event Feed</span>
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Recent platform administrative and governance events.
-                </p>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                    <span className="font-semibold text-purple-400">Coach Verification</span>
-                    <span>Recent</span>
-                  </div>
-                  <p className="text-white">
-                    Verified coach credentials for GM Magnus Carlsen (FIDE Senior Trainer).
+            {/* Quick Actions & Recent Platform Audit Events */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    <span>Platform Audit &amp; Event Feed</span>
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Recent platform administrative and governance events.
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                    <span className="font-semibold text-emerald-400">Account Registration</span>
-                    <span>Recent</span>
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                      <span className="font-semibold text-purple-400">Coach Verification</span>
+                      <span>Recent</span>
+                    </div>
+                    <p className="text-white">
+                      Verified coach credentials for GM Magnus Carlsen (FIDE Senior Trainer).
+                    </p>
                   </div>
-                  <p className="text-white">
-                    New student profile registered and linked to Chess.com game database.
-                  </p>
-                </div>
 
-                <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
-                  <div className="flex items-center justify-between text-slate-400 text-[11px]">
-                    <span className="font-semibold text-amber-400">Curriculum Publishing</span>
-                    <span>Recent</span>
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                      <span className="font-semibold text-emerald-400">Account Registration</span>
+                      <span>Recent</span>
+                    </div>
+                    <p className="text-white">
+                      New student profile registered and linked to Chess.com game database.
+                    </p>
                   </div>
-                  <p className="text-white">
-                    Interactive walkthrough module &quot;Sicilian Najdorf Novelty&quot; published.
-                  </p>
+
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                      <span className="font-semibold text-amber-400">Curriculum Publishing</span>
+                      <span>Recent</span>
+                    </div>
+                    <p className="text-white">
+                      Interactive walkthrough module &quot;Sicilian Najdorf Novelty&quot; published.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

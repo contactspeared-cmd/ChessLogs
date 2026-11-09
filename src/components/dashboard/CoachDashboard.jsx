@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import StatisticsPanel from './StatisticsPanel';
 import {
   getAllStudents,
   getCourses,
@@ -41,13 +42,14 @@ import {
   Square,
   Save,
   UserCheck,
+  BarChart2,
 } from 'lucide-react';
 
 export default function CoachDashboard({ onPreviewStudentView }) {
   const { profile, updateProfile } = useAuth();
   const navigate = useNavigate();
 
-  // Active Tab: 'roster' | 'curriculum' | 'courseBuilder' | 'assignments' | 'diagnostics' | 'standards'
+  // Active Tab: 'roster' | 'analytics' | 'curriculum' | 'courseBuilder' | 'assignments' | 'diagnostics' | 'standards'
   const [activeTab, setActiveTab] = useState('roster');
 
   // Core Data
@@ -549,6 +551,18 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </button>
 
         <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'analytics'
+              ? 'border-amber-400 text-amber-400 bg-amber-500/5'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>Analytics &amp; Telemetry</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('curriculum')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'curriculum' || activeTab === 'courseBuilder'
@@ -736,6 +750,19 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* TAB: ANALYTICS & TELEMETRY */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+          <StatisticsPanel
+            role="coach"
+            students={students}
+            courses={coachCourses}
+            credentials={credentials}
+            enrollments={enrollments}
+          />
         </div>
       )}
 

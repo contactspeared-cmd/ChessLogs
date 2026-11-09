@@ -112,6 +112,7 @@ export function AuthProvider({ children }) {
     const cleanEmail = (email || '').trim().toLowerCase();
 
     // 1. Authenticate with PHP MySQL backend
+    let apiErr = null;
     try {
       const res = await api.auth.login(cleanEmail, password);
       if (res?.user && res?.profile) {
@@ -120,20 +121,31 @@ export function AuthProvider({ children }) {
         localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(res.profile));
         return res;
       }
-    } catch (apiErr) {
-      console.warn('PHP API login failed, checking local credentials fallback:', apiErr?.message);
-      // Fall back to local site accounts
-      try {
-        const siteResult = await verifySiteCredentials(cleanEmail, password);
-        if (siteResult?.user && siteResult?.profile) {
-          setUser(siteResult.user);
-          setProfile(siteResult.profile);
-          localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteResult.profile));
-          return siteResult;
-        }
-      } catch {
+    } catch (err) {
+      apiErr = err;
+      console.warn('PHP API login failed, checking local credentials fallback:', err?.message);
+    }
+
+    // 2. Fall back to local site accounts
+    try {
+      const siteResult = await verifySiteCredentials(cleanEmail, password);
+      if (siteResult?.user && siteResult?.profile) {
+        setUser(siteResult.user);
+        setProfile(siteResult.profile);
+        localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteResult.profile));
+        return siteResult;
+      }
+    } catch (localErr) {
+      // If the PHP backend returned 401 Unauthorized (invalid credentials explicitly rejected by backend), show that
+      if (apiErr && apiErr.status === 401) {
         throw apiErr;
       }
+      // If the API had a routing/connection error (e.g. 405 Method Not Allowed on static hosts, 404, or network failure),
+      // bubble up the local validation error (e.g. "Incorrect password" or "No account found with this email")
+      if (localErr && localErr.message) {
+        throw localErr;
+      }
+      throw apiErr || new Error('Invalid email or password. Please verify your credentials.');
     }
   };
 
