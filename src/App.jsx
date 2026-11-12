@@ -23,6 +23,7 @@ import MoveTrainer from './pages/MoveTrainer';
 import AdminDashboard from './pages/AdminDashboard';
 import CoachDashboard from './components/dashboard/CoachDashboard';
 import Applications from './pages/Applications';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function AppLayout({ children }) {
   const location = useLocation();
@@ -37,7 +38,9 @@ function AppLayout({ children }) {
       {!isAuthPage && !isSidebarPage && <Navbar />}
 
       <main className={`flex-1 pb-16 ${isSidebarPage ? 'lg:pl-64 pt-16 lg:pt-0' : ''}`}>
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </main>
 
       {!isAuthPage && (

@@ -15,6 +15,31 @@ import {
   GraduationCap,
 } from 'lucide-react';
 
+const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: 100 }, (_, i) => CURRENT_YEAR - i);
+
+function getDaysInMonth(m, y) {
+  if (!m) return 31;
+  const monthNum = parseInt(m, 10);
+  const yearNum = y ? parseInt(y, 10) : CURRENT_YEAR;
+  return new Date(yearNum, monthNum, 0).getDate();
+}
+
 export default function Signup() {
   const { signUpWithEmail } = useAuth();
   const navigate = useNavigate();
@@ -24,6 +49,9 @@ export default function Signup() {
   const [lastName, setLastName] = useState('');
   const [suffix, setSuffix] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
+  const [dobMonth, setDobMonth] = useState('');
+  const [dobDay, setDobDay] = useState('');
+  const [dobYear, setDobYear] = useState('');
   const [email, setEmail] = useState('');
   const [chesscomUsername, setChesscomUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -37,6 +65,22 @@ export default function Signup() {
 
   const passwordsMatch = password && confirmPassword && password === confirmPassword;
   const passwordsMismatch = password && confirmPassword && password !== confirmPassword;
+
+  const handleDobChange = (nextMonth, nextDay, nextYear) => {
+    const maxDays = getDaysInMonth(nextMonth, nextYear);
+    let validDay = nextDay;
+    if (nextDay && parseInt(nextDay, 10) > maxDays) {
+      validDay = String(maxDays).padStart(2, '0');
+    }
+    setDobMonth(nextMonth);
+    setDobDay(validDay);
+    setDobYear(nextYear);
+    if (nextMonth && validDay && nextYear) {
+      setDateOfBirth(`${nextYear}-${nextMonth}-${validDay}`);
+    } else {
+      setDateOfBirth('');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -188,13 +232,52 @@ export default function Signup() {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">
                 Date of Birth *
               </label>
-              <input
-                type="date"
-                required
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-900"
-              />
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  required
+                  value={dobMonth}
+                  onChange={(e) => handleDobChange(e.target.value, dobDay, dobYear)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-900"
+                >
+                  <option value="" disabled className="text-slate-500">Month</option>
+                  {MONTHS.map((m) => (
+                    <option key={m.value} value={m.value} className="bg-slate-900 text-white">
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  required
+                  value={dobDay}
+                  onChange={(e) => handleDobChange(dobMonth, e.target.value, dobYear)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-900"
+                >
+                  <option value="" disabled className="text-slate-500">Day</option>
+                  {Array.from({ length: getDaysInMonth(dobMonth, dobYear) }, (_, i) => {
+                    const dayVal = String(i + 1).padStart(2, '0');
+                    return (
+                      <option key={dayVal} value={dayVal} className="bg-slate-900 text-white">
+                        {i + 1}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                <select
+                  required
+                  value={dobYear}
+                  onChange={(e) => handleDobChange(dobMonth, dobDay, e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-900"
+                >
+                  <option value="" disabled className="text-slate-500">Year</option>
+                  {YEARS.map((y) => (
+                    <option key={y} value={String(y)} className="bg-slate-900 text-white">
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

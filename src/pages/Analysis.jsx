@@ -46,7 +46,7 @@ function pvToSan(fen, pvMoves, maxMoves = 6) {
   if (!fen || !pvMoves?.length) return '';
   try {
     const tmp = new Chess(fen);
-    let moveNumber = tmp.moveNumber();
+    let moveNumber = typeof tmp.moveNumber === 'function' ? tmp.moveNumber() : 1;
     let isWhiteTurn = tmp.turn() === 'w';
 
     const parts = [];
@@ -351,29 +351,38 @@ export default function Analysis() {
     setIsDeepSearching(true);
 
     const engine = getEngineInstance();
+    if (!engine || typeof engine.subscribe !== 'function') {
+      setIsDeepSearching(false);
+      return;
+    }
 
     const unsub = engine.subscribe((info) => {
       if (!isMounted) return;
-      if (info.depth) {
+      if (info?.depth) {
         setDeepEngineInfo({
           depth: info.depth,
-          scoreCp: info.scoreCp,
-          isMate: info.isMate,
-          mateIn: info.mateIn,
+          scoreCp: info.scoreCp || 0,
+          isMate: Boolean(info.isMate),
+          mateIn: info.mateIn || 0,
           bestMove: info.bestMove,
-          pv: info.pv,
+          pv: info.pv || [],
         });
       }
     });
 
-    engine.evaluatePosition(fen, ENGINE_CONFIG.deepDepth).then(() => {
-      if (isMounted) setIsDeepSearching(false);
-    });
+    engine
+      .evaluatePosition(fen, ENGINE_CONFIG.deepAnalysis?.depth || 20)
+      .then(() => {
+        if (isMounted) setIsDeepSearching(false);
+      })
+      .catch(() => {
+        if (isMounted) setIsDeepSearching(false);
+      });
 
     return () => {
       isMounted = false;
       unsub();
-      engine.stop();
+      if (typeof engine.stop === 'function') engine.stop();
     };
   }, [fen, deepAnalysisEnabled]);
 
@@ -382,6 +391,7 @@ export default function Analysis() {
 
     let cancelled = false;
     const engine = getEngineInstance();
+    if (!engine || typeof engine.subscribe !== 'function') return;
 
     const unsub = engine.subscribe((info) => {
       if (cancelled) return;
@@ -399,7 +409,7 @@ export default function Analysis() {
     return () => {
       cancelled = true;
       unsub();
-      engine.stop();
+      if (typeof engine.stop === 'function') engine.stop();
     };
   }, [fen, reviewData]);
 

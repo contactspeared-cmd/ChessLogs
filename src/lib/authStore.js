@@ -277,7 +277,7 @@ export async function createSiteAccount({
   const cleanLast = (lastName || '').trim();
   const cleanSuffix = (suffix || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
-  const cleanChesscom = (chesscomUsername || '').trim().toLowerCase();
+  const cleanChesscom = (chesscomUsername || '').trim();
   const cleanDob = (dateOfBirth || '').trim();
 
   if (!cleanFirst) {

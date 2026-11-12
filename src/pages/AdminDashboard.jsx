@@ -228,7 +228,7 @@ export default function AdminDashboard() {
         suffix: newSuffix.trim(),
         dateOfBirth: newDob,
         email: newEmail.trim().toLowerCase(),
-        chesscomUsername: newChesscom.trim().toLowerCase(),
+        chesscomUsername: newChesscom.trim(),
         password: newPassword,
         role: newRole,
       });
@@ -282,7 +282,7 @@ export default function AdminDashboard() {
         suffix: editSuffix.trim(),
         date_of_birth: editDob,
         display_name: computedName,
-        chesscom_username: editChesscom.trim().toLowerCase(),
+        chesscom_username: editChesscom.trim(),
         bio: editBio.trim(),
         role: editingRole,
       });

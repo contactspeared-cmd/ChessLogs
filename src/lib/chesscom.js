@@ -14,7 +14,7 @@ function chesscomHeaders() {
 
 export async function fetchChesscomProfile(username) {
   if (!username) return null;
-  const cleanUsername = username.trim().toLowerCase();
+  const cleanUsername = encodeURIComponent(username.trim());
   try {
     const res = await fetch(`${BASE_URL}/player/${cleanUsername}`, {
       headers: chesscomHeaders(),
@@ -22,7 +22,7 @@ export async function fetchChesscomProfile(username) {
 
     if (!res.ok) {
       if (res.status === 404) {
-        throw new Error(`Chess.com username "${cleanUsername}" was not found.`);
+        throw new Error(`Chess.com username "${username.trim()}" was not found.`);
       }
       throw new Error(`Chess.com API returned HTTP ${res.status}`);
     }
@@ -36,14 +36,14 @@ export async function fetchChesscomProfile(username) {
 
 export async function fetchChesscomStats(username) {
   if (!username) return null;
-  const cleanUsername = username.trim().toLowerCase();
+  const cleanUsername = encodeURIComponent(username.trim());
   try {
     const res = await fetch(`${BASE_URL}/player/${cleanUsername}/stats`, {
       headers: chesscomHeaders(),
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch stats for ${cleanUsername}`);
+      throw new Error(`Failed to fetch stats for ${username.trim()}`);
     }
 
     return await res.json();
@@ -55,7 +55,7 @@ export async function fetchChesscomStats(username) {
 
 export async function fetchChesscomArchiveUrls(username) {
   if (!username) return [];
-  const cleanUsername = username.trim().toLowerCase();
+  const cleanUsername = encodeURIComponent(username.trim());
   const res = await fetch(`${BASE_URL}/player/${cleanUsername}/games/archives`, {
     headers: chesscomHeaders(),
   });
@@ -71,15 +71,14 @@ export async function fetchChesscomArchiveUrls(username) {
 
 export async function fetchChesscomMonthlyGames(username, year, month) {
   if (!username) return [];
-  const cleanUsername = username.trim().toLowerCase();
+  const cleanUsername = encodeURIComponent(username.trim());
 
   let targetYear = year;
   let targetMonth = month;
 
-  
   if (!targetYear || !targetMonth) {
     try {
-      const archives = await fetchChesscomArchiveUrls(cleanUsername);
+      const archives = await fetchChesscomArchiveUrls(username.trim());
       if (archives.length > 0) {
         const latestArchiveUrl = archives[archives.length - 1];
         const parts = latestArchiveUrl.split('/');
@@ -91,7 +90,6 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
     }
   }
 
-  
   if (!targetYear || !targetMonth) {
     const now = new Date();
     targetYear = now.getFullYear();
@@ -125,7 +123,6 @@ async function fetchGamesFromArchiveUrl(archiveUrl, retries = 3) {
     try {
       const res = await fetch(archiveUrl, { headers: chesscomHeaders() });
       if (res.status === 429) {
-        
         await new Promise((r) => setTimeout(r, 600 * attempt));
         continue;
       }
@@ -147,19 +144,28 @@ async function fetchGamesFromArchiveUrl(archiveUrl, retries = 3) {
   return [];
 }
 
-export async function fetchChesscomAllGames(username, onProgress = null, options = {}) {
+export async function fetchChesscomAllGames(username, onProgressOrOptions = null, maybeOptions = {}) {
   if (!username) return [];
-  const cleanUsername = username.trim().toLowerCase();
+
+  let onProgress = null;
+  let options = {};
+  if (typeof onProgressOrOptions === 'function') {
+    onProgress = onProgressOrOptions;
+    options = maybeOptions || {};
+  } else if (typeof onProgressOrOptions === 'object' && onProgressOrOptions !== null) {
+    onProgress = typeof onProgressOrOptions.onProgress === 'function' ? onProgressOrOptions.onProgress : null;
+    options = onProgressOrOptions;
+  }
+
+  const cleanUsername = username.trim();
   const archives = await fetchChesscomArchiveUrls(cleanUsername);
 
   const monthsLimit = typeof options.monthsLimit === 'number' ? options.monthsLimit : 6;
-
-  
   const allOrdered = [...archives].reverse();
   const ordered = monthsLimit > 0 ? allOrdered.slice(0, monthsLimit) : allOrdered;
 
   if (ordered.length === 0) {
-    if (onProgress) onProgress({ completed: 0, total: 0, gameCount: 0 });
+    if (typeof onProgress === 'function') onProgress({ completed: 0, total: 0, gameCount: 0 });
     return [];
   }
 
@@ -182,7 +188,7 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
     for (const games of results) {
       allGames.push(...games);
       completed += 1;
-      if (onProgress) {
+      if (typeof onProgress === 'function') {
         onProgress({
           completed: Math.min(completed, ordered.length),
           total: ordered.length,
@@ -191,15 +197,13 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
       }
     }
 
-    
     if (i + ARCHIVE_CONCURRENCY < ordered.length) {
       await new Promise((r) => setTimeout(r, 50));
     }
   }
 
-  
   try {
-    const liveRes = await fetch(`${BASE_URL}/player/${cleanUsername}/games`, {
+    const liveRes = await fetch(`${BASE_URL}/player/${encodeURIComponent(cleanUsername)}/games`, {
       headers: chesscomHeaders(),
     });
     if (liveRes.ok) {
@@ -209,10 +213,8 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
       }
     }
   } catch {
-    
   }
 
-  
   const seen = new Set();
   const unique = [];
   for (const game of allGames) {
@@ -240,16 +242,21 @@ function detectOpeningFromPgnTags(pgn) {
   return findOpeningFromHeaders(headers);
 }
 
-/**
- * Parses raw Chess.com game object into our standardized schema
- * @param {Object} rawGame
- * @param {string} studentUsername
- * @param {string} studentId
- * @param {{ fullOpeningDetect?: boolean }} [options]
- */
-export function formatChesscomGame(rawGame, studentUsername, studentId, options = {}) {
-  const cleanStudent = studentUsername.toLowerCase();
-  const isWhite = rawGame.white?.username?.toLowerCase() === cleanStudent;
+export function formatChesscomGame(rawGame, studentUsernameOrId, maybeStudentId = null, options = {}) {
+  let studentUsername = '';
+  let studentId = '';
+  if (maybeStudentId) {
+    studentUsername = studentUsernameOrId || '';
+    studentId = maybeStudentId;
+  } else {
+    studentUsername = studentUsernameOrId || '';
+    studentId = studentUsernameOrId || '';
+  }
+
+  const target = studentUsername.trim().toLowerCase();
+  const whiteUser = (rawGame.white?.username || '').trim().toLowerCase();
+  const blackUser = (rawGame.black?.username || '').trim().toLowerCase();
+  const isWhite = target ? (whiteUser === target || blackUser !== target) : true;
   const userSide = isWhite ? rawGame.white : rawGame.black;
   const opponentSide = isWhite ? rawGame.black : rawGame.white;
 
@@ -264,7 +271,6 @@ export function formatChesscomGame(rawGame, studentUsername, studentId, options 
     ? new Date(rawGame.end_time * 1000).toISOString()
     : new Date().toISOString();
 
-  // Extract game id from URL e.g. https://www.chess.com/game/live/123456789
   const match = rawGame.url?.match(/\/(\d+)$/);
   const chesscomGameId = match ? match[1] : (rawGame.uuid || String(rawGame.end_time));
 
@@ -293,10 +299,8 @@ export function formatChesscomGame(rawGame, studentUsername, studentId, options 
   };
 }
 
-/**
- * Generates a verification token for bio verification (Constraint 1)
- */
 export function generateVerificationCode(username) {
   const hash = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `CHESSLOGS-${username.substring(0, 3).toUpperCase()}-${hash}`;
+  const prefix = (username || 'USR').replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() || 'USR';
+  return `CHESSLOGS-${prefix}-${hash}`;
 }

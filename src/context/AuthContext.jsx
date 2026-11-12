@@ -218,17 +218,16 @@ export function AuthProvider({ children }) {
     if (!username || !username.trim()) {
       throw new Error('Please enter your Chess.com username.');
     }
-    const cleanUsername = username.trim().toLowerCase();
-
-    
+    const cleanUsername = username.trim();
     const liveProfile = await fetchChesscomProfile(cleanUsername);
     if (!liveProfile) {
       throw new Error(`Chess.com username "${cleanUsername}" was not found.`);
     }
+    const canonicalUsername = liveProfile.username || cleanUsername;
 
     try {
-      const res = await api.auth.chesscom(cleanUsername, {
-        displayName: liveProfile.name || cleanUsername,
+      const res = await api.auth.chesscom(canonicalUsername, {
+        displayName: liveProfile.name || canonicalUsername,
         avatarUrl:
           liveProfile.avatar ||
           'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
@@ -245,27 +244,27 @@ export function AuthProvider({ children }) {
       console.warn('PHP API chesscom login failed, falling back to local profile:', apiErr?.message);
     }
 
-    let finalId = `chesscom-${cleanUsername}`;
+    let finalId = `chesscom-${canonicalUsername.toLowerCase()}`;
     let finalProfile = {
       id: finalId,
       role: 'student',
-      first_name: liveProfile.name ? liveProfile.name.split(' ')[0] : cleanUsername,
+      first_name: liveProfile.name ? liveProfile.name.split(' ')[0] : canonicalUsername,
       middle_initial: '',
       last_name: liveProfile.name ? liveProfile.name.split(' ').slice(1).join(' ') : '',
       suffix: '',
       date_of_birth: '',
-      display_name: liveProfile.name || cleanUsername,
+      display_name: liveProfile.name || canonicalUsername,
       avatar_url:
         liveProfile.avatar ||
         'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-      chesscom_username: cleanUsername,
+      chesscom_username: canonicalUsername,
       bio: liveProfile.location ? `Chess.com member from ${liveProfile.location}` : '',
       created_at: new Date().toISOString(),
     };
 
     const sessionUser = {
       id: finalProfile.id,
-      email: finalProfile.email || `${cleanUsername}@chess.com`,
+      email: finalProfile.email || `${canonicalUsername.toLowerCase()}@chess.com`,
     };
 
     setUser(sessionUser);

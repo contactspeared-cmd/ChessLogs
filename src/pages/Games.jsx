@@ -61,15 +61,15 @@ export default function Games() {
     }
   }, [profile?.id, profile?.chesscom_username]);
 
-  const autoSyncedRef = useRef(false);
+  const lastSyncedUserRef = useRef(null);
 
   useEffect(() => {
     loadGames();
   }, [loadGames]);
 
   useEffect(() => {
-    if (!loading && profile?.chesscom_username && !autoSyncedRef.current) {
-      autoSyncedRef.current = true;
+    if (!loading && profile?.chesscom_username && lastSyncedUserRef.current !== profile.chesscom_username) {
+      lastSyncedUserRef.current = profile.chesscom_username;
       handleSyncGames();
     }
   }, [loading, profile?.chesscom_username]);
@@ -108,7 +108,7 @@ export default function Games() {
       }
 
       const formatted = rawGames
-        .map((g) => formatChesscomGame(g, profile.id))
+        .map((g) => formatChesscomGame(g, profile.chesscom_username, profile.id))
         .filter(Boolean);
 
       setGames(formatted);

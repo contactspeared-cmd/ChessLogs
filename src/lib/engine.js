@@ -27,9 +27,18 @@ export class StockfishEngine {
     this.worker = null;
     this.isReady = false;
     this.readyCallbacks = [];
+    this.subscribers = new Set();
     this.currentSearchResolve = null;
     this.searchProgressCallback = null;
     this.initPromise = this.initWorker();
+  }
+
+  subscribe(callback) {
+    if (typeof callback !== 'function') return () => {};
+    this.subscribers.add(callback);
+    return () => {
+      this.subscribers.delete(callback);
+    };
   }
 
   async initWorker() {
@@ -83,8 +92,17 @@ export class StockfishEngine {
     
     if (line.startsWith('info ') && line.includes(' score ')) {
       const parsedInfo = this.parseInfoLine(line);
-      if (parsedInfo && this.searchProgressCallback) {
-        this.searchProgressCallback(parsedInfo);
+      if (parsedInfo) {
+        if (this.searchProgressCallback) {
+          this.searchProgressCallback(parsedInfo);
+        }
+        for (const cb of this.subscribers) {
+          try {
+            cb(parsedInfo);
+          } catch (e) {
+            console.error('Subscriber error:', e);
+          }
+        }
       }
     }
 
@@ -150,9 +168,18 @@ export class StockfishEngine {
   async evaluatePosition(fen, options = {}, onProgress = null) {
     await this.initPromise;
 
-    const depth = options.depth || ENGINE_CONFIG.fastReview.depth;
-    const movetime = options.movetime || ENGINE_CONFIG.fastReview.movetime;
-    const multiPv = options.multiPv || 1;
+    const depth =
+      typeof options === 'number'
+        ? options
+        : options?.depth || ENGINE_CONFIG.fastReview.depth;
+    const movetime =
+      typeof options === 'object' && options?.movetime !== undefined
+        ? options.movetime
+        : (typeof options === 'number' ? null : ENGINE_CONFIG.fastReview.movetime);
+    const multiPv =
+      typeof options === 'object' && options?.multiPv !== undefined
+        ? options.multiPv
+        : 1;
 
     let latestInfo = {
       depth: 0,
@@ -440,17 +467,28 @@ function getBookCandidateUcis(evalInfo) {
   return candidates;
 }
 
-export async function runFastReview(pgn, onProgress = null) {
+export async function runFastReview(pgnOrHistory, onProgressOrOptions = null) {
+  const onProgress =
+    typeof onProgressOrOptions === 'function'
+      ? onProgressOrOptions
+      : (onProgressOrOptions?.onProgress || null);
   const engine = getEngineInstance();
-  const chess = new Chess();
 
-  try {
-    chess.loadPgn(pgn);
-  } catch (e) {
-    throw new Error('Invalid PGN format: ' + e.message);
+  let history = [];
+  if (Array.isArray(pgnOrHistory)) {
+    history = pgnOrHistory;
+  } else if (typeof pgnOrHistory === 'string') {
+    const chess = new Chess();
+    try {
+      chess.loadPgn(pgnOrHistory);
+      history = chess.history({ verbose: true });
+    } catch (e) {
+      throw new Error('Invalid PGN format: ' + e.message);
+    }
+  } else if (pgnOrHistory && typeof pgnOrHistory.history === 'function') {
+    history = pgnOrHistory.history({ verbose: true });
   }
 
-  const history = chess.history({ verbose: true });
   const totalMoves = history.length;
 
   if (totalMoves === 0) {
