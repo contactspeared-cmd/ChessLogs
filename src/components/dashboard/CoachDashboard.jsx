@@ -49,21 +49,17 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const { profile, updateProfile } = useAuth();
   const navigate = useNavigate();
 
-  // Active Tab: 'roster' | 'analytics' | 'curriculum' | 'courseBuilder' | 'assignments' | 'diagnostics' | 'standards'
   const [activeTab, setActiveTab] = useState('roster');
 
-  // Core Data
   const [students, setStudents] = useState([]);
   const [courses, setCourses] = useState([]);
   const [credentials, setCredentials] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search & Filtering
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Course Builder State
   const [editingCourseId, setEditingCourseId] = useState(null);
   const [courseTitle, setCourseTitle] = useState('');
   const [courseDesc, setCourseDesc] = useState('');
@@ -77,19 +73,16 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const [courseSaveError, setCourseSaveError] = useState('');
   const [showPgnWizard, setShowPgnWizard] = useState(false);
 
-  // Assignment Modal
   const [assigningCourse, setAssigningCourse] = useState(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState([]);
   const [assigning, setAssigning] = useState(false);
   const [assignSuccess, setAssignSuccess] = useState(false);
   const [assignError, setAssignError] = useState('');
 
-  // Delete Confirmation Modal
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [deleteConfirmTitle, setDeleteConfirmTitle] = useState('');
   const [deleteError, setDeleteError] = useState('');
 
-  // Coaching Standards & Credentials Form State
   const [minStudentElo, setMinStudentElo] = useState(profile?.min_student_elo || 1200);
   const [coachingStandards, setCoachingStandards] = useState(
     profile?.coaching_standards ||
@@ -99,14 +92,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const [standardsSaving, setStandardsSaving] = useState(false);
   const [standardsSuccess, setStandardsSuccess] = useState(false);
 
-  // New Credential Submission
   const [newCredType, setNewCredType] = useState('FIDE Trainer License');
   const [newCredIssuer, setNewCredIssuer] = useState('FIDE Qualification Commission');
   const [newCredUrl, setNewCredUrl] = useState('');
   const [credSubmitting, setCredSubmitting] = useState(false);
   const [credSuccess, setCredSuccess] = useState(false);
 
-  // Load all data
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -133,7 +124,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     loadDashboardData();
   }, [profile?.id]);
 
-  // Aggregate KPI Calculations
   const totalStudents = students.length;
   const activeTrainingStudents = students.filter((s) =>
     (s.assignments || []).some((a) => (a.progress?.completed_chapter_ids?.length || 0) > 0)
@@ -143,7 +133,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     (c) => c.created_by === profile?.id || !c.created_by || profile?.role === 'admin'
   );
 
-  // Cohort average Stockfish review accuracy
   const allStudentGames = useMemo(() => {
     const list = [];
     students.forEach((s) => {
@@ -167,11 +156,9 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
   const pendingEnrollments = enrollments.filter((e) => e.review_status === 'pending');
 
-  // Verification status of coach
   const verifiedCredential = credentials.find((c) => c.verification_status === 'verified');
   const pendingCredential = credentials.find((c) => c.verification_status === 'pending');
 
-  // Filtered students by search
   const filteredStudents = useMemo(() => {
     if (!studentSearch.trim()) return students;
     const q = studentSearch.toLowerCase();
@@ -183,7 +170,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     );
   }, [students, studentSearch]);
 
-  // Course Builder Handlers
   const handleOpenNewCourse = () => {
     setEditingCourseId(null);
     setCourseTitle('');
@@ -317,7 +303,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     setChapters(chapters.filter((_, i) => i !== idx));
   };
 
-  // Assignment Modal Handlers
   const handleOpenAssignModal = (course) => {
     setAssigningCourse(course);
     const alreadyAssigned = students
@@ -355,7 +340,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     }
   };
 
-  // Coaching Standards Update Handler
   const handleSaveStandards = async (e) => {
     e.preventDefault();
     setStandardsSaving(true);
@@ -375,7 +359,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     }
   };
 
-  // Credential Submission Handler
   const handleSubmitCredential = (e) => {
     e.preventDefault();
     if (!newCredUrl.trim()) return;
@@ -402,7 +385,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
     }
   };
 
-  // Enrollment Review Handler
   const handleReviewEnrollment = (enrollmentId, status) => {
     reviewStudentEnrollment(enrollmentId, status, `Reviewed by coach ${profile?.display_name}`);
     const updated = getStudentEnrollments(profile?.id);
@@ -411,8 +393,8 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Coach Hero Header */}
-      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      {}
+      <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-emerald-950/40 border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5 flex-wrap">
             <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold flex items-center gap-1.5">
@@ -430,29 +412,29 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 Credential Pending Admin Review
               </span>
             ) : (
-              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-800 text-slate-600 border border-slate-200">
                 Independent Instructor
               </span>
             )}
             {profile?.chesscom_username && (
-              <span className="text-xs text-slate-400 font-mono">@{profile.chesscom_username}</span>
+              <span className="text-xs text-slate-500 font-mono">@{profile.chesscom_username}</span>
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             Welcome, Coach {profile?.display_name || 'Instructor'}!
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
             Manage your student cohorts, author interactive curriculum walkthroughs with Stockfish 18 NNUE,
             and monitor performance analytics across your entire training roster.
           </p>
         </div>
 
-        {/* Action Controls */}
+        {}
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
             onClick={handleOpenNewCourse}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/20 transition-all"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-lg shadow-amber-600/20 transition-all"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Author Course</span>
@@ -461,7 +443,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           {onPreviewStudentView && (
             <button
               onClick={onPreviewStudentView}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-700 text-xs font-semibold border border-slate-200 transition-all"
               title="Preview how learners experience the portal"
             >
               <Eye className="w-4 h-4 text-emerald-400" />
@@ -471,14 +453,14 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
+      {}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Active Students
             </span>
-            <div className="text-2xl font-black text-white">{totalStudents}</div>
+            <div className="text-2xl font-black text-slate-900">{totalStudents}</div>
             <p className="text-[11px] text-emerald-400">
               {activeTrainingStudents} currently active in training
             </p>
@@ -488,13 +470,13 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Authored Courses
             </span>
-            <div className="text-2xl font-black text-white">{coachCourses.length}</div>
-            <p className="text-[11px] text-slate-400">
+            <div className="text-2xl font-black text-slate-900">{coachCourses.length}</div>
+            <p className="text-[11px] text-slate-500">
               {coachCourses.reduce((acc, c) => acc + (c.chapters?.length || 0), 0)} total chapters
             </p>
           </div>
@@ -503,12 +485,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Cohort Avg Accuracy
             </span>
-            <div className="text-2xl font-black text-white">
+            <div className="text-2xl font-black text-slate-900">
               {cohortAvgAccuracy ? `${cohortAvgAccuracy}%` : '—'}
             </div>
             <p className="text-[11px] text-cyan-400">
@@ -520,12 +502,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           </div>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Pending Inquiries
             </span>
-            <div className="text-2xl font-black text-white">{pendingEnrollments.length}</div>
+            <div className="text-2xl font-black text-slate-900">{pendingEnrollments.length}</div>
             <p className="text-[11px] text-amber-400">
               {pendingEnrollments.length > 0 ? 'Applications awaiting review' : 'All applications resolved'}
             </p>
@@ -536,14 +518,14 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-800 gap-2 sm:gap-4 overflow-x-auto pb-1 text-sm font-semibold">
+      {}
+      <div className="flex border-b border-slate-200 gap-2 sm:gap-4 overflow-x-auto pb-1 text-sm font-semibold">
         <button
           onClick={() => setActiveTab('roster')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'roster'
               ? 'border-amber-400 text-amber-400 bg-amber-500/5'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -555,7 +537,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'analytics'
               ? 'border-amber-400 text-amber-400 bg-amber-500/5'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <BarChart2 className="w-4 h-4" />
@@ -567,7 +549,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'curriculum' || activeTab === 'courseBuilder'
               ? 'border-amber-400 text-amber-400 bg-amber-500/5'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -579,7 +561,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'diagnostics'
               ? 'border-amber-400 text-amber-400 bg-amber-500/5'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Crosshair className="w-4 h-4" />
@@ -591,7 +573,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'standards'
               ? 'border-amber-400 text-amber-400 bg-amber-500/5'
-              : 'border-transparent text-slate-400 hover:text-white'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
           }`}
         >
           <Award className="w-4 h-4" />
@@ -599,7 +581,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </button>
       </div>
 
-      {/* TAB 1: STUDENT ROSTER */}
+      {}
       {activeTab === 'roster' && (
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -610,16 +592,16 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 placeholder="Search students by name, email, or Chess.com handle..."
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-500"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-500"
               />
             </div>
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-slate-500">
               Showing {filteredStudents.length} of {students.length} enrolled students
             </div>
           </div>
 
           {filteredStudents.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-xs">
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 text-xs">
               No students found matching your criteria.
             </div>
           ) : (
@@ -634,7 +616,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 return (
                   <div
                     key={student.id}
-                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-lg transition-all flex flex-col justify-between group"
+                    className="bg-white border border-slate-200 hover:border-slate-200 rounded-2xl p-5 shadow-lg transition-all flex flex-col justify-between group"
                   >
                     <div className="space-y-3">
                       <div className="flex items-start justify-between gap-3">
@@ -648,10 +630,10 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             className="w-11 h-11 rounded-full object-cover border border-amber-500/30 shrink-0"
                           />
                           <div>
-                            <h3 className="font-bold text-white text-sm group-hover:text-amber-400 transition-colors">
+                            <h3 className="font-bold text-slate-900 text-sm group-hover:text-amber-400 transition-colors">
                               {student.display_name}
                             </h3>
-                            <div className="text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                            <div className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
                               {student.chesscom_username ? (
                                 <a
                                   href={`https://www.chess.com/member/${student.chesscom_username}`}
@@ -666,7 +648,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                                 <span>No Chess.com link</span>
                               )}
                               <span>•</span>
-                              <span className="text-slate-300 font-mono font-semibold">
+                              <span className="text-slate-600 font-mono font-semibold">
                                 {student.current_elo || 1200} Elo
                               </span>
                             </div>
@@ -674,11 +656,11 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                         </div>
                       </div>
 
-                      {/* Performance Mini-Stats */}
-                      <div className="grid grid-cols-3 gap-2 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 text-center text-xs">
+                      {}
+                      <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center text-xs">
                         <div>
                           <div className="text-[10px] text-slate-500 uppercase font-semibold">Games</div>
-                          <div className="font-bold text-white">{games.length}</div>
+                          <div className="font-bold text-slate-900">{games.length}</div>
                         </div>
                         <div>
                           <div className="text-[10px] text-slate-500 uppercase font-semibold">Win Rate</div>
@@ -690,16 +672,16 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                         </div>
                       </div>
 
-                      {/* Assigned Curriculum Progress */}
+                      {}
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[11px] text-slate-400">
+                        <div className="flex items-center justify-between text-[11px] text-slate-500">
                           <span>Curriculum Progress</span>
                           <span className="font-mono">
                             {assigned.filter((a) => (a.progress?.completed_chapter_ids?.length || 0) > 0).length}{' '}
                             active
                           </span>
                         </div>
-                        <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                        <div className="w-full bg-slate-50 h-1.5 rounded-full overflow-hidden border border-slate-200">
                           <div
                             className="bg-amber-500 h-full rounded-full transition-all"
                             style={{
@@ -723,7 +705,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                       </div>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between gap-2">
+                    <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
                       <button
                         onClick={() => setSelectedStudent(student)}
                         className="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
@@ -740,7 +722,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             setActiveTab('curriculum');
                           }
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold border border-slate-700 transition-colors"
+                        className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-700 text-[11px] font-semibold border border-slate-200 transition-colors"
                       >
                         Assign Module
                       </button>
@@ -753,7 +735,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* TAB: ANALYTICS & TELEMETRY */}
+      {}
       {activeTab === 'analytics' && (
         <div className="space-y-6">
           <StatisticsPanel
@@ -766,22 +748,22 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* TAB 2: CURRICULUM STUDIO */}
+      {}
       {activeTab === 'curriculum' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-amber-400" />
                 <span>Coach Curriculum Studio</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Build masterclasses, tactical repertoires, and interactive move walkthroughs for your students.
               </p>
             </div>
             <button
               onClick={handleOpenNewCourse}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Create New Course</span>
@@ -789,10 +771,10 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           </div>
 
           {coachCourses.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-3">
               <BookOpen className="w-12 h-12 text-slate-600 mx-auto" />
-              <h3 className="text-base font-semibold text-white">No courses authored yet</h3>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              <h3 className="text-base font-semibold text-slate-900">No courses authored yet</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
                 Start crafting your curriculum by clicking &quot;Create New Course&quot; above.
               </p>
             </div>
@@ -801,7 +783,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               {coachCourses.map((course) => (
                 <div
                   key={course.id}
-                  className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 shadow-xl transition-all flex flex-col justify-between group"
+                  className="bg-white border border-slate-200 hover:border-slate-200 rounded-2xl p-6 shadow-xl transition-all flex flex-col justify-between group"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -814,26 +796,26 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                       >
                         {course.type === 'walkthrough' ? 'Interactive Board' : 'Video Lecture'}
                       </span>
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-slate-500 font-mono">
                         {course.chapters?.length || 0} chapters
                       </span>
                     </div>
 
-                    <h3 className="font-bold text-white text-base group-hover:text-amber-400 transition-colors">
+                    <h3 className="font-bold text-slate-900 text-base group-hover:text-amber-400 transition-colors">
                       {course.title}
                     </h3>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                       {course.description || 'No description provided.'}
                     </p>
 
-                    <div className="text-[11px] text-slate-400 pt-1 flex items-center gap-2 flex-wrap">
-                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    <div className="text-[11px] text-slate-500 pt-1 flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-600 font-mono">
                         Elo {course.min_elo || 0} – {course.max_elo || 3000}
                       </span>
-                      <span className="capitalize px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                      <span className="capitalize px-2 py-0.5 rounded bg-slate-800 text-slate-600">
                         Side: {course.trained_side || 'white'}
                       </span>
-                      {/* Assigned students count badge */}
+                      {}
                       {(() => {
                         const assignedCount = students.filter((s) =>
                           (s.assignments || []).some((a) => a.course_id === course.id)
@@ -844,7 +826,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             {assignedCount} assigned
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-slate-800/60 text-slate-500 border border-slate-700">
+                          <span className="px-2 py-0.5 rounded bg-slate-800/60 text-slate-500 border border-slate-200">
                             Unassigned
                           </span>
                         );
@@ -852,12 +834,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                     </div>
                   </div>
 
-                  <div className="mt-5 pt-4 border-t border-slate-800 space-y-2">
-                    {/* Primary actions row */}
+                  <div className="mt-5 pt-4 border-t border-slate-200 space-y-2">
+                    {}
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEditCourse(course)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors"
                         title="Edit course details and chapters"
                       >
                         <Edit className="w-3.5 h-3.5 text-amber-400" />
@@ -873,11 +855,11 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                       </button>
                     </div>
 
-                    {/* Secondary actions row */}
+                    {}
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate(`/courses/${course.id}`)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold border border-slate-800 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-800 text-slate-600 text-xs font-semibold border border-slate-200 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         Preview
@@ -899,22 +881,22 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* TAB: COURSE BUILDER FORM */}
+      {}
       {activeTab === 'courseBuilder' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-amber-400" />
                 <span>{editingCourseId ? 'Edit Curriculum Module' : 'Create Curriculum Module'}</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Set module parameters, target Elo rating bounds, and write coaching commentary.
               </p>
             </div>
             <button
               onClick={() => setActiveTab('curriculum')}
-              className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800"
+              className="text-xs text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800"
             >
               Cancel
             </button>
@@ -930,7 +912,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
           <form onSubmit={handleSaveCourse} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Course Title *
                 </label>
                 <input
@@ -939,18 +921,18 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   placeholder="e.g. Master the Sicilian Najdorf: Key Pawn Breaks"
                   value={courseTitle}
                   onChange={(e) => setCourseTitle(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Course Mode
                 </label>
                 <select
                   value={courseType}
                   onChange={(e) => setCourseType(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                 >
                   <option value="walkthrough">Interactive Board Walkthrough</option>
                   <option value="video">Video Masterclass &amp; Lecture</option>
@@ -959,7 +941,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                 Course Description
               </label>
               <textarea
@@ -967,44 +949,44 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 placeholder="Core objectives, tactical goals, and what the student will learn..."
                 value={courseDesc}
                 onChange={(e) => setCourseDesc(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
               />
             </div>
 
-            {/* Target Elo & Perspective */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+            {}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Min Student Elo
                 </label>
                 <input
                   type="number"
                   value={courseMinElo}
                   onChange={(e) => setCourseMinElo(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Max Student Elo
                 </label>
                 <input
                   type="number"
                   value={courseMaxElo}
                   onChange={(e) => setCourseMaxElo(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Board Orientation
                 </label>
                 <select
                   value={courseOrientation}
                   onChange={(e) => setCourseOrientation(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                 >
                   <option value="white">White</option>
                   <option value="black">Black</option>
@@ -1012,13 +994,13 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Trained Side
                 </label>
                 <select
                   value={courseTrainedSide}
                   onChange={(e) => setCourseTrainedSide(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                 >
                   <option value="white">White</option>
                   <option value="black">Black</option>
@@ -1026,19 +1008,19 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            {/* Chapters Section */}
-            <div className="space-y-4 pt-4 border-t border-slate-800">
+            {}
+            <div className="space-y-4 pt-4 border-t border-slate-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-white text-sm">Course Chapters ({chapters.length})</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 className="font-bold text-slate-900 text-sm">Course Chapters ({chapters.length})</h3>
+                  <p className="text-[11px] text-slate-500">
                     Each chapter contains a PGN variation tree, move commentary, and key training moments.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddChapter}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-700"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold border border-slate-200"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Add Chapter</span>
@@ -1049,7 +1031,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 {chapters.map((ch, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4.5 space-y-3.5 relative"
+                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 space-y-3.5 relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
@@ -1069,7 +1051,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-400">Chapter Title</label>
+                        <label className="text-[11px] font-semibold text-slate-500">Chapter Title</label>
                         <input
                           type="text"
                           value={ch.title}
@@ -1078,12 +1060,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             next[idx].title = e.target.value;
                             setChapters(next);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-400">
+                        <label className="text-[11px] font-semibold text-slate-500">
                           Video URL (YouTube / MP4)
                         </label>
                         <input
@@ -1095,13 +1077,13 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             next[idx].video_url = e.target.value;
                             setChapters(next);
                           }}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-400">
+                      <label className="text-[11px] font-semibold text-slate-500">
                         PGN Notation / Move Sequence
                       </label>
                       <textarea
@@ -1113,7 +1095,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                           next[idx].pgn = e.target.value;
                           setChapters(next);
                         }}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400"
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400"
                       />
                     </div>
                   </div>
@@ -1121,18 +1103,18 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setActiveTab('curriculum')}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={courseSaving}
-                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/20 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-lg shadow-amber-600/20 disabled:opacity-50"
               >
                 {courseSaving ? 'Saving Curriculum...' : 'Publish Curriculum Module'}
               </button>
@@ -1141,30 +1123,30 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* TAB 3: STUDENT GAMES & DIAGNOSTICS */}
+      {}
       {activeTab === 'diagnostics' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Crosshair className="w-5 h-5 text-amber-400" />
                 <span>Student Game Diagnostics</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Examine games synced by your students, view Stockfish 18 NNUE accuracy evaluations, and spot opening weaknesses.
               </p>
             </div>
-            <div className="text-xs text-slate-400">
+            <div className="text-xs text-slate-500">
               Total Student Games: {allStudentGames.length}
             </div>
           </div>
 
           {allStudentGames.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-xs">
+            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-500 text-xs">
               No student games synced yet. Once your students sync their Chess.com games, they will appear here.
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800 overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-xl">
               {allStudentGames.slice(0, 20).map((game) => (
                 <div
                   key={game.id}
@@ -1181,17 +1163,17 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : game.result === 'loss'
                             ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-slate-700/30 text-slate-300'
+                            : 'bg-slate-700/30 text-slate-600'
                         }`}
                       >
                         {game.result}
                       </span>
-                      <span className="text-xs font-semibold text-white">
+                      <span className="text-xs font-semibold text-slate-900">
                         vs. {game.black_username || 'Opponent'}
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2 flex-wrap">
                       <span className="capitalize">{game.time_class || 'Rapid'}</span>
                       {game.played_at && (
                         <>
@@ -1224,7 +1206,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
                     <button
                       onClick={() => navigate(`/analysis?gameId=${game.id}`)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-semibold transition-colors flex items-center gap-1"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-emerald-600 text-slate-700 hover:text-slate-900 text-xs font-semibold transition-colors flex items-center gap-1"
                     >
                       <span>Analyze</span>
                       <ChevronRight className="w-3.5 h-3.5" />
@@ -1237,17 +1219,17 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* TAB 4: COACHING STANDARDS & CREDENTIALS */}
+      {}
       {activeTab === 'standards' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Coaching Standards Configuration */}
-          <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
-            <div className="border-b border-slate-800 pb-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+          {}
+          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+            <div className="border-b border-slate-200 pb-4">
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Sliders className="w-5 h-5 text-amber-400" />
                 <span>Coaching Standards &amp; Philosophy</span>
               </h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Set minimum Elo expectations and guidelines for incoming students.
               </p>
             </div>
@@ -1261,7 +1243,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
             <form onSubmit={handleSaveStandards} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Minimum Student Elo Threshold
                 </label>
                 <input
@@ -1270,7 +1252,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   max="3000"
                   value={minStudentElo}
                   onChange={(e) => setMinStudentElo(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                 />
                 <p className="text-[11px] text-slate-500">
                   Students below this rating will be flagged when applying for mentorship.
@@ -1278,7 +1260,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Coaching Guidelines &amp; Syllabus Focus
                 </label>
                 <textarea
@@ -1286,12 +1268,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   value={coachingStandards}
                   onChange={(e) => setCoachingStandards(e.target.value)}
                   placeholder="Outline your coaching methodology, recommended study time, and expectations..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Public Coaching Bio
                 </label>
                 <textarea
@@ -1299,14 +1281,14 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   value={coachingBio}
                   onChange={(e) => setCoachingBio(e.target.value)}
                   placeholder="Your background, titles, and tournament achievements..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={standardsSaving}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 <span>{standardsSaving ? 'Saving...' : 'Save Coaching Standards'}</span>
@@ -1314,32 +1296,32 @@ export default function CoachDashboard({ onPreviewStudentView }) {
             </form>
           </div>
 
-          {/* Credentials Submission & Verification Status */}
+          {}
           <div className="lg:col-span-5 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
-              <div className="border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+              <div className="border-b border-slate-200 pb-3">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Award className="w-5 h-5 text-amber-400" />
                   <span>Coach Verification Status</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Official credentials verified by ChessLogs Administrators.
                 </p>
               </div>
 
               <div className="space-y-3">
                 {credentials.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 text-center">
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 text-center">
                     No credentials submitted yet. Submit your FIDE or national certification below.
                   </div>
                 ) : (
                   credentials.map((cred) => (
                     <div
                       key={cred.id}
-                      className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2"
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-white text-xs">{cred.credential_type}</span>
+                        <span className="font-bold text-slate-900 text-xs">{cred.credential_type}</span>
                         <span
                           className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
                             cred.verification_status === 'verified'
@@ -1352,7 +1334,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                           {cred.verification_status}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-slate-500">
                         Issuer: {cred.issuer || 'Official Federation'}
                       </div>
                       {cred.document_url && (
@@ -1371,9 +1353,9 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 )}
               </div>
 
-              {/* Submit New Credential Form */}
-              <div className="pt-4 border-t border-slate-800 space-y-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              {}
+              <div className="pt-4 border-t border-slate-200 space-y-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Submit Credential for Review
                 </span>
 
@@ -1390,7 +1372,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                     placeholder="Credential Title (e.g. FIDE Trainer, USCF Senior Coach)"
                     value={newCredType}
                     onChange={(e) => setNewCredType(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                   <input
                     type="text"
@@ -1398,7 +1380,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                     placeholder="Issuer (e.g. FIDE, US Chess Federation)"
                     value={newCredIssuer}
                     onChange={(e) => setNewCredIssuer(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                   <input
                     type="url"
@@ -1406,12 +1388,12 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                     placeholder="Document URL (PDF / Verification link)"
                     value={newCredUrl}
                     onChange={(e) => setNewCredUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500"
                   />
                   <button
                     type="submit"
                     disabled={credSubmitting}
-                    className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all disabled:opacity-50"
+                    className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all disabled:opacity-50"
                   >
                     {credSubmitting ? 'Submitting...' : 'Submit to Admin Desk'}
                   </button>
@@ -1419,10 +1401,10 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            {/* Student Applications Queue */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-              <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
+            {}
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-xl space-y-4">
+              <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <UserCheck className="w-5 h-5 text-purple-400" />
                   <span>Mentorship Inquiries</span>
                 </h3>
@@ -1440,10 +1422,10 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   {enrollments.map((enr) => (
                     <div
                       key={enr.id}
-                      className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-2 text-xs"
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-white">{enr.student_name}</span>
+                        <span className="font-bold text-slate-900">{enr.student_name}</span>
                         <span
                           className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                             enr.review_status === 'approved'
@@ -1456,20 +1438,20 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                           {enr.review_status}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-slate-500">
                         {enr.review_notes || 'Student applied for coaching.'}
                       </p>
                       {enr.review_status === 'pending' && (
                         <div className="flex items-center gap-2 pt-1">
                           <button
                             onClick={() => handleReviewEnrollment(enr.id, 'approved')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold"
                           >
                             Accept Student
                           </button>
                           <button
                             onClick={() => handleReviewEnrollment(enr.id, 'rejected')}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white text-[11px]"
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-600 hover:text-slate-900 text-[11px]"
                           >
                             Decline
                           </button>
@@ -1484,31 +1466,31 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* DELETE COURSE CONFIRMATION MODAL */}
+      {}
       {deletingCourse && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-rose-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl">
-            {/* Header */}
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-rose-500/30 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl">
+            {}
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center shrink-0 mt-0.5">
                 <Trash2 className="w-5 h-5 text-rose-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Delete Course</h3>
-                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                <h3 className="text-lg font-bold text-slate-900">Delete Course</h3>
+                <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
                   This action is <span className="text-rose-400 font-semibold">permanent and irreversible</span>.
                   All chapter data and student assignments linked to this course will be removed.
                 </p>
               </div>
             </div>
 
-            {/* Course info preview */}
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+            {}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Course to delete
               </div>
-              <div className="font-bold text-white text-sm">{deletingCourse.title}</div>
-              <div className="text-[11px] text-slate-400">
+              <div className="font-bold text-slate-900 text-sm">{deletingCourse.title}</div>
+              <div className="text-[11px] text-slate-500">
                 {deletingCourse.chapters?.length || 0} chapters ·{' '}
                 {students.filter((s) =>
                   (s.assignments || []).some((a) => a.course_id === deletingCourse.id)
@@ -1517,9 +1499,9 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            {/* Confirmation input */}
+            {}
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-300">
+              <label className="text-xs font-semibold text-slate-600">
                 Type the course title to confirm deletion:
               </label>
               <input
@@ -1530,7 +1512,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   setDeleteConfirmTitle(e.target.value);
                   setDeleteError('');
                 }}
-                className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors placeholder:text-slate-600"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-rose-500/50 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none transition-colors placeholder:text-slate-600"
                 autoFocus
               />
               {deleteError && (
@@ -1541,7 +1523,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               )}
             </div>
 
-            {/* Actions */}
+            {}
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
@@ -1550,7 +1532,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   setDeleteConfirmTitle('');
                   setDeleteError('');
                 }}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-700 text-xs font-semibold transition-colors"
               >
                 Cancel
               </button>
@@ -1561,7 +1543,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   deleteConfirmTitle.trim().toLowerCase() !==
                   deletingCourse.title.trim().toLowerCase()
                 }
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-900 text-xs font-bold shadow-lg shadow-rose-600/20 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete Permanently
@@ -1571,11 +1553,11 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* INSPECT STUDENT MODAL */}
+      {}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
                 <img
                   src={
@@ -1586,34 +1568,34 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                   className="w-12 h-12 rounded-full object-cover border border-amber-500/30"
                 />
                 <div>
-                  <h3 className="text-lg font-bold text-white">{selectedStudent.display_name}</h3>
-                  <div className="text-xs text-slate-400">
+                  <h3 className="text-lg font-bold text-slate-900">{selectedStudent.display_name}</h3>
+                  <div className="text-xs text-slate-500">
                     {selectedStudent.email} • {selectedStudent.current_elo || 1200} Elo
                   </div>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
+                className="text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
               >
                 Close
               </button>
             </div>
 
-            {/* Student Bio & Details */}
+            {}
             {selectedStudent.bio && (
-              <p className="text-xs text-slate-300 leading-relaxed bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+              <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                 {selectedStudent.bio}
               </p>
             )}
 
-            {/* Assigned Modules for this Student */}
+            {}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Assigned Modules ({(selectedStudent.assignments || []).length})
               </h4>
               {(selectedStudent.assignments || []).length === 0 ? (
-                <div className="text-xs text-slate-500 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   No courses assigned to this student yet.
                 </div>
               ) : (
@@ -1623,9 +1605,9 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                     return (
                       <div
                         key={i}
-                        className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs"
+                        className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs"
                       >
-                        <span className="font-bold text-white">
+                        <span className="font-bold text-slate-900">
                           {course?.title || `Course ID: ${a.course_id}`}
                         </span>
                         <span className="text-[11px] text-amber-400 font-mono">
@@ -1638,13 +1620,13 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               )}
             </div>
 
-            {/* Student Recent Games */}
+            {}
             <div className="space-y-3">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                 Recent Synced Games ({(selectedStudent.games || []).length})
               </h4>
               {(selectedStudent.games || []).length === 0 ? (
-                <div className="text-xs text-slate-500 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div className="text-xs text-slate-500 bg-slate-50 p-4 rounded-xl border border-slate-200">
                   No games synced by this student yet.
                 </div>
               ) : (
@@ -1656,10 +1638,10 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                         setSelectedStudent(null);
                         navigate(`/analysis?gameId=${g.id}`);
                       }}
-                      className="p-3 rounded-xl bg-slate-950 hover:bg-slate-800/80 transition-colors cursor-pointer border border-slate-800 flex items-center justify-between text-xs"
+                      className="p-3 rounded-xl bg-slate-50 hover:bg-slate-800/80 transition-colors cursor-pointer border border-slate-200 flex items-center justify-between text-xs"
                     >
                       <div>
-                        <span className="font-bold text-white">vs. {g.black_username}</span>
+                        <span className="font-bold text-slate-900">vs. {g.black_username}</span>
                         <span className="text-slate-500 ml-2">({g.result})</span>
                       </div>
                       <span className="text-[11px] text-emerald-400">Open Analysis →</span>
@@ -1672,17 +1654,17 @@ export default function CoachDashboard({ onPreviewStudentView }) {
         </div>
       )}
 
-      {/* ASSIGN COURSE MODAL */}
+      {}
       {assigningCourse && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Users className="w-5 h-5 text-amber-400" />
                   Assign / Re-assign Students
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5 line-clamp-1 font-mono">
+                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1 font-mono">
                   {assigningCourse.title}
                 </p>
                 <p className="text-[11px] text-slate-500 mt-1">
@@ -1691,7 +1673,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
               <button
                 onClick={() => setAssigningCourse(null)}
-                className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
+                className="text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
               >
                 Cancel
               </button>
@@ -1713,7 +1695,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-300 uppercase tracking-wider">
+                <span className="font-bold text-slate-600 uppercase tracking-wider">
                   Select Students ({selectedStudentIds.length} selected)
                 </span>
                 <button
@@ -1731,7 +1713,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 </button>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-800 rounded-2xl p-2 bg-slate-950">
+              <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200 rounded-2xl p-2 bg-slate-50">
                 {students.length === 0 ? (
                   <div className="py-6 text-center text-xs text-slate-500">
                     No students enrolled yet.
@@ -1752,7 +1734,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                         className={`p-2.5 rounded-xl cursor-pointer flex items-center justify-between text-xs transition-colors ${
                           isChecked
                             ? 'bg-amber-500/10 border border-amber-500/20'
-                            : 'hover:bg-slate-900 border border-transparent'
+                            : 'hover:bg-white border border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-2.5">
@@ -1762,7 +1744,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                             <Square className="w-4 h-4 text-slate-600 shrink-0" />
                           )}
                           <div>
-                            <span className="font-semibold text-white">{s.display_name}</span>
+                            <span className="font-semibold text-slate-900">{s.display_name}</span>
                             {wasAlreadyAssigned && (
                               <span className="ml-2 text-[10px] text-emerald-400 font-semibold uppercase tracking-wide">
                                 Currently Assigned
@@ -1780,11 +1762,11 @@ export default function CoachDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => setAssigningCourse(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
               >
                 Cancel
               </button>
@@ -1792,7 +1774,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 type="button"
                 onClick={handleSaveAssignments}
                 disabled={assigning}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold disabled:opacity-50"
               >
                 {assigning ? 'Saving...' : 'Confirm Assignments'}
               </button>

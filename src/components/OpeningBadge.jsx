@@ -1,9 +1,6 @@
 import { BookOpen } from 'lucide-react';
 import { formatOpeningLabel } from '../lib/openings';
 
-/**
- * Compact opening / variation chip used in Analysis + Games list.
- */
 export default function OpeningBadge({
   eco,
   opening,
@@ -32,7 +29,7 @@ export default function OpeningBadge({
 
   return (
     <div
-      className={`inline-flex items-center max-w-full rounded-lg bg-amber-500/10 text-amber-200/90 border border-amber-500/25 font-medium ${sizing} ${className}`}
+      className={`inline-flex items-center max-w-full rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-medium ${sizing} ${className}`}
       title={label}
     >
       <BookOpen className={size === 'sm' ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0'} />

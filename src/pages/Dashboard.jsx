@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getCourses, getGamesForStudent } from '../lib/db';
 import { fetchChesscomStats } from '../lib/chesscom';
 import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
-import StatCard from '../components/StatCard';
 import CoachDashboard from '../components/dashboard/CoachDashboard';
 import AdminDashboard from './AdminDashboard';
 import {
@@ -19,15 +18,17 @@ import {
   Eye,
   ArrowLeft,
   GraduationCap,
+  ShoppingBag,
+  Clock,
+  Target,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { profile, isAdmin, isCoach } = useAuth();
   const navigate = useNavigate();
 
-  // Preview Student View mode for Admin / Coach
   const [previewStudent, setPreviewStudent] = useState(false);
-
   const [courses, setCourses] = useState([]);
   const [games, setGames] = useState([]);
   const [chessStats, setChessStats] = useState(null);
@@ -52,25 +53,20 @@ export default function Dashboard() {
           const stats = await fetchChesscomStats(profile.chesscom_username);
           setChessStats(stats);
         }
-      } catch (err) {
-        console.error('Error loading dashboard data:', err);
-      }
+      } catch (err) {}
     }
 
     loadDashboardData();
   }, [profile]);
 
-  // If Admin and not in preview mode, render redesigned Admin Command Center
   if (isAdmin && !previewStudent) {
     return <AdminDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
   }
 
-  // If Coach and not in preview mode, render overhauled Coach Command Studio
   if (isCoach && !previewStudent) {
     return <CoachDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
   }
 
-  // Calculate statistics for standard User / Student UI (Kept as is)
   const totalGames = games.length;
   const wins = games.filter((g) => g.result === 'win').length;
   const losses = games.filter((g) => g.result === 'loss').length;
@@ -88,18 +84,17 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Learner Preview Alert Banner for Coach / Admin */}
       {previewStudent && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 text-xs text-amber-300 font-semibold">
-            <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5 text-xs text-amber-900 font-semibold">
+            <Eye className="w-4 h-4 text-amber-600 shrink-0" />
             <span>
-              Previewing Student / Learner Portal View ({isAdmin ? 'Administrator Mode' : 'Coach Mode'})
+              Previewing Learner Portal View ({isAdmin ? 'Administrator Mode' : 'Coach Mode'})
             </span>
           </div>
           <button
             onClick={() => setPreviewStudent(false)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>{isAdmin ? 'Back to Command Center' : 'Back to Coach Studio'}</span>
@@ -107,108 +102,117 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-emerald-950/60 via-slate-900 to-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-              {profile?.role === 'admin' ? 'Admin Command View' : 'Student Improvement Portal'}
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              MoveTrainer Daily Study
             </span>
             {profile?.chesscom_username && (
-              <span className="text-xs text-slate-400 font-mono">
-                Linked: @{profile.chesscom_username}
+              <span className="text-xs text-slate-500 font-mono">
+                @{profile.chesscom_username}
               </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Welcome back, {profile?.display_name || 'Chess Champion'}!
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            Welcome back, {profile?.display_name || 'Champion'}!
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 max-w-xl">
-            Track your positional mastery, review game accuracy with Stockfish 18 NNUE, and advance through assigned training modules.
+          <p className="text-xs sm:text-sm text-slate-600 max-w-xl leading-relaxed">
+            Strengthen your memory with MoveTrainer spaced repetition, evaluate your moves with Stockfish 18 NNUE, and explore the curriculum catalog.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => navigate('/analysis')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all"
+          <Link
+            to="/marketplace"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all"
           >
-            <Crosshair className="w-4 h-4" />
-            <span>Open Analysis Board</span>
-          </button>
-          <button
-            onClick={() => navigate('/games')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all"
+            <ShoppingBag className="w-4 h-4" />
+            <span>Browse Marketplace</span>
+          </Link>
+          <Link
+            to="/analysis"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold transition-all"
           >
-            <Database className="w-4 h-4 text-emerald-400" />
-            <span>Sync Games</span>
-          </button>
+            <Crosshair className="w-4 h-4 text-emerald-600" />
+            <span>Analysis Board</span>
+          </Link>
         </div>
       </div>
 
-      {/* KPI Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Chess.com Rapid Rating"
-          value={chessStats?.chess_rapid?.last?.rating || '—'}
-          subtitle={
-            chessStats?.chess_rapid?.best?.rating
-              ? `All-time peak: ${chessStats.chess_rapid.best.rating}`
-              : 'Link username in Profile'
-          }
-          icon={Trophy}
-          color="amber"
-        />
-        <StatCard
-          title="Synced Games"
-          value={totalGames}
-          subtitle={`Win Rate: ${winRate}% (${wins}W / ${losses}L / ${draws}D)`}
-          icon={Database}
-          color="emerald"
-        />
-        <StatCard
-          title="Average Review Accuracy"
-          value={averageAccuracy ? `${averageAccuracy}%` : '—'}
-          subtitle={
-            reviewedGames.length > 0
-              ? `Across ${reviewedGames.length} reviewed games`
-              : 'Run Fast Review to benchmark'
-          }
-          icon={Zap}
-          color="cyan"
-        />
-        <StatCard
-          title="Assigned Courses"
-          value={courses.length}
-          subtitle={`${
-            courses.filter((c) => (c.progress?.completed_chapter_ids?.length || 0) > 0).length
-          } active in training`}
-          icon={BookOpen}
-          color="purple"
-        />
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <span>Chess.com Rating</span>
+            <Trophy className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">
+            {chessStats?.chess_rapid?.last?.rating || profile?.current_elo || '1200'} Elo
+          </div>
+          <p className="text-[11px] text-slate-500">
+            {chessStats?.chess_rapid?.best?.rating ? `Peak: ${chessStats.chess_rapid.best.rating}` : 'Rapid Rating'}
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <span>Synced Matches</span>
+            <Database className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">{totalGames}</div>
+          <p className="text-[11px] text-emerald-700 font-semibold">
+            {winRate}% Win Rate ({wins}W / {losses}L / {draws}D)
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <span>Engine Accuracy</span>
+            <Zap className="w-4 h-4 text-cyan-600" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">
+            {averageAccuracy ? `${averageAccuracy}%` : '—'}
+          </div>
+          <p className="text-[11px] text-slate-500">Stockfish 18 NNUE Review</p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-1">
+          <div className="flex items-center justify-between text-slate-500 text-xs font-bold uppercase tracking-wider">
+            <span>Active Courses</span>
+            <BookOpen className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="text-2xl font-black text-slate-900">{courses.length}</div>
+          <p className="text-[11px] text-purple-700 font-semibold">MoveTrainer Enrolled</p>
+        </div>
       </div>
 
-      {/* Two Column Section: Assigned Courses & Recent Reviews */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Assigned Courses Section */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-emerald-400" />
-              <span>Assigned Curriculum</span>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-600" />
+              <span>Current MoveTrainer Study Courses</span>
             </h2>
-            <button
-              onClick={() => navigate('/courses')}
-              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+            <Link
+              to="/courses"
+              className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
             >
               <span>View All</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
 
           {courses.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">
-              No courses assigned yet.
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3 shadow-sm">
+              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <p className="text-xs text-slate-500">No courses enrolled in your personal study track yet.</p>
+              <Link
+                to="/marketplace"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Explore Course Marketplace</span>
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
@@ -220,38 +224,40 @@ export default function Dashboard() {
                 return (
                   <div
                     key={course.id}
-                    onClick={() => navigate(`/courses/${course.id}`)}
-                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-sm transition-all cursor-pointer group flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md rounded-2xl p-5 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
-                    <div className="space-y-1.5 flex-1">
+                    <div className="space-y-2 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          {course.type === 'walkthrough' ? 'Interactive Board' : 'Video'}
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {course.trained_side || 'White'}
                         </span>
                         <span className="text-xs text-slate-400 font-mono">
                           {completed} of {total} chapters
                         </span>
                         {course.coach_name && (
-                          <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <GraduationCap className="w-3 h-3 text-amber-400" />
+                          <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <GraduationCap className="w-3 h-3 text-amber-600" />
                             <span>Coach {course.coach_name}</span>
                           </span>
                         )}
                       </div>
-                      <h3 className="font-bold text-white group-hover:text-emerald-400 transition-colors text-sm">
+                      <h3 className="font-bold text-slate-900 text-sm line-clamp-1">
                         {course.title}
                       </h3>
-                      <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
                         <div
-                          className="bg-emerald-500 h-full rounded-full transition-all duration-300"
+                          className="bg-emerald-600 h-full rounded-full transition-all duration-300"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
                     </div>
 
-                    <button className="px-3.5 py-2 rounded-xl bg-slate-800 group-hover:bg-emerald-600 text-slate-200 group-hover:text-white text-xs font-semibold transition-colors shrink-0">
-                      Resume
-                    </button>
+                    <Link
+                      to={`/courses/${course.id}`}
+                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors shrink-0 text-center"
+                    >
+                      Study Now
+                    </Link>
                   </div>
                 );
               })}
@@ -259,81 +265,70 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Recent Game Reviews Section */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-400" />
-              <span>Recent Game Reviews</span>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
+              <span>Recent Game Evaluations</span>
             </h2>
-            <button
-              onClick={() => navigate('/games')}
-              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+            <Link
+              to="/games"
+              className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1"
             >
               <span>All Games</span>
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </Link>
           </div>
 
           {games.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-500 text-xs">
-              No games synced yet. Sync Chess.com in the Game Database.
+            <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500 text-xs shadow-sm space-y-2">
+              <Database className="w-8 h-8 text-slate-300 mx-auto" />
+              <p>No games synced yet.</p>
+              <Link to="/games" className="text-emerald-700 font-bold hover:underline">
+                Sync Chess.com Database →
+              </Link>
             </div>
           ) : (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800 overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden shadow-sm">
               {games.slice(0, 4).map((game) => (
                 <div
                   key={game.id}
                   onClick={() => navigate(`/analysis?gameId=${game.id}`)}
-                  className="p-4 hover:bg-slate-800/50 transition-colors cursor-pointer flex items-center justify-between gap-3 group"
+                  className="p-4 hover:bg-slate-50 transition-colors cursor-pointer flex items-center justify-between gap-3 group"
                 >
-                  <div>
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span
                         className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
                           game.result === 'win'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            ? 'bg-emerald-100 text-emerald-800'
                             : game.result === 'loss'
-                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                            : 'bg-slate-700/30 text-slate-300'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-slate-100 text-slate-700'
                         }`}
                       >
                         {game.result}
                       </span>
-                      <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
-                        vs. {game.black_username}
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                        vs. {game.black_username || 'Opponent'}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
-                      <span className="capitalize">{game.time_class}</span>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                      <span className="capitalize">{game.time_class || 'Rapid'}</span>
                       <span>•</span>
                       <span>{new Date(game.played_at).toLocaleDateString()}</span>
-                      {(game.opening || game.eco) && (
-                        <>
-                          <span>•</span>
-                          <OpeningBadge
-                            eco={game.eco}
-                            opening={game.opening}
-                            variation={game.variation}
-                            size="sm"
-                            className="max-w-[14rem]"
-                          />
-                        </>
-                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {game.review ? (
-                      <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20">
-                        {game.review.accuracy_white}% Acc
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-500 group-hover:text-emerald-400 transition-colors">
-                        Review →
-                      </span>
-                    )}
-                  </div>
+                  {game.review ? (
+                    <span className="text-xs font-mono font-bold text-cyan-800 bg-cyan-50 px-2 py-1 rounded-lg border border-cyan-200">
+                      {game.review.accuracy_white}% Acc
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400 group-hover:text-emerald-700">
+                      Analyze →
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

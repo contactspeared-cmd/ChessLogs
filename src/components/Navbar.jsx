@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ChessKnightIcon } from './ChessIcons';
 import {
   LayoutDashboard,
   Database,
@@ -11,9 +12,13 @@ import {
   User,
   LogOut,
   ChevronDown,
-  Sparkles,
   Menu,
   X,
+  ShoppingBag,
+  MessageSquare,
+  HelpCircle,
+  MessageCircle,
+  CheckCircle2,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -25,9 +30,11 @@ export default function Navbar() {
 
   const navLinks = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
+    { name: 'My Courses', path: '/courses', icon: BookOpen },
     { name: 'Games', path: '/games', icon: Database },
     { name: 'Analysis', path: '/analysis', icon: Crosshair },
-    { name: 'Courses', path: '/courses', icon: BookOpen },
+    { name: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
   if (isCoach) {
@@ -35,7 +42,7 @@ export default function Navbar() {
   }
 
   if (isAdmin) {
-    navLinks.push({ name: 'Command Center', path: '/admin', icon: ShieldAlert });
+    navLinks.push({ name: 'Admin Console', path: '/admin', icon: ShieldAlert });
   }
 
   const isActive = (path) => {
@@ -50,29 +57,25 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#15181c]/90 border-b border-slate-800/80 backdrop-blur-md">
+    <nav className="sticky top-0 z-40 bg-white/95 border-b border-slate-200 backdrop-blur-md shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Brand Logo */}
           <div className="flex items-center gap-6">
-            <Link to="/dashboard" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-                <span className="text-xl font-black text-slate-950">♞</span>
+            <Link to={user ? '/dashboard' : '/'} className="flex items-center gap-2.5 group">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+                <ChessKnightIcon className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-lg tracking-tight text-white group-hover:text-emerald-400 transition-colors">
-                    ChessLogs
-                  </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 border border-emerald-500/30">
-                    LMS
-                  </span>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold text-lg tracking-tight text-slate-900 group-hover:text-emerald-600 transition-colors">
+                  ChessLogs
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  LMS
+                </span>
               </div>
             </Link>
 
-            {/* Desktop Navigation Links */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:flex items-center gap-1">
               {navLinks.map((link) => {
                 const Icon = link.icon;
                 const active = isActive(link.path);
@@ -80,13 +83,13 @@ export default function Navbar() {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                       active
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className={`w-3.5 h-3.5 ${active ? 'text-emerald-600' : 'text-slate-400'}`} />
                     <span>{link.name}</span>
                   </Link>
                 );
@@ -94,114 +97,148 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Right Section: User Menu */}
           <div className="hidden md:flex items-center gap-3">
+            <Link
+              to="/support"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              title="Help & Customer Service"
+            >
+              <HelpCircle className="w-4 h-4" />
+            </Link>
 
-            {/* User Profile Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-800/70 border border-transparent hover:border-slate-700 transition-all text-left"
-              >
-                <img
-                  src={
-                    profile?.avatar_url ||
-                    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
-                  }
-                  alt={profile?.display_name || 'User'}
-                  className="w-8 h-8 rounded-full object-cover border border-emerald-500/50"
-                />
-                <div className="hidden lg:block text-xs leading-tight">
-                  <div className="font-semibold text-white">{profile?.display_name || 'Chess Player'}</div>
-                  <div className="text-slate-400 capitalize flex items-center gap-1">
-                    <span>{profile?.role || 'student'}</span>
-                    {profile?.chesscom_username && (
-                      <span className="text-emerald-400 font-mono">@{profile.chesscom_username}</span>
-                    )}
-                  </div>
-                </div>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              </button>
+            <Link
+              to="/feedback"
+              className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              title="Community Feedback"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </Link>
 
-              {dropdownOpen && (
-                <div
-                  className="absolute right-0 mt-2 w-56 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl py-1.5 z-50 text-sm"
-                  onClick={() => setDropdownOpen(false)}
+            {user ? (
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 border border-transparent hover:border-slate-200 transition-all text-left"
                 >
-                  <div className="px-3.5 py-2 border-b border-slate-800">
-                    <p className="font-medium text-white">{profile?.display_name}</p>
-                    <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-                    <div
-                      className={`mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${
-                        isAdmin
-                          ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                          : isCoach
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      }`}
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Role: {(profile?.role || 'student').toUpperCase()}
+                  <img
+                    src={
+                      profile?.avatar_url ||
+                      'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80'
+                    }
+                    alt={profile?.display_name || 'User'}
+                    className="w-8 h-8 rounded-full object-cover border border-slate-300"
+                  />
+                  <div className="hidden xl:block">
+                    <div className="text-xs font-bold text-slate-900 truncate max-w-[120px]">
+                      {profile?.display_name || 'Learner'}
+                    </div>
+                    <div className="text-[10px] text-slate-500 capitalize">
+                      {profile?.role || 'student'}
                     </div>
                   </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
 
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-2.5 px-3.5 py-2 text-slate-300 hover:text-white hover:bg-slate-800/60"
-                  >
-                    <User className="w-4 h-4 text-slate-400" />
-                    Profile & Chess.com Link
-                  </Link>
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 text-xs divide-y divide-slate-100">
+                    <div className="px-4 py-2.5">
+                      <div className="font-bold text-slate-900">{profile?.display_name || 'Learner'}</div>
+                      <div className="text-slate-500 truncate text-[11px]">{profile?.email}</div>
+                      {profile?.current_elo && (
+                        <div className="mt-1 text-emerald-700 font-mono text-[11px] font-semibold">
+                          {profile.current_elo} Elo
+                        </div>
+                      )}
+                    </div>
 
-                  {isCoach && (
-                    <Link
-                      to="/coach"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-amber-300 hover:text-white hover:bg-amber-500/10"
-                    >
-                      <GraduationCap className="w-4 h-4 text-amber-400" />
-                      Coach Studio
-                    </Link>
-                  )}
+                    <div className="py-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold"
+                      >
+                        <User className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Profile &amp; Settings</span>
+                      </Link>
+                      <Link
+                        to="/courses"
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:bg-slate-50 font-semibold"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                        <span>My Enrolled Courses</span>
+                      </Link>
+                    </div>
 
-                  {isAdmin && (
-                    <Link
-                      to="/admin"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-purple-300 hover:text-white hover:bg-purple-500/10"
-                    >
-                      <ShieldAlert className="w-4 h-4 text-purple-400" />
-                      Platform Command Center
-                    </Link>
-                  )}
+                    {isCoach && (
+                      <div className="py-1">
+                        <Link
+                          to="/coach"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-amber-700 hover:bg-amber-50 font-bold"
+                        >
+                          <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Coach Command Studio</span>
+                        </Link>
+                      </div>
+                    )}
 
-                  <div className="border-t border-slate-800 my-1" />
+                    {isAdmin && (
+                      <div className="py-1">
+                        <Link
+                          to="/admin"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-purple-700 hover:bg-purple-50 font-bold"
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Administrator Console</span>
+                        </Link>
+                      </div>
+                    )}
 
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2.5 px-3.5 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+                    <div className="py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2 px-4 py-2 text-rose-600 hover:bg-rose-50 font-semibold text-left"
+                      >
+                        <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/signup"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-2">
+          <div className="flex lg:hidden items-center gap-2">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-800 bg-[#121417] px-4 pt-3 pb-5 space-y-2">
+        <div className="lg:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-2">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const active = isActive(link.path);
@@ -210,34 +247,42 @@ export default function Navbar() {
                 key={link.path}
                 to={link.path}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-base font-medium ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   active
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4 text-slate-400" />
                 <span>{link.name}</span>
               </Link>
             );
           })}
 
-          <div className="pt-3 border-t border-slate-800">
+          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
             <Link
-              to="/profile"
+              to="/support"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-2 text-slate-300 hover:text-white"
+              className="text-slate-600 hover:text-slate-900"
             >
-              <User className="w-5 h-5" />
-              Profile & Chess.com Link
+              Support Desk
             </Link>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-3 py-2 text-rose-400 hover:text-rose-300"
+            <Link
+              to="/feedback"
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-slate-600 hover:text-slate-900"
             >
-              <LogOut className="w-5 h-5" />
-              Sign Out
-            </button>
+              Feedback
+            </Link>
+            {user ? (
+              <button onClick={handleLogout} className="text-rose-600 font-bold">
+                Sign Out
+              </button>
+            ) : (
+              <Link to="/login" className="text-emerald-600 font-bold">
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       )}

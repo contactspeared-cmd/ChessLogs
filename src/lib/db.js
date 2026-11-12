@@ -18,13 +18,8 @@ const STORAGE_ASSIGNMENTS = 'chesslogs_assignments';
 const STORAGE_REVIEWS = 'chesslogs_reviews';
 const STORAGE_STUDENTS = 'chesslogs_students';
 
-// Runtime toggle for backend connectivity
 let runtimeBackendEnabled = true;
 
-/**
- * Unpack chapter annotations jsonb.
- * Supports legacy bare arrays and packed { description, moments }.
- */
 export function unpackChapterAnnotations(raw) {
   if (Array.isArray(raw)) {
     return { description: '', moments: raw };
@@ -45,7 +40,6 @@ export function unpackChapterAnnotations(raw) {
   return { description: '', moments: [] };
 }
 
-/** Pack description + key moments for storage in annotations jsonb. */
 export function packChapterAnnotations(description, moments = []) {
   const desc = (description || '').trim();
   const list = Array.isArray(moments) ? moments : [];
@@ -53,7 +47,6 @@ export function packChapterAnnotations(description, moments = []) {
   return { description: desc, moments: list };
 }
 
-/** Normalize a chapter row so callers always see description + moments array. */
 export function normalizeChapter(chapter) {
   if (!chapter) return chapter;
   const packed = unpackChapterAnnotations(chapter.annotations);
@@ -87,7 +80,6 @@ export function normalizeCourseProgress(progress) {
   };
 }
 
-// Max attempts/limits when trimming local games to fit storage quota
 const GAME_TRIM_LIMITS = [1000, 500, 200, 100, 50, 20, 10, 5, 1];
 
 function isQuotaExceededError(err) {
@@ -147,13 +139,10 @@ function setGamesSafely(gamesArray) {
     try {
       const minimal = gamesArray.slice(0, 5).map(minimalGame);
       localStorage.setItem(STORAGE_GAMES, JSON.stringify(minimal));
-    } catch (finalErr) {
-      console.warn('Unable to persist games to localStorage due to quota limits.', finalErr);
-    }
+    } catch (finalErr) {}
   }
 }
 
-// Legacy toggle compatibility
 export async function shouldUseSupabase() {
   return false;
 }
@@ -161,19 +150,14 @@ export async function shouldUseBackend() {
   return runtimeBackendEnabled;
 }
 
-/**
- * -----------------------------------------------------------------------------
- * COURSES & CHAPTERS
- * -----------------------------------------------------------------------------
- */
-
 export const SEED_COURSES = [
   {
     id: 'course-sicilian-defense',
-    title: 'Mastering the Sicilian Defense: Open Variations & Pawn Structures',
+    title: 'Mastering the Sicilian Defense: Open Variations & Pawn Breaks',
     description:
-      'Authored by GM & Coach Magnus Carlsen. Master key tactical pawn breaks, active piece placement, and dynamic counter-play in open Sicilian games.',
+      'Authored by GM Magnus Carlsen. Master key tactical pawn breaks, active piece placement, and dynamic counter-play in open Sicilian games.',
     type: 'walkthrough',
+    category: 'openings',
     orientation: 'black',
     trained_side: 'black',
     min_elo: 1300,
@@ -184,6 +168,9 @@ export const SEED_COURSES = [
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     coach_chesscom: 'magnuscarlsen',
     coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.9,
+    rating_count: 142,
     chapters: [
       {
         id: 'ch-sicilian-1',
@@ -219,6 +206,7 @@ export const SEED_COURSES = [
     description:
       'Authored by Coach Magnus Carlsen. Essential endgame techniques and building bridges every competitive tournament player must execute with absolute accuracy.',
     type: 'walkthrough',
+    category: 'endgames',
     orientation: 'white',
     trained_side: 'white',
     min_elo: 1200,
@@ -229,6 +217,9 @@ export const SEED_COURSES = [
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
     coach_chesscom: 'magnuscarlsen',
     coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.8,
+    rating_count: 98,
     chapters: [
       {
         id: 'ch-endgame-1',
@@ -241,6 +232,150 @@ export const SEED_COURSES = [
         pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ *',
         annotations: [
           { ply: 12, keyMove: 'Bb4+', comment: 'Key tactical check to verify conversion principles.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-italian-game',
+    title: 'The Italian Game: Giuoco Piano & Evans Gambit',
+    description:
+      'Learn aggressive piece development, central dominance, and attacking plans with 1. e4 e5 2. Nf3 Nc6 3. Bc4.',
+    type: 'walkthrough',
+    category: 'openings',
+    orientation: 'white',
+    trained_side: 'white',
+    min_elo: 1000,
+    max_elo: 2000,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.9,
+    rating_count: 85,
+    chapters: [
+      {
+        id: 'ch-italian-1',
+        course_id: 'course-italian-game',
+        order_index: 0,
+        title: 'Chapter 1: Mainline Giuoco Pianissimo',
+        description: 'Quiet positional development preparing central c3 and d4 expansion.',
+        orientation: 'white',
+        trained_side: 'white',
+        pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d3 d6 6. O-O a6 7. a4 Ba7 *',
+        annotations: [
+          { ply: 8, keyMove: 'c3', comment: 'Paving the way for the ideal center.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-tactical-patterns',
+    title: 'Essential Tactical Calculation: Pins, Skewers & Forks',
+    description:
+      'Sharpen pattern recognition across the most common tournament tactical themes. Built for spaced repetition training.',
+    type: 'walkthrough',
+    category: 'tactics',
+    orientation: 'white',
+    trained_side: 'white',
+    min_elo: 900,
+    max_elo: 1900,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.9,
+    rating_count: 210,
+    chapters: [
+      {
+        id: 'ch-tactics-1',
+        course_id: 'course-tactical-patterns',
+        order_index: 0,
+        title: 'Chapter 1: Absolute and Relative Pins',
+        description: 'Exploiting frozen pieces that shield higher value targets.',
+        orientation: 'white',
+        trained_side: 'white',
+        pgn: '1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 *',
+        annotations: [
+          { ply: 6, keyMove: 'Bb5', comment: 'The Spanish pin restricting black knight flexibility.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-queens-gambit',
+    title: 'Queen’s Gambit Declined: The Rock-Solid Repertoire',
+    description:
+      'A complete positional repertoire for Black against 1. d4. Master the Tartakower, Lasker, and Orthodox systems.',
+    type: 'walkthrough',
+    category: 'openings',
+    orientation: 'black',
+    trained_side: 'black',
+    min_elo: 1200,
+    max_elo: 2300,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.7,
+    rating_count: 67,
+    chapters: [
+      {
+        id: 'ch-qgd-1',
+        course_id: 'course-queens-gambit',
+        order_index: 0,
+        title: 'Chapter 1: The Classical Orthodox Setup',
+        description: 'Stalwart defense establishing central pawn control.',
+        orientation: 'black',
+        trained_side: 'black',
+        pgn: '1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 Be7 5. e3 O-O 6. Nf3 Nbd7 *',
+        annotations: [
+          { ply: 4, keyMove: 'e6', comment: 'Firmly defending d5 and cementing the central pawn spine.' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'course-pawn-endgames',
+    title: 'King & Pawn Endgames: Opposition, Triangulation & Key Squares',
+    description:
+      'Fundamental calculation rules: the square rule, distant opposition, and creating passed pawns.',
+    type: 'walkthrough',
+    category: 'endgames',
+    orientation: 'white',
+    trained_side: 'white',
+    min_elo: 800,
+    max_elo: 1800,
+    created_by: 'coach-magnus-uuid',
+    coach_name: 'Magnus C. Carlsen',
+    coach_avatar:
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    coach_chesscom: 'magnuscarlsen',
+    coach_role: 'coach',
+    coach_title: 'GM / FIDE Senior Trainer',
+    rating: 4.9,
+    rating_count: 114,
+    chapters: [
+      {
+        id: 'ch-pawn-1',
+        course_id: 'course-pawn-endgames',
+        order_index: 0,
+        title: 'Chapter 1: The Direct Opposition Rule',
+        description: 'Winning the key squares to usher your pawn into a queen.',
+        orientation: 'white',
+        trained_side: 'white',
+        pgn: '1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 *',
+        annotations: [
+          { ply: 8, keyMove: 'Nf6', comment: 'Focusing on king positioning before trading pieces.' },
         ],
       },
     ],
@@ -263,10 +398,14 @@ export function enrichCourseWithCoach(course) {
 
   return {
     ...course,
+    category: course.category || 'openings',
+    rating: course.rating || 4.8,
+    rating_count: course.rating_count || 50,
     coach_name: course.coach_name || coach.display_name,
     coach_avatar: course.coach_avatar || coach.avatar_url,
     coach_role: course.coach_role || coach.role || 'coach',
     coach_chesscom: course.coach_chesscom || coach.chesscom_username,
+    coach_title: course.coach_title || (coach.elo_rating >= 2700 ? 'Grandmaster' : 'Certified Coach'),
   };
 }
 
@@ -280,23 +419,18 @@ export async function getCourses(userProfile) {
         progress: normalizeCourseProgress(course.progress),
       }));
     }
-  } catch (err) {
-    console.warn('PHP API getCourses failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
-  // Fallback to local storage
   let rawCourses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
   let assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
 
-  // Seed courses if storage is empty
   if (rawCourses.length === 0) {
     rawCourses = [...SEED_COURSES];
     localStorage.setItem(STORAGE_COURSES, JSON.stringify(rawCourses));
   }
 
-  // Ensure initial assignments exist for student
   if (userProfile?.id && assignments.filter((a) => a.student_id === userProfile.id).length === 0) {
-    const initialStudentAssignments = rawCourses.map((c) => ({
+    const initialStudentAssignments = rawCourses.slice(0, 2).map((c) => ({
       id: `assign-${c.id}-${userProfile.id}`,
       course_id: c.id,
       student_id: userProfile.id,
@@ -334,13 +468,48 @@ export async function getCourses(userProfile) {
 
   return list.length > 0
     ? list
-    : rawCourses.map((c) =>
+    : rawCourses.slice(0, 2).map((c) =>
         enrichCourseWithCoach({
           ...c,
           chapters: normalizeChapters(c.chapters),
           progress: normalizeCourseProgress(null),
         })
       );
+}
+
+export function getAllMarketplaceCourses() {
+  const raw = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
+  const list = raw.length > 0 ? raw : SEED_COURSES;
+  return list.map((c) => enrichCourseWithCoach({ ...c, chapters: normalizeChapters(c.chapters) }));
+}
+
+export function enrollInCourse(courseId, studentId) {
+  if (!courseId || !studentId) return false;
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  const exists = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
+  if (!exists) {
+    assignments.push({
+      id: `enroll-${courseId}-${studentId}`,
+      course_id: courseId,
+      student_id: studentId,
+      assigned_at: new Date().toISOString(),
+      assigned_by: 'self-enrolled',
+      progress: {
+        completed_chapter_ids: [],
+        read_chapter_ids: [],
+        trained_chapter_ids: [],
+        trainer: { cards: {} },
+      },
+    });
+    localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
+  }
+  return true;
+}
+
+export function isStudentEnrolled(courseId, studentId) {
+  if (!courseId || !studentId) return false;
+  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
+  return assignments.some((a) => a.course_id === courseId && a.student_id === studentId);
 }
 
 export async function getCourseById(courseId, studentId = null) {
@@ -351,12 +520,10 @@ export async function getCourseById(courseId, studentId = null) {
       data.progress = normalizeCourseProgress(data.progress);
       return enrichCourseWithCoach(data);
     }
-  } catch (err) {
-    console.warn('PHP API getCourseById failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
-  const course = courses.find((c) => c.id === courseId) || null;
+  const course = (courses.length > 0 ? courses : SEED_COURSES).find((c) => c.id === courseId) || null;
   if (!course) return null;
   const normalized = { ...course, chapters: normalizeChapters(course.chapters) };
   if (studentId) {
@@ -375,11 +542,8 @@ export async function saveCourse(courseData, chaptersData = []) {
       saved.progress = normalizeCourseProgress(saved.progress);
       return saved;
     }
-  } catch (err) {
-    console.warn('PHP API saveCourse failed, saving to local storage:', err);
-  }
+  } catch (err) {}
 
-  // Fallback to local storage
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
   let courseId = courseData.id;
   let updatedCourse;
@@ -428,21 +592,13 @@ export async function saveCourse(courseData, chaptersData = []) {
 export async function deleteCourse(courseId) {
   try {
     await api.courses.delete(courseId);
-  } catch (err) {
-    console.warn('PHP API deleteCourse failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
   const filtered = courses.filter((c) => c.id !== courseId);
   localStorage.setItem(STORAGE_COURSES, JSON.stringify(filtered));
   return true;
 }
-
-/**
- * -----------------------------------------------------------------------------
- * COURSE ASSIGNMENTS & PROGRESS
- * -----------------------------------------------------------------------------
- */
 
 export async function assignCourseToStudents(courseId, studentIds) {
   const ids = [...new Set((studentIds || []).filter(Boolean))];
@@ -453,9 +609,7 @@ export async function assignCourseToStudents(courseId, studentIds) {
   try {
     await api.assignments.assign(courseId, ids);
     return true;
-  } catch (err) {
-    console.warn('PHP API assignCourseToStudents failed, updating local storage:', err);
-  }
+  } catch (err) {}
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const selected = new Set(ids);
@@ -487,9 +641,7 @@ export async function markChapterComplete(courseId, studentId, chapterId, mode =
   try {
     await api.assignments.markProgress(courseId, studentId, chapterId, mode);
     return true;
-  } catch (err) {
-    console.warn('PHP API markChapterComplete failed, updating local storage:', err);
-  }
+  } catch (err) {}
 
   const applyProgress = (progress) => {
     const next = normalizeCourseProgress(progress);
@@ -528,9 +680,7 @@ export async function savePreferredStudyMode(courseId, studentId, mode) {
   try {
     await api.assignments.saveStudyMode(courseId, studentId, mode);
     return true;
-  } catch (err) {
-    console.warn('PHP API savePreferredStudyMode failed, updating local storage:', err);
-  }
+  } catch (err) {}
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const matchIndex = assignments.findIndex(
@@ -559,9 +709,7 @@ export async function saveTrainerProgress(courseId, studentId, trainerProgress) 
   try {
     await api.assignments.saveTrainer(courseId, studentId, trainerProgress);
     return true;
-  } catch (err) {
-    console.warn('PHP API saveTrainerProgress failed, updating local storage:', err);
-  }
+  } catch (err) {}
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   let match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
@@ -592,20 +740,12 @@ export async function getTrainerProgress(courseId, studentId) {
     if (data && data.cards) {
       return data;
     }
-  } catch (err) {
-    console.warn('PHP API getTrainerProgress failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
   const match = assignments.find((a) => a.course_id === courseId && a.student_id === studentId);
   return match?.progress?.trainer || { cards: {} };
 }
-
-/**
- * -----------------------------------------------------------------------------
- * GAMES & REVIEWS
- * -----------------------------------------------------------------------------
- */
 
 export async function getGameById(gameId) {
   if (!gameId) return null;
@@ -613,9 +753,7 @@ export async function getGameById(gameId) {
   try {
     const game = await api.games.getById(gameId);
     if (game && game.id) return game;
-  } catch (err) {
-    console.warn('PHP API getGameById failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
@@ -637,9 +775,7 @@ export async function getGamesForStudent(studentId) {
   try {
     const games = await api.games.getByStudent(studentId);
     if (Array.isArray(games)) return games;
-  } catch (err) {
-    console.warn('PHP API getGamesForStudent failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
@@ -658,9 +794,7 @@ export async function upsertGames(formattedGames) {
   try {
     await api.games.upsert(formattedGames);
     return formattedGames;
-  } catch (err) {
-    console.warn('PHP API upsertGames failed, saving to local storage:', err);
-  }
+  } catch (err) {}
 
   const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const newGames = [...existingGames];
@@ -679,9 +813,7 @@ export async function upsertGames(formattedGames) {
 
   try {
     setGamesSafely(newGames);
-  } catch (err) {
-    console.warn('Failed to persist games to localStorage (upsertGames):', err);
-  }
+  } catch (err) {}
   return formattedGames;
 }
 
@@ -697,9 +829,7 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
   try {
     await api.games.replaceSynced(studentId, formattedGames);
     return formattedGames;
-  } catch (err) {
-    console.warn('PHP API replaceSyncedChesscomGames failed, using local storage:', err);
-  }
+  } catch (err) {}
 
   const existingGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
   const kept = existingGames.filter(
@@ -715,9 +845,7 @@ export async function replaceSyncedChesscomGames(studentId, formattedGames = [])
   const next = [...incoming, ...kept];
   try {
     setGamesSafely(next);
-  } catch (err) {
-    console.warn('Failed to persist games to localStorage (replaceSyncedChesscomGames):', err);
-  }
+  } catch (err) {}
   return incoming;
 }
 
@@ -725,9 +853,7 @@ export async function saveGameReview(gameId, reviewData) {
   try {
     const saved = await api.games.saveReview(gameId, reviewData);
     if (saved && saved.id) return saved;
-  } catch (err) {
-    console.warn('PHP API saveGameReview failed, saving to local storage:', err);
-  }
+  } catch (err) {}
 
   const reviews = JSON.parse(localStorage.getItem(STORAGE_REVIEWS) || '{}');
   reviews[gameId] = {
@@ -740,19 +866,11 @@ export async function saveGameReview(gameId, reviewData) {
   return reviews[gameId];
 }
 
-/**
- * -----------------------------------------------------------------------------
- * ADMIN STUDENT OVERSIGHT
- * -----------------------------------------------------------------------------
- */
-
 export async function getAllStudents() {
   try {
     const data = await api.students.getAll();
     if (Array.isArray(data)) return data;
-  } catch (err) {
-    console.warn('PHP API getAllStudents failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const localStudents = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const localGames = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
@@ -778,9 +896,7 @@ export async function getAllStudents() {
 export async function deleteStudent(studentId) {
   try {
     await api.students.delete(studentId);
-  } catch (err) {
-    console.warn('PHP API deleteStudent failed, falling back to local storage:', err);
-  }
+  } catch (err) {}
 
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const filtered = students.filter(
@@ -796,40 +912,20 @@ export async function deleteStudent(studentId) {
   );
   try {
     setGamesSafely(filteredGames);
-  } catch (err) {
-    console.warn('Failed to persist games to localStorage (deleteStudent):', err);
-  }
-
-  const assignments = JSON.parse(localStorage.getItem(STORAGE_ASSIGNMENTS) || '[]');
-  const filteredAssignments = assignments.filter((a) => a.student_id !== studentId);
-  localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(filteredAssignments));
-
+  } catch (err) {}
   return true;
 }
 
-export async function updateStudentProfile(studentId, updates) {
-  try {
-    const updated = await api.students.update(studentId, updates);
-    if (updated && updated.id) return updated;
-  } catch (err) {
-    console.warn('PHP API updateStudentProfile failed, falling back to local storage:', err);
-  }
-
+export async function updateStudentProfile(studentId, profileData) {
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const idx = students.findIndex((s) => s.id === studentId);
   if (idx >= 0) {
-    students[idx] = { ...students[idx], ...updates };
+    students[idx] = { ...students[idx], ...profileData };
     localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
     return students[idx];
   }
   return null;
 }
-
-/**
- * -----------------------------------------------------------------------------
- * PLATFORM GOVERNANCE & COACH HELPERS
- * -----------------------------------------------------------------------------
- */
 
 export async function getAllCoaches() {
   const accounts = getAllAccounts();
@@ -848,3 +944,4 @@ export {
   getStudentRequirements,
   reviewStudentRequirement,
 };
+

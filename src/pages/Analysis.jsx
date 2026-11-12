@@ -28,10 +28,6 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-/**
- * Converts a single UCI move (e.g. "e2e4") to SAN (e.g. "e4") from a given FEN.
- * Falls back to the raw UCI string if conversion fails.
- */
 function uciToSan(fen, uciMove) {
   if (!fen || !uciMove) return uciMove ?? '';
   try {
@@ -46,16 +42,10 @@ function uciToSan(fen, uciMove) {
   }
 }
 
-/**
- * Converts an array of UCI moves (principal variation) to a formatted string
- * like "1. e4 e5 2. Nf3 Nc6" starting from the given FEN position.
- * Stops at the first invalid move.
- */
 function pvToSan(fen, pvMoves, maxMoves = 6) {
   if (!fen || !pvMoves?.length) return '';
   try {
     const tmp = new Chess(fen);
-    // Determine the starting full-move number and whose turn it is
     let moveNumber = tmp.moveNumber();
     let isWhiteTurn = tmp.turn() === 'w';
 
@@ -70,17 +60,14 @@ function pvToSan(fen, pvMoves, maxMoves = 6) {
       if (!result) break;
 
       if (isWhiteTurn) {
-        // Start a new move pair: "N. san"
         pairBuf = [`${moveNumber}. ${result.san}`];
       } else {
-        // Append black's move then flush the pair
         if (pairBuf.length) {
           pairBuf.push(result.san);
           parts.push(pairBuf.join(' '));
           pairBuf = [];
           moveNumber++;
         } else {
-          // Black moves first (e.g. position mid-game with black to move)
           parts.push(`${moveNumber}... ${result.san}`);
           moveNumber++;
         }
@@ -88,7 +75,6 @@ function pvToSan(fen, pvMoves, maxMoves = 6) {
       isWhiteTurn = !isWhiteTurn;
     }
 
-    // Flush any trailing white move without a black reply
     if (pairBuf.length) parts.push(pairBuf.join(' '));
 
     return parts.join(' ');
@@ -98,479 +84,389 @@ function pvToSan(fen, pvMoves, maxMoves = 6) {
 }
 
 export default function Analysis() {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const gameIdParam = searchParams.get('gameId');
   const { profile } = useAuth();
 
-  // Chess game instance
   const [chess] = useState(() => new Chess());
   const [fen, setFen] = useState(chess.fen());
-  const [history, setHistory] = useState([]); // array of verbose moves
-  const [currentPly, setCurrentPly] = useState(0); // 0 is initial position
+  const [history, setHistory] = useState([]);
+  const [currentPly, setCurrentPly] = useState(0);
   const [boardOrientation, setBoardOrientation] = useState('white');
   const [lastMove, setLastMove] = useState(null);
 
-  // Engine review & live analysis state
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewProgress, setReviewProgress] = useState(0);
-  const [reviewData, setReviewData] = useState(null); // { moveClassifications, accuracyWhite, accuracyBlack, summary }
+  const [reviewData, setReviewData] = useState(null);
 
-  // Deep Analysis state
   const [deepAnalysisEnabled, setDeepAnalysisEnabled] = useState(false);
   const [deepEngineInfo, setDeepEngineInfo] = useState(null);
   const [isDeepSearching, setIsDeepSearching] = useState(false);
 
-  // Loaded game metadata
   const [currentGame, setCurrentGame] = useState(null);
 
-  // Live evaluation state for EvalBar (B.1.1)
-  const [liveEval, setLiveEval] = useState(null);
+  const [liveEval, setLiveEval] = useState({ scoreCp: 0, isMate: false, mateIn: 0 });
 
-  // Custom arrows on board: [[from, to, color]] or [{ startSquare, endSquare, color }]
   const [arrows, setArrows] = useState([]);
 
-  // Paste game modal state
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
   const [pasteInput, setPasteInput] = useState('');
   const [pasteError, setPasteError] = useState('');
 
-  // Load game by ID or initialize a fresh board
   useEffect(() => {
-    async function loadGame() {
-      // If no gameIdParam provided, start with a clean, fresh board
+    async function init() {
       if (!gameIdParam) {
         chess.reset();
         setFen(chess.fen());
         setHistory([]);
         setCurrentPly(0);
-        setLastMove(null);
         setCurrentGame(null);
         setReviewData(null);
-        setArrows([]);
+        setLastMove(null);
         setBoardOrientation('white');
         return;
       }
 
-      // Fetch the exact game from DB / local storage / demo games
-      const selectedGame = await getGameById(gameIdParam);
+      try {
+        const game = await getGameById(gameIdParam);
+        if (game) {
+          let augmented = game;
+          if (!game.opening && !game.eco && game.pgn) {
+            augmented = { ...game, ...openingFieldsFromDetection(detectOpening(game.pgn)) };
+          }
+          setCurrentGame(augmented);
 
-      if (selectedGame) {
-        const openingInfo = selectedGame.opening
-          ? {
-              eco: selectedGame.eco,
-              opening: selectedGame.opening,
-              variation: selectedGame.variation,
-            }
-          : openingFieldsFromDetection(detectOpening(selectedGame.pgn));
+          const studentUser = (profile?.chesscom_username || '').toLowerCase();
+          const blackUser = (game.black_username || '').toLowerCase();
+          if (studentUser && blackUser && studentUser === blackUser) {
+            setBoardOrientation('black');
+          } else {
+            setBoardOrientation('white');
+          }
 
-        setCurrentGame({ ...selectedGame, ...openingInfo });
+          if (game.pgn) {
+            chess.loadPgn(game.pgn);
+            const moves = chess.history({ verbose: true });
+            setHistory(moves);
 
-        // Auto-orient board to student's perspective if they played Black
-        if (
-          profile?.chesscom_username &&
-          selectedGame.black_username?.toLowerCase() === profile.chesscom_username.toLowerCase()
-        ) {
-          setBoardOrientation('black');
-        } else {
-          setBoardOrientation('white');
-        }
-
-        if (selectedGame.pgn) {
-          try {
-            chess.loadPgn(selectedGame.pgn);
-            const fullHistory = chess.history({ verbose: true });
-            setHistory(fullHistory);
-
-            // Reset to start of game for review
             chess.reset();
             setFen(chess.fen());
             setCurrentPly(0);
             setLastMove(null);
 
-            // Check if already reviewed
-            if (selectedGame.review) {
+            if (game.review) {
               setReviewData({
-                moveClassifications: selectedGame.review.move_classifications || [],
-                accuracyWhite: selectedGame.review.accuracy_white,
-                accuracyBlack: selectedGame.review.accuracy_black,
+                accuracyWhite: game.review.accuracy_white,
+                accuracyBlack: game.review.accuracy_black,
+                moveClassifications: game.review.move_classifications || [],
+                summary: game.review.summary || {},
               });
             } else {
               setReviewData(null);
             }
-          } catch (e) {
-            console.error('Failed to load PGN:', e);
           }
+        } else {
+          chess.reset();
+          setFen(chess.fen());
+          setHistory([]);
+          setCurrentPly(0);
         }
-      } else {
-        // Game not found - start fresh
-        chess.reset();
-        setFen(chess.fen());
-        setHistory([]);
-        setCurrentPly(0);
-        setLastMove(null);
-        setCurrentGame(null);
-        setReviewData(null);
+      } catch (err) {
+        console.error('Failed to load game for analysis:', err);
       }
     }
 
-    loadGame();
-  }, [gameIdParam, profile?.id, profile?.chesscom_username, chess]);
+    init();
+  }, [gameIdParam, chess, profile?.chesscom_username]);
 
-  // Navigate to specific ply in game
-  const goToPly = useCallback((targetPly) => {
-    if (targetPly < 0 || targetPly > history.length) return;
-
-    if (targetPly === 0) {
+  const goToPly = useCallback(
+    (targetPly) => {
+      const boundedPly = Math.max(0, Math.min(targetPly, history.length));
       chess.reset();
-      setFen(chess.fen());
-      setCurrentPly(0);
-      setLastMove(null);
-      return;
-    }
-
-    const move = history[targetPly - 1];
-    if (move && move.after) {
-      chess.load(move.after);
-      setFen(move.after);
-      setCurrentPly(targetPly);
-      setLastMove({ from: move.from, to: move.to });
-    } else {
-      chess.reset();
-      let moveObj = null;
-      for (let i = 0; i < targetPly; i++) {
-        moveObj = chess.move(history[i]);
+      let last = null;
+      for (let i = 0; i < boundedPly; i++) {
+        last = chess.move(history[i]);
       }
       setFen(chess.fen());
-      setCurrentPly(targetPly);
-      setLastMove(moveObj ? { from: moveObj.from, to: moveObj.to } : null);
-    }
-  }, [chess, history]);
+      setCurrentPly(boundedPly);
+      setLastMove(last ? { from: last.from, to: last.to } : null);
+    },
+    [chess, history]
+  );
 
-  // Handle user making a move on the board
-  const handlePieceDrop = (sourceSquare, targetSquare) => {
+  const handlePieceDrop = (sourceSquare, targetSquare, piece) => {
     try {
+      const promotion =
+        (piece.startsWith('w') && targetSquare[1] === '8') ||
+        (piece.startsWith('b') && targetSquare[1] === '1')
+          ? 'q'
+          : undefined;
+
       const move = chess.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: 'q',
+        promotion,
       });
 
       if (!move) return false;
 
-      // Succeeded! If we were at currentPly < history.length, truncate forward history and append new move
-      const newHistory = [...history.slice(0, currentPly), move];
+      const newHistory = history.slice(0, currentPly);
+      newHistory.push(move);
       setHistory(newHistory);
       setCurrentPly(newHistory.length);
       setFen(chess.fen());
       setLastMove({ from: move.from, to: move.to });
 
-      // Invalidate existing review data if board diverges from reviewed game
-      if (reviewData) {
-        setReviewData(null);
-      }
-
+      setReviewData(null);
       return true;
     } catch {
       return false;
     }
   };
 
-  // Reset to fresh board
   const handleNewAnalysis = () => {
     chess.reset();
     setFen(chess.fen());
     setHistory([]);
     setCurrentPly(0);
-    setLastMove(null);
     setCurrentGame(null);
     setReviewData(null);
-    setArrows([]);
-    setBoardOrientation('white');
-    setSearchParams({});
+    setLastMove(null);
+    setDeepEngineInfo(null);
   };
 
-  // Handle importing custom PGN or FEN
   const handlePasteSubmit = (e) => {
-    e?.preventDefault();
+    e.preventDefault();
     setPasteError('');
-    const input = pasteInput.trim();
-    if (!input) {
-      setPasteError('Please enter a PGN or FEN string.');
-      return;
-    }
+    const raw = pasteInput.trim();
+    if (!raw) return;
 
-    // Try FEN first
     try {
-      const fenTest = new Chess();
-      fenTest.load(input);
-      // Valid FEN
-      chess.load(input);
+      const testChess = new Chess();
+      testChess.load(raw);
+
+      chess.load(raw);
       setFen(chess.fen());
       setHistory([]);
       setCurrentPly(0);
-      setLastMove(null);
       setCurrentGame({
-        white_username: 'Custom Position',
-        black_username: '',
-        white_rating: null,
-        black_rating: null,
-        time_class: 'custom',
-        played_at: new Date().toISOString(),
+        id: `fen-${Date.now()}`,
+        time_class: 'sandbox',
+        white_username: 'White',
+        black_username: 'Black',
       });
       setReviewData(null);
+      setLastMove(null);
       setIsPasteModalOpen(false);
       setPasteInput('');
-      setSearchParams({});
       return;
-    } catch {
-      // Not a FEN, try PGN
-    }
+    } catch {}
 
     try {
-      const pgnTest = new Chess();
-      pgnTest.loadPgn(input);
-      const moves = pgnTest.history({ verbose: true });
-      if (moves.length === 0) {
-        throw new Error('No moves found in the provided PGN.');
-      }
+      const testChess = new Chess();
+      testChess.loadPgn(raw);
 
-      chess.loadPgn(input);
-      const fullHistory = chess.history({ verbose: true });
-      setHistory(fullHistory);
+      chess.loadPgn(raw);
+      const moves = chess.history({ verbose: true });
+      const detected = detectOpening(raw);
+      const openingFields = openingFieldsFromDetection(detected);
 
-      const headers = chess.header ? chess.header() : {};
-      const detected = detectOpening(input);
-      const openingInfo = openingFieldsFromDetection(detected);
-
+      setHistory(moves);
       setCurrentGame({
-        white_username: headers.White || 'White',
-        black_username: headers.Black || 'Black',
-        white_rating: headers.WhiteElo || null,
-        black_rating: headers.BlackElo || null,
-        time_class: headers.TimeControl ? 'live' : 'custom',
-        played_at: headers.Date || new Date().toISOString(),
-        pgn: input,
-        ...openingInfo,
+        id: `pgn-${Date.now()}`,
+        time_class: 'custom',
+        white_username: testChess.header().White || 'White',
+        white_rating: testChess.header().WhiteElo || '—',
+        black_username: testChess.header().Black || 'Black',
+        black_rating: testChess.header().BlackElo || '—',
+        pgn: raw,
+        ...openingFields,
       });
 
-      // Reset to start of game for review
       chess.reset();
       setFen(chess.fen());
       setCurrentPly(0);
-      setLastMove(null);
       setReviewData(null);
+      setLastMove(null);
+
       setIsPasteModalOpen(false);
       setPasteInput('');
-      setSearchParams({});
-    } catch (err) {
-      setPasteError(err.message || 'Invalid PGN or FEN format. Please verify your text.');
+    } catch {
+      setPasteError('Invalid PGN or FEN string. Please check the notation and format.');
     }
   };
 
-  // Handle keyboard arrow navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        // Prevent scrolling if active
-        if (e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'INPUT') {
-          e.preventDefault();
-          if (e.key === 'ArrowLeft') goToPly(currentPly - 1);
-          if (e.key === 'ArrowRight') goToPly(currentPly + 1);
-          if (e.key === 'ArrowUp') goToPly(0);
-          if (e.key === 'ArrowDown') goToPly(history.length);
+      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) {
+        if (['input', 'textarea'].includes(document.activeElement?.tagName?.toLowerCase())) {
+          return;
         }
+        e.preventDefault();
+
+        if (e.code === 'ArrowLeft') goToPly(currentPly - 1);
+        if (e.code === 'ArrowRight') goToPly(currentPly + 1);
+        if (e.code === 'ArrowUp') goToPly(0);
+        if (e.code === 'ArrowDown') goToPly(history.length);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPly, history.length, goToPly]);
 
-  // Run Fast Review across entire game
   const handleStartFastReview = async () => {
-    let pgnToReview = currentGame?.pgn;
-    if (!pgnToReview && history.length > 0) {
-      const tempChess = new Chess();
-      history.forEach((m) => tempChess.move(m));
-      pgnToReview = tempChess.pgn();
-    }
-
-    if (!pgnToReview || isReviewing) return;
+    if (isReviewing || history.length === 0) return;
     setIsReviewing(true);
     setReviewProgress(0);
 
     try {
-      const result = await runFastReview(pgnToReview, (progress) => {
-        setReviewProgress(progress.percent);
+      const result = await runFastReview(history, {
+        onProgress: (p) => setReviewProgress(p),
       });
 
       setReviewData(result);
 
-      // Persist review to DB if game has an id
-      if (currentGame?.id) {
+      if (currentGame?.id && !currentGame.id.startsWith('pgn-') && !currentGame.id.startsWith('fen-')) {
         await saveGameReview(currentGame.id, {
-          engine_version: ENGINE_CONFIG.version,
-          move_classifications: result.moveClassifications,
           accuracy_white: result.accuracyWhite,
           accuracy_black: result.accuracyBlack,
+          move_classifications: result.moveClassifications,
+          summary: result.summary,
         });
       }
     } catch (err) {
-      console.error('Game review failed:', err);
+      console.error('Failed to run fast review:', err);
     } finally {
       setIsReviewing(false);
     }
   };
 
-  // Run Deep Analysis on demand for current position
   useEffect(() => {
-    let active = true;
     if (!deepAnalysisEnabled) {
       setDeepEngineInfo(null);
       return;
     }
 
-    async function analyzeCurrentPosition() {
-      setIsDeepSearching(true);
-      const engine = getEngineInstance();
-      try {
-        const info = await engine.evaluatePosition(
-          fen,
-          ENGINE_CONFIG.deepAnalysis,
-          (progressInfo) => {
-            if (active) setDeepEngineInfo(progressInfo);
-          }
-        );
-        if (active) {
-          setDeepEngineInfo(info);
-        }
-      } catch (err) {
-        console.warn('Deep analysis error:', err);
-      } finally {
-        if (active) setIsDeepSearching(false);
-      }
-    }
+    let isMounted = true;
+    setIsDeepSearching(true);
 
-    analyzeCurrentPosition();
+    const engine = getEngineInstance();
+
+    const unsub = engine.subscribe((info) => {
+      if (!isMounted) return;
+      if (info.depth) {
+        setDeepEngineInfo({
+          depth: info.depth,
+          scoreCp: info.scoreCp,
+          isMate: info.isMate,
+          mateIn: info.mateIn,
+          bestMove: info.bestMove,
+          pv: info.pv,
+        });
+      }
+    });
+
+    engine.evaluatePosition(fen, ENGINE_CONFIG.deepDepth).then(() => {
+      if (isMounted) setIsDeepSearching(false);
+    });
 
     return () => {
-      active = false;
+      isMounted = false;
+      unsub();
+      engine.stop();
     };
   }, [fen, deepAnalysisEnabled]);
 
-  // B.1.1: Live per-ply evaluation for EvalBar when reviewData is absent or board diverges
   useEffect(() => {
-    const hasReviewedPly = Boolean(
-      reviewData?.moveClassifications?.some((m) => m.ply === currentPly)
-    );
-    if (hasReviewedPly || deepAnalysisEnabled) return;
+    if (reviewData?.moveClassifications?.length) return;
 
-    let active = true;
-    async function evaluateLivePosition() {
-      try {
-        const engine = getEngineInstance();
-        const info = await engine.evaluatePosition(fen, {
-          depth: 10,
-          movetime: 180,
-          multiPv: 1,
-        });
-        if (!active) return;
-        const isWhiteTurn = fen.split(' ')[1] === 'w';
-        const scoreWhite = isWhiteTurn ? info.scoreCp : -info.scoreCp;
-        const mateWhite = info.isMate
-          ? (isWhiteTurn ? info.mateIn : -info.mateIn)
-          : null;
+    let cancelled = false;
+    const engine = getEngineInstance();
+
+    const unsub = engine.subscribe((info) => {
+      if (cancelled) return;
+      if (info && (info.scoreCp !== undefined || info.isMate)) {
         setLiveEval({
-          scoreCp: scoreWhite,
-          isMate: info.isMate,
-          mateIn: mateWhite,
+          scoreCp: info.scoreCp || 0,
+          isMate: Boolean(info.isMate),
+          mateIn: info.mateIn || 0,
         });
-      } catch (err) {
-        console.warn('Live eval error:', err);
       }
-    }
+    });
 
-    evaluateLivePosition();
+    engine.evaluatePosition(fen, 10).catch(() => {});
+
     return () => {
-      active = false;
+      cancelled = true;
+      unsub();
+      engine.stop();
     };
-  }, [fen, currentPly, reviewData, deepAnalysisEnabled]);
+  }, [fen, reviewData]);
 
-  // Update arrows based on current ply classification & best move
   useEffect(() => {
     const newArrows = [];
-    const currentClassification = reviewData?.moveClassifications?.find(
+
+    const activeClassification = reviewData?.moveClassifications?.find(
       (m) => m.ply === currentPly
     );
 
-    if (currentClassification?.bestMoveUci) {
-      const best = currentClassification.bestMoveUci;
-      const from = best.substring(0, 2);
-      const to = best.substring(2, 4);
-      newArrows.push([from, to, 'rgba(34, 197, 94, 0.8)']); // Emerald green best move arrow
-    } else if (deepEngineInfo?.bestMove) {
-      const best = deepEngineInfo.bestMove;
-      const from = best.substring(0, 2);
-      const to = best.substring(2, 4);
-      newArrows.push([from, to, 'rgba(56, 189, 248, 0.85)']); // Cyan deep analysis arrow
+    if (activeClassification?.bestMoveUci) {
+      const from = activeClassification.bestMoveUci.slice(0, 2);
+      const to = activeClassification.bestMoveUci.slice(2, 4);
+      newArrows.push([from, to, 'rgba(16, 185, 129, 0.85)']);
+    }
+
+    if (deepAnalysisEnabled && deepEngineInfo?.bestMove) {
+      const from = deepEngineInfo.bestMove.slice(0, 2);
+      const to = deepEngineInfo.bestMove.slice(2, 4);
+      newArrows.push([from, to, 'rgba(14, 165, 233, 0.85)']);
     }
 
     setArrows(newArrows);
-  }, [currentPly, reviewData, deepEngineInfo]);
+  }, [currentPly, reviewData, deepAnalysisEnabled, deepEngineInfo]);
 
-  // Current move classification
   const currentClassification = reviewData?.moveClassifications?.find(
     (m) => m.ply === currentPly
   );
 
-  // Score to display in EvalBar (B.1.1: normalized to White's view across all modes)
-  let activeScoreCp = 0;
-  let activeIsMate = false;
-  let activeMateIn = null;
+  const activeScoreCp =
+    currentClassification?.scoreCp !== undefined
+      ? currentClassification.scoreCp
+      : liveEval.scoreCp;
 
-  if (deepAnalysisEnabled && deepEngineInfo) {
-    const isWhiteTurn = fen.split(' ')[1] === 'w';
-    activeScoreCp = isWhiteTurn ? deepEngineInfo.scoreCp : -deepEngineInfo.scoreCp;
-    activeIsMate = deepEngineInfo.isMate;
-    activeMateIn = deepEngineInfo.isMate
-      ? (isWhiteTurn ? deepEngineInfo.mateIn : -deepEngineInfo.mateIn)
-      : null;
-  } else if (currentClassification) {
-    activeScoreCp = currentClassification.evalWhiteView;
-    activeIsMate = Boolean(currentClassification.isMate);
-    activeMateIn = currentClassification.mateIn ?? null;
-  } else if (liveEval) {
-    activeScoreCp = liveEval.scoreCp;
-    activeIsMate = liveEval.isMate;
-    activeMateIn = liveEval.mateIn;
-  }
+  const activeIsMate =
+    currentClassification?.isMate !== undefined
+      ? currentClassification.isMate
+      : liveEval.isMate;
 
-  // Convert UCI → SAN for display
-  // Best move from game review: use the FEN before the current move was played
+  const activeMateIn =
+    currentClassification?.mateIn !== undefined
+      ? currentClassification.mateIn
+      : liveEval.mateIn;
+
   const bestMoveSan = currentClassification?.bestMoveUci
     ? uciToSan(currentClassification.fenBefore, currentClassification.bestMoveUci)
     : null;
 
-  // Deep analysis PV: convert from the current board FEN
   const pvSan = deepEngineInfo?.pv?.length > 0
     ? pvToSan(fen, deepEngineInfo.pv, 8)
     : '';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      {/* Top Banner / Game Header */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+            <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
               {currentGame?.time_class ? currentGame.time_class.toUpperCase() : 'FRESH BOARD'}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-slate-500 font-medium">
               {currentGame?.played_at
                 ? new Date(currentGame.played_at).toLocaleDateString()
                 : 'Interactive Sandbox'}
             </span>
           </div>
-          <h1 className="text-xl font-extrabold text-white mt-1">
+          <h1 className="text-xl font-extrabold text-slate-900 mt-1">
             {currentGame ? (
               `${currentGame.white_username || 'White'} (${currentGame.white_rating || '—'}) vs. ${currentGame.black_username || 'Black'} (${currentGame.black_rating || '—'})`
             ) : (
@@ -586,35 +482,34 @@ export default function Analysis() {
               />
             </div>
           ) : currentGame?.pgn ? (
-            <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5" />
+            <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1.5 font-medium">
+              <BookOpen className="w-3.5 h-3.5 text-slate-400" />
               Opening not identified for this game
             </p>
           ) : null}
           {!currentGame && (
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Make moves on the board or paste a game to start analyzing.
             </p>
           )}
         </div>
 
-        {/* Board actions and Engine mode triggers */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setIsPasteModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-all shadow-sm"
             title="Paste Game (PGN or FEN)"
           >
-            <ClipboardPaste className="w-4 h-4 text-emerald-400" />
+            <ClipboardPaste className="w-4 h-4 text-emerald-600" />
             <span>Paste Game</span>
           </button>
 
           <button
             onClick={handleNewAnalysis}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-all shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-all shadow-sm"
             title="Reset to fresh board"
           >
-            <Trash2 className="w-4 h-4 text-slate-400" />
+            <Trash2 className="w-4 h-4 text-slate-500" />
             <span>Fresh Board</span>
           </button>
 
@@ -622,18 +517,18 @@ export default function Analysis() {
             onClick={() => setDeepAnalysisEnabled(!deepAnalysisEnabled)}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
               deepAnalysisEnabled
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                ? 'bg-sky-50 text-sky-800 border-sky-300 shadow-sm'
+                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
             }`}
           >
-            <Cpu className="w-4 h-4 text-cyan-400" />
+            <Cpu className="w-4 h-4 text-sky-600" />
             <span>Deep {deepAnalysisEnabled ? 'ON' : 'OFF'}</span>
           </button>
 
           <button
             onClick={handleStartFastReview}
             disabled={isReviewing || (history.length === 0 && !currentGame?.pgn)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all disabled:opacity-40"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-40"
           >
             <Sparkles className={`w-4 h-4 ${isReviewing ? 'animate-spin' : ''}`} />
             <span>{isReviewing ? `Reviewing (${reviewProgress}%)...` : 'Run Game Review'}</span>
@@ -641,39 +536,38 @@ export default function Analysis() {
         </div>
       </div>
 
-      {/* Review Accuracy Summary Card */}
       {reviewData && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
               White Accuracy
             </span>
-            <span className="text-2xl font-black text-emerald-400 font-mono">
+            <span className="text-2xl font-black text-emerald-700 font-mono">
               {reviewData.accuracyWhite}%
             </span>
           </div>
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
               Black Accuracy
             </span>
-            <span className="text-2xl font-black text-emerald-400 font-mono">
+            <span className="text-2xl font-black text-emerald-700 font-mono">
               {reviewData.accuracyBlack}%
             </span>
           </div>
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
               Engine Version
             </span>
-            <span className="text-sm font-semibold text-slate-200 truncate block mt-1">
+            <span className="text-sm font-semibold text-slate-800 truncate block mt-1">
               Stockfish 18 NNUE
             </span>
           </div>
-          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
               Key Moments
             </span>
-            <span className="text-sm font-semibold text-slate-200 mt-1 flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-cyan-400" />
+            <span className="text-sm font-semibold text-slate-800 mt-1 flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-emerald-600" />
               <span>
                 {reviewData.moveClassifications.filter((m) =>
                   ['brilliant', 'great', 'miss', 'blunder'].includes(m.classification)
@@ -685,11 +579,8 @@ export default function Analysis() {
         </div>
       )}
 
-      {/* Main Board & Side Panel Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Board & Eval Bar Container */}
         <div className="lg:col-span-8 flex flex-col sm:flex-row gap-3 items-center justify-center">
-          {/* Vertical Stockfish Eval Bar */}
           <div className="hidden sm:block h-[440px] md:h-[500px]">
             <EvalBar
               scoreCp={activeScoreCp}
@@ -699,7 +590,6 @@ export default function Analysis() {
             />
           </div>
 
-          {/* Chessboard View */}
           <div className="w-full max-w-[520px]">
             <ChessboardView
               position={fen}
@@ -710,11 +600,10 @@ export default function Analysis() {
               onPieceDrop={handlePieceDrop}
             />
 
-            {/* Board Controls */}
-            <div className="mt-3 flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded-xl">
+            <div className="mt-3 flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
               <button
                 onClick={() => setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white')}
-                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 title="Flip Board"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -724,7 +613,7 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(0)}
                   disabled={currentPly === 0}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
                   title="First Move"
                 >
                   <ChevronLeft className="w-5 h-5 -mr-2" />
@@ -733,18 +622,18 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(currentPly - 1)}
                   disabled={currentPly === 0}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
                   title="Previous Move"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="px-3 py-1 font-mono text-xs text-slate-300">
+                <span className="px-3 py-1 font-mono text-xs font-semibold text-slate-700">
                   {currentPly} / {history.length}
                 </span>
                 <button
                   onClick={() => goToPly(currentPly + 1)}
                   disabled={currentPly === history.length}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
                   title="Next Move"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -752,7 +641,7 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(history.length)}
                   disabled={currentPly === history.length}
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
                   title="Last Move"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -760,19 +649,17 @@ export default function Analysis() {
                 </button>
               </div>
 
-              <div className="text-xs text-slate-400 font-mono">
+              <div className="text-xs text-slate-600 font-mono font-medium">
                 {currentPly > 0 ? history[currentPly - 1]?.san : 'Start'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Side Panel: Move History & Telemetry */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Current Move Evaluation Banner */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Move Inspection
               </span>
               {currentClassification && (
@@ -785,21 +672,21 @@ export default function Analysis() {
             {currentPly > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                  <div className="font-bold text-lg text-white">
+                  <div className="font-bold text-lg text-slate-900">
                     {Math.ceil(currentPly / 2)}.{currentPly % 2 === 1 ? '' : '..'}{' '}
-                    <span className="text-emerald-400">{history[currentPly - 1]?.san}</span>
+                    <span className="text-emerald-700">{history[currentPly - 1]?.san}</span>
                   </div>
                   {currentClassification?.accuracy !== undefined && (
-                    <span className="text-xs font-mono text-slate-400">
-                      Accuracy: <strong className="text-white">{currentClassification.accuracy}%</strong>
+                    <span className="text-xs font-mono text-slate-500">
+                      Accuracy: <strong className="text-slate-900">{currentClassification.accuracy}%</strong>
                     </span>
                   )}
                 </div>
 
                 {bestMoveSan && (
-                  <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-950 p-2.5 rounded-lg border border-slate-800/80">
-                    <span className="text-emerald-400 font-semibold">Engine Best Move:</span>
-                    <span className="font-mono text-white font-bold">
+                  <div className="text-xs text-slate-600 flex items-center gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <span className="text-emerald-700 font-semibold">Engine Best Move:</span>
+                    <span className="font-mono text-slate-900 font-bold">
                       {bestMoveSan}
                     </span>
                   </div>
@@ -809,19 +696,18 @@ export default function Analysis() {
               <p className="text-xs text-slate-500">Initial position before move 1.</p>
             )}
 
-            {/* Deep Analysis Realtime Feed */}
             {deepAnalysisEnabled && (
-              <div className="pt-2 border-t border-slate-800 text-xs space-y-1.5">
-                <div className="flex items-center justify-between text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <Zap className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="pt-2 border-t border-slate-100 text-xs space-y-1.5">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span className="flex items-center gap-1 font-medium">
+                    <Zap className="w-3.5 h-3.5 text-sky-600" />
                     <span>Deep Analysis (Depth 20)</span>
                   </span>
-                  {isDeepSearching && <RefreshCw className="w-3 h-3 animate-spin text-cyan-400" />}
+                  {isDeepSearching && <RefreshCw className="w-3 h-3 animate-spin text-sky-600" />}
                 </div>
                 {deepEngineInfo ? (
-                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-300 space-y-1">
-                    <div className="flex justify-between">
+                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 font-mono text-[11px] text-slate-800 space-y-1">
+                    <div className="flex justify-between font-semibold">
                       <span>Depth: {deepEngineInfo.depth}</span>
                       <span>
                         Eval:{' '}
@@ -831,23 +717,22 @@ export default function Analysis() {
                       </span>
                     </div>
                     {pvSan && (
-                      <div className="text-slate-400 leading-relaxed break-words whitespace-normal">
-                        <span className="text-slate-500">Line: </span>{pvSan}
+                      <div className="text-slate-600 leading-relaxed break-words whitespace-normal">
+                        <span className="text-slate-400">Line: </span>{pvSan}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-[11px]">Evaluating position...</p>
+                  <p className="text-slate-400 text-[11px]">Evaluating position...</p>
                 )}
               </div>
             )}
           </div>
 
-          {/* Move History Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
               <span>Game Move History</span>
-              <span className="font-mono">{history.length} Plies</span>
+              <span className="font-mono text-slate-600">{history.length} Plies</span>
             </h3>
 
             <div className="max-h-[360px] overflow-y-auto space-y-1 pr-1 font-mono text-xs">
@@ -864,20 +749,18 @@ export default function Analysis() {
                 return (
                   <div
                     key={moveNumIdx}
-                    className="grid grid-cols-12 gap-1 items-center py-1 px-2 rounded-lg hover:bg-slate-800/60 transition-colors text-slate-300"
+                    className="grid grid-cols-12 gap-1 items-center py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors text-slate-700"
                   >
-                    {/* Move Number */}
-                    <span className="col-span-2 text-slate-500 font-semibold">
+                    <span className="col-span-2 text-slate-400 font-semibold">
                       {moveNumIdx + 1}.
                     </span>
 
-                    {/* White Move */}
                     <button
                       onClick={() => goToPly(whitePly)}
                       className={`col-span-5 text-left px-2 py-1 rounded transition-colors flex items-center justify-between ${
                         currentPly === whitePly
                           ? 'bg-emerald-600 text-white font-bold'
-                          : 'hover:bg-slate-800 text-slate-200'
+                          : 'hover:bg-slate-100 text-slate-800'
                       }`}
                     >
                       <span>{whiteMove?.san}</span>
@@ -891,14 +774,13 @@ export default function Analysis() {
                       )}
                     </button>
 
-                    {/* Black Move */}
                     {blackMove ? (
                       <button
                         onClick={() => goToPly(blackPly)}
                         className={`col-span-5 text-left px-2 py-1 rounded transition-colors flex items-center justify-between ${
                           currentPly === blackPly
                             ? 'bg-emerald-600 text-white font-bold'
-                            : 'hover:bg-slate-800 text-slate-200'
+                            : 'hover:bg-slate-100 text-slate-800'
                         }`}
                       >
                         <span>{blackMove.san}</span>
@@ -922,13 +804,12 @@ export default function Analysis() {
         </div>
       </div>
 
-      {/* Paste Game / Position Modal */}
       {isPasteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <ClipboardPaste className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <ClipboardPaste className="w-5 h-5 text-emerald-600" />
                 <span>Paste Game or FEN Position</span>
               </h3>
               <button
@@ -936,19 +817,19 @@ export default function Analysis() {
                   setIsPasteModalOpen(false);
                   setPasteError('');
                 }}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Paste standard PGN notation (from Chess.com, Lichess, etc.) or a FEN string.
               For PGN games, ChessLogs will identify the opening and variation automatically.
             </p>
 
             {pasteError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl">
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium">
                 {pasteError}
               </div>
             )}
@@ -959,7 +840,7 @@ export default function Analysis() {
                 onChange={(e) => setPasteInput(e.target.value)}
                 placeholder="Paste PGN (e.g. 1. e4 e5 2. Nf3...) or FEN string here"
                 rows={6}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-1 focus:ring-emerald-500 transition-all"
                 autoFocus
               />
 
@@ -970,13 +851,13 @@ export default function Analysis() {
                     setIsPasteModalOpen(false);
                     setPasteError('');
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20 transition-all"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition-all"
                 >
                   Load into Board
                 </button>

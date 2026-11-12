@@ -73,16 +73,6 @@ function isTrainedPly(move, trainedSide) {
   return true;
 }
 
-/**
- * Replay a history of moves onto a Chess instance starting from
- * the chapter's actual starting position.
- *
- * @param {Chess} chess - Chess.js instance (mutated in-place)
- * @param {Object[]} history - verbose move list from chess.js
- * @param {number} plyCount - number of plies to replay
- * @param {string|null} [startFen] - FEN of the chapter's starting position
- *   (from the [FEN] header in the PGN).  Falls back to standard start.
- */
 function applyHistoryTo(chess, history, plyCount, startFen = null) {
   if (startFen) {
     chess.load(startFen);
@@ -104,7 +94,7 @@ export default function CoursePlayer() {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
-  const [studyMode, setStudyMode] = useState('trainer'); // trainer | read
+  const [studyMode, setStudyMode] = useState('trainer');
 
   const [readChapterIds, setReadChapterIds] = useState(() => new Set());
   const [trainedChapterIds, setTrainedChapterIds] = useState(() => new Set());
@@ -114,25 +104,15 @@ export default function CoursePlayer() {
   const [fen, setFen] = useState(chess.fen());
   const [history, setHistory] = useState([]);
   const [lastMove, setLastMove] = useState(null);
-
-  // Starting FEN for the current chapter (null = standard start, set for continuation chapters)
   const [chapterStartFen, setChapterStartFen] = useState(null);
-
-  // B.7.1: Board orientation for study side perspective (auto-flips per chapter)
   const [boardOrientation, setBoardOrientation] = useState('white');
-
-  // Shared ply cursor (0 = start position, N = after N moves)
   const [plyCursor, setPlyCursor] = useState(0);
 
-  // Trainer phases: demo → awaiting_confirm → recall → (next) | complete
   const [trainerPhase, setTrainerPhase] = useState('demo');
   const [chapterComplete, setChapterComplete] = useState(false);
   const [feedback, setFeedback] = useState(null);
-
-  // B.2.2: course-completion review modal
   const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-  // B.3.3: auto-advance skips the "Got it" confirmation (default off = current paced mode)
   const [autoAdvance, setAutoAdvance] = useState(() => {
     try {
       return localStorage.getItem(AUTO_ADVANCE_KEY) === '1';
@@ -155,7 +135,6 @@ export default function CoursePlayer() {
 
   useEffect(() => () => clearDemoTimer(), []);
 
-  // Load course + progress
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -180,8 +159,6 @@ export default function CoursePlayer() {
           setStudyMode(storedMode);
         }
 
-        // B.2.1b: Resume from the furthest chapter the user has completed.
-        // Find the last chapter index whose id appears in any completion set.
         const chapters = data?.chapters || [];
         const doneIds = new Set([...completedIds, ...trainedIds]);
         if (doneIds.size > 0 && chapters.length > 1) {
@@ -189,7 +166,6 @@ export default function CoursePlayer() {
           chapters.forEach((ch, idx) => {
             if (doneIds.has(ch.id)) furthest = idx;
           });
-          // Advance to the chapter *after* the last completed one (if available)
           const resumeIdx = Math.min(furthest + 1, chapters.length - 1);
           setActiveChapterIndex(resumeIdx);
         }
@@ -243,9 +219,7 @@ export default function CoursePlayer() {
     autoAdvanceRef.current = autoAdvance;
     try {
       localStorage.setItem(AUTO_ADVANCE_KEY, autoAdvance ? '1' : '0');
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }, [autoAdvance]);
 
   const enterRecallForPly = useCallback(
@@ -266,10 +240,6 @@ export default function CoursePlayer() {
     [chess]
   );
 
-  /**
-   * Walkthrough trainer entry: auto-play opposite-side moves (B.3.1),
-   * then demo the next trained move and either await confirm or auto-advance (B.3.3).
-   */
   const startTrainerDemo = useCallback(
     (moves, startPly = 0, startFen = null) => {
       clearDemoTimer();
@@ -376,7 +346,6 @@ export default function CoursePlayer() {
         parser.loadPgn(chapter.pgn);
         const fullHistory = parser.history({ verbose: true });
 
-        // Extract the [FEN] header for continuation chapters
         const headers = typeof parser.header === 'function' ? parser.header() : {};
         const fenHeader = headers?.FEN || null;
         setChapterStartFen(fenHeader);
@@ -392,7 +361,6 @@ export default function CoursePlayer() {
           setLastMove(null);
           setPlyCursor(0);
         } else {
-          // Defer demo start until history state settles via effect below
           startTrainerDemo(fullHistory, 0, fenHeader);
         }
       } catch (err) {
@@ -408,16 +376,13 @@ export default function CoursePlayer() {
     if (!activeChapter) return;
     setBoardOrientation(activeChapter.orientation || course?.orientation || 'white');
     initChapter(activeChapter, studyMode);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeChapter?.id, studyMode]);
 
   const persistMode = useCallback(
     (mode) => {
       try {
         localStorage.setItem(`${MODE_STORAGE_PREFIX}${courseId}`, mode);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
       if (profile?.id) {
         savePreferredStudyMode(courseId, profile.id, mode);
       }
@@ -457,7 +422,6 @@ export default function CoursePlayer() {
     };
   }, [activeChapter, isLastChapter, doMarkComplete]);
 
-  // ---- Trainer: Got it → revert → recall ----
   const handleGotIt = () => {
     if (trainerPhase !== 'awaiting_confirm' || !history[plyCursor]) return;
     enterRecallForPly(history, plyCursor, chapterStartFen);
@@ -514,7 +478,6 @@ export default function CoursePlayer() {
         setChapterComplete(true);
         setTrainerPhase('complete');
         doMarkComplete(activeChapter, 'trained');
-        // B.2.2: show course-completion modal when last chapter is done
         if (isLastChapter) {
           setShowCompletionModal(true);
         }
@@ -535,7 +498,6 @@ export default function CoursePlayer() {
     }
   };
 
-  // ---- Read mode navigation ----
   const goReadPly = useCallback(
     (nextPly) => {
       if (!history.length) return;
@@ -546,7 +508,6 @@ export default function CoursePlayer() {
       if (count >= history.length && activeChapter?.id && !readChapterIds.has(activeChapter.id)) {
         setChapterComplete(true);
         doMarkComplete(activeChapter, 'read');
-        // B.2.2: prompt to review if last chapter just completed
         if (isLastChapter) {
           setShowCompletionModal(true);
         }
@@ -586,7 +547,6 @@ export default function CoursePlayer() {
       origin: { y: 0.75 },
       colors: ['#22c55e', '#1ba8c2', '#f0c15c'],
     });
-    // B.2.2: prompt to review if this was the last chapter
     if (isLastChapter) {
       setShowCompletionModal(true);
     }
@@ -596,7 +556,6 @@ export default function CoursePlayer() {
     initChapter(activeChapter, studyMode);
   };
 
-  // Info panel text
   const moveDescription = useMemo(() => {
     if (course?.type !== 'walkthrough' || !history.length) return null;
 
@@ -616,7 +575,6 @@ export default function CoursePlayer() {
       };
     }
 
-    // Trainer
     const move = history[plyCursor];
     if (!move) return null;
     const anno = annotationAtPly(annotations, plyCursor);
@@ -636,7 +594,6 @@ export default function CoursePlayer() {
 
   const boardKeyStyles = useMemo(() => {
     if (!moveDescription?.isKey || !moveDescription.move) return {};
-    // In read mode after move; in trainer during demo/confirm the move is on board
     if (studyMode === 'read' && plyCursor > 0) {
       return keySquareStyles(history[plyCursor - 1]);
     }
@@ -658,7 +615,7 @@ export default function CoursePlayer() {
 
   if (loading) {
     return (
-      <div className="py-32 text-center text-slate-400 text-sm">
+      <div className="py-32 text-center text-slate-500 text-sm font-medium">
         Loading interactive training chapter...
       </div>
     );
@@ -667,10 +624,10 @@ export default function CoursePlayer() {
   if (!course) {
     return (
       <div className="max-w-4xl mx-auto py-16 text-center space-y-4">
-        <h2 className="text-xl font-bold text-white">Course not found</h2>
+        <h2 className="text-xl font-bold text-slate-900">Course not found</h2>
         <button
           onClick={() => navigate('/courses')}
-          className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold"
+          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
         >
           Return to Courses
         </button>
@@ -682,11 +639,10 @@ export default function CoursePlayer() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
-      {/* Top bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <button
           onClick={() => navigate('/courses')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to All Courses</span>
@@ -696,27 +652,26 @@ export default function CoursePlayer() {
           {isWalkthrough && (
             <button
               onClick={() => navigate(`/courses/${courseId}/train`)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300 bg-cyan-500/10 hover:bg-cyan-500/20 px-3 py-1.5 rounded-full border border-cyan-500/25 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 px-3 py-1.5 rounded-full border border-cyan-200 transition-colors"
             >
               <Brain className="w-3.5 h-3.5" />
               <span>SRS Deck</span>
             </button>
           )}
-          <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+          <span className="text-xs font-mono font-medium text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
             Chapter {activeChapterIndex + 1} of {course.chapters?.length || 1}
           </span>
         </div>
       </div>
 
-      {/* Course title + mode toggle */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 shadow-xl space-y-3">
+      <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base font-bold text-white">{course.title}</h1>
+              <h1 className="text-base font-bold text-slate-900">{course.title}</h1>
               {course.coach_name && (
-                <span className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <GraduationCap className="w-3 h-3 text-amber-400" />
+                <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <GraduationCap className="w-3 h-3 text-amber-600" />
                   <span>Curriculum by Coach {course.coach_name}</span>
                 </span>
               )}
@@ -727,14 +682,14 @@ export default function CoursePlayer() {
           </div>
 
           {isWalkthrough && (
-            <div className="inline-flex p-1 rounded-xl bg-slate-950 border border-slate-800">
+            <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200">
               <button
                 type="button"
                 onClick={() => handleModeChange('trainer')}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   studyMode === 'trainer'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Brain className="w-3.5 h-3.5" />
@@ -745,8 +700,8 @@ export default function CoursePlayer() {
                 onClick={() => handleModeChange('read')}
                 className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   studyMode === 'read'
-                    ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 <Eye className="w-3.5 h-3.5" />
@@ -770,10 +725,10 @@ export default function CoursePlayer() {
                   trained
                     ? 'bg-emerald-500'
                     : read
-                      ? 'bg-sky-500/70'
+                      ? 'bg-sky-500'
                       : isCurrent
-                        ? 'bg-emerald-500/35 ring-1 ring-emerald-400/50'
-                        : 'bg-slate-700 hover:bg-slate-600'
+                        ? 'bg-emerald-200 ring-2 ring-emerald-500'
+                        : 'bg-slate-200 hover:bg-slate-300'
                 }`}
               />
             );
@@ -781,17 +736,15 @@ export default function CoursePlayer() {
         </div>
       </div>
 
-      {/* 3-column study layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left: chapter list */}
         <aside className="lg:col-span-3 space-y-3 order-2 lg:order-1">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
                 Chapters
               </h3>
-              <span className="text-[10px] font-mono text-slate-500">
+              <span className="text-[10px] font-mono text-slate-500 font-medium">
                 T {trainedCount} · R {readCount}
               </span>
             </div>
@@ -807,13 +760,13 @@ export default function CoursePlayer() {
                     onClick={() => setActiveChapterIndex(idx)}
                     className={`w-full p-2.5 rounded-xl text-left transition-all ${
                       isCurrent
-                        ? 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-slate-950/60 hover:bg-slate-800 text-slate-300 border border-slate-800/80'
+                        ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 font-semibold shadow-sm'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-0.5">
-                        <span className="text-[10px] font-mono text-slate-500 uppercase block">
+                        <span className="text-[10px] font-mono text-slate-500 uppercase block font-medium">
                           Ch. {idx + 1}
                         </span>
                         <span className="text-xs font-medium line-clamp-2 leading-snug">
@@ -822,14 +775,14 @@ export default function CoursePlayer() {
                       </div>
                       <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5">
                         {trained ? (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-400">
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-600">
                             <CircleCheck className="w-3 h-3" /> T
                           </span>
                         ) : (
-                          <Circle className="w-3 h-3 text-slate-700" />
+                          <Circle className="w-3 h-3 text-slate-300" />
                         )}
                         {read && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-400">
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-600">
                             <Eye className="w-3 h-3" /> R
                           </span>
                         )}
@@ -842,27 +795,26 @@ export default function CoursePlayer() {
           </div>
         </aside>
 
-        {/* Center: board / video */}
         <div className="lg:col-span-5 space-y-4 order-1 lg:order-2 min-w-0">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3 overflow-hidden">
             <div>
-              <h2 className="text-lg font-extrabold text-white leading-snug">
+              <h2 className="text-lg font-extrabold text-slate-900 leading-snug">
                 {activeChapter?.title || course.title}
               </h2>
               {isWalkthrough && (
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[11px] text-slate-600 mt-1">
                   {studyMode === 'trainer'
                     ? 'Watch trained-side moves, confirm, then play them yourself. Opposite-side moves auto-play.'
                     : 'Flip through the line at your own pace — no quizzes.'}
                 </p>
               )}
               {isWalkthrough && studyMode === 'trainer' && (
-                <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer select-none">
+                <label className="mt-2 inline-flex items-center gap-2 text-[11px] text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={autoAdvance}
                     onChange={(e) => setAutoAdvance(e.target.checked)}
-                    className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500/40"
+                    className="rounded border-slate-300 bg-white text-emerald-600 focus:ring-emerald-500/40"
                   />
                   Auto-advance (skip “Got it” confirmation)
                 </label>
@@ -870,7 +822,7 @@ export default function CoursePlayer() {
             </div>
 
             {!isWalkthrough ? (
-              <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-800 relative flex items-center justify-center">
+              <div className="aspect-video bg-black rounded-xl overflow-hidden border border-slate-200 relative flex items-center justify-center">
                 {activeChapter?.video_url ? (
                   isYouTubeUrl(activeChapter.video_url) ? (
                     <iframe
@@ -887,7 +839,7 @@ export default function CoursePlayer() {
                     </video>
                   )
                 ) : (
-                  <div className="text-center text-slate-500 text-xs">
+                  <div className="text-center text-slate-400 text-xs">
                     <Video className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p>No video URL attached to this chapter.</p>
                   </div>
@@ -907,7 +859,7 @@ export default function CoursePlayer() {
                 <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                   <button
                     onClick={() => setBoardOrientation((prev) => (prev === 'white' ? 'black' : 'white'))}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors border border-slate-200"
                     title="Flip Board Perspective"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -916,7 +868,7 @@ export default function CoursePlayer() {
 
                   <button
                     onClick={handleResetChapter}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors border border-slate-200"
                   >
                     Reset
                   </button>
@@ -926,18 +878,18 @@ export default function CoursePlayer() {
                       <button
                         onClick={handleReadPrev}
                         disabled={plyCursor <= 0}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 text-xs font-semibold"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 text-xs font-semibold border border-slate-200"
                       >
                         <ChevronLeft className="w-3.5 h-3.5" />
                         Prev
                       </button>
-                      <span className="text-[11px] font-mono text-slate-400 px-2">
+                      <span className="text-[11px] font-mono text-slate-600 px-2 font-medium">
                         {readProgressLabel}
                       </span>
                       <button
                         onClick={handleReadNext}
                         disabled={plyCursor >= history.length}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600/80 hover:bg-sky-500 disabled:opacity-40 text-white text-xs font-semibold"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 disabled:opacity-40 text-white text-xs font-semibold shadow-sm"
                       >
                         Next
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -948,11 +900,10 @@ export default function CoursePlayer() {
               </div>
             )}
 
-            {/* Video checkpoint */}
             {!isWalkthrough && !chapterComplete && (
               <button
                 onClick={handleMarkVideoComplete}
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/40 transition-all"
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-bold border border-emerald-300 transition-all shadow-sm"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Mark Chapter as Watched &amp; Continue
@@ -960,14 +911,13 @@ export default function CoursePlayer() {
               </button>
             )}
 
-            {/* Trainer gate */}
             {isWalkthrough &&
               studyMode === 'trainer' &&
               trainerPhase === 'awaiting_confirm' &&
               !chapterComplete && (
                 <button
                   onClick={handleGotIt}
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all"
+                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
                 >
                   Got it — let me try
                   <ChevronRight className="w-4 h-4" />
@@ -978,32 +928,32 @@ export default function CoursePlayer() {
               <div
                 className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
                   feedback.type === 'success'
-                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 font-medium'
                     : feedback.type === 'error'
-                      ? 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
-                      : 'bg-slate-800/80 text-slate-300 border border-slate-700'
+                      ? 'bg-rose-50 text-rose-900 border border-rose-200 font-medium'
+                      : 'bg-slate-100 text-slate-700 border border-slate-200'
                 }`}
               >
                 {feedback.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 ) : feedback.type === 'error' ? (
-                  <HelpCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <HelpCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                 ) : (
-                  <Brain className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <Brain className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
                 )}
                 <p className="leading-relaxed">{feedback.message}</p>
               </div>
             )}
 
             {chapterComplete && (
-              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/80 to-slate-900 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+                  <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-700">
                     <Award className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">Chapter Complete</h4>
-                    <p className="text-[11px] text-slate-400">
+                    <h4 className="text-sm font-bold text-emerald-950">Chapter Complete</h4>
+                    <p className="text-[11px] text-emerald-700 font-medium">
                       {!isWalkthrough
                         ? 'Marked as watched.'
                         : studyMode === 'trainer'
@@ -1015,7 +965,7 @@ export default function CoursePlayer() {
                 {!isLastChapter ? (
                   <button
                     onClick={handleNextChapter}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm"
                   >
                     Next Chapter
                     <ChevronRight className="w-4 h-4" />
@@ -1027,14 +977,14 @@ export default function CoursePlayer() {
                         setActiveChapterIndex(0);
                         setShowCompletionModal(false);
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       Review Course
                     </button>
                     <button
                       onClick={() => navigate('/courses')}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 transition-all shadow-sm"
                     >
                       Back to Courses
                     </button>
@@ -1045,14 +995,13 @@ export default function CoursePlayer() {
           </div>
         </div>
 
-        {/* Right: description panel */}
         <aside className="lg:col-span-4 space-y-3 order-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4 min-h-[280px]">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 min-h-[280px]">
             <div className="space-y-2">
               <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                 Chapter overview
               </h3>
-              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
                 {activeChapter?.description?.trim() ||
                   'No chapter description yet. Coaches can add one in the course builder.'}
               </p>
@@ -1060,33 +1009,33 @@ export default function CoursePlayer() {
 
             {isWalkthrough && (
               <>
-                <div className="border-t border-slate-800 pt-4 space-y-2">
+                <div className="border-t border-slate-100 pt-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                       {studyMode === 'trainer' ? 'This move' : 'Position note'}
                     </h3>
                     {moveDescription?.isKey && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/35 text-[10px] font-bold uppercase tracking-wide">
-                        <Sparkles className="w-3 h-3" />
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-bold uppercase tracking-wide">
+                        <Sparkles className="w-3 h-3 text-amber-600" />
                         Key Moment
                       </span>
                     )}
                   </div>
                   <p
                     className={`text-sm leading-relaxed ${
-                      moveDescription?.isKey ? 'text-amber-100' : 'text-slate-300'
+                      moveDescription?.isKey ? 'text-amber-900 font-medium' : 'text-slate-700'
                     }`}
                   >
                     {moveDescription?.text || 'Follow the line on the board.'}
                   </p>
                   {studyMode === 'read' && (
-                    <p className="text-[11px] font-mono text-slate-500 pt-1">
+                    <p className="text-[11px] font-mono text-slate-500 pt-1 font-medium">
                       {readProgressLabel}
-                      <span className="text-slate-600"> · arrow keys supported</span>
+                      <span className="text-slate-400"> · arrow keys supported</span>
                     </p>
                   )}
                   {studyMode === 'trainer' && history.length > 0 && (
-                    <p className="text-[11px] font-mono text-slate-500 pt-1">
+                    <p className="text-[11px] font-mono text-slate-500 pt-1 font-medium">
                       Ply {Math.min(plyCursor + 1, history.length)} of {history.length}
                       {trainerPhase === 'recall' ? ' · your move' : ''}
                       {trainerPhase === 'awaiting_confirm' ? ' · confirm to continue' : ''}
@@ -1098,7 +1047,7 @@ export default function CoursePlayer() {
                   trainerPhase === 'awaiting_confirm' &&
                   isKeyMoment &&
                   currentAnnotation?.keyMove && (
-                    <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 px-3 py-2 text-[11px] text-amber-200/90">
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] text-amber-900 font-medium">
                       Key move:{' '}
                       <span className="font-mono font-bold">{currentAnnotation.keyMove}</span>
                     </div>
@@ -1109,17 +1058,19 @@ export default function CoursePlayer() {
         </aside>
       </div>
 
-      {/* B.2.2 Course Completion Review Modal */}
       {showCompletionModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 shadow-2xl text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 mx-auto flex items-center justify-center">
               <Award className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Course Completed! 🎉</h3>
-              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                You&apos;ve completed all chapters of <strong className="text-slate-200">{course.title}</strong>. Would you like to review the course again or return to your courses?
+              <h3 className="text-lg font-bold text-slate-900 flex items-center justify-center gap-1.5">
+                <span>Course Completed!</span>
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+              </h3>
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                You&apos;ve completed all chapters of <strong className="text-slate-900">{course.title}</strong>. Would you like to review the course again or return to your courses?
               </p>
             </div>
 
@@ -1130,7 +1081,7 @@ export default function CoursePlayer() {
                   setActiveChapterIndex(0);
                   setShowCompletionModal(false);
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all"
               >
                 <RotateCcw className="w-4 h-4" />
                 Review Course (From Ch. 1)
@@ -1141,7 +1092,7 @@ export default function CoursePlayer() {
                   setShowCompletionModal(false);
                   navigate('/courses');
                 }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-all"
               >
                 Back to Courses
               </button>

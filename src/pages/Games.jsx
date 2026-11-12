@@ -24,6 +24,7 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
+  X,
 } from 'lucide-react';
 
 const GAMES_PER_PAGE = 50;
@@ -38,13 +39,11 @@ export default function Games() {
   const [syncProgress, setSyncProgress] = useState(null);
   const [syncFeedback, setSyncFeedback] = useState(null);
 
-  // Filters
   const [timeFilter, setTimeFilter] = useState('all');
   const [resultFilter, setResultFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
 
-  // PGN Import Modal
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [pastedPgn, setPastedPgn] = useState('');
   const [importError, setImportError] = useState('');
@@ -62,30 +61,23 @@ export default function Games() {
     }
   }, [profile?.id, profile?.chesscom_username]);
 
-  // Guard: only auto-sync once per page visit
   const autoSyncedRef = useRef(false);
 
   useEffect(() => {
     loadGames();
   }, [loadGames]);
 
-  // Auto-sync once the initial DB load is done and user has a Chess.com username
   useEffect(() => {
     if (!loading && profile?.chesscom_username && !autoSyncedRef.current) {
       autoSyncedRef.current = true;
       handleSyncGames();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, profile?.chesscom_username]);
 
-  // Reset to first page whenever filters change
   useEffect(() => {
     setPage(1);
   }, [timeFilter, resultFilter, searchQuery, games.length]);
 
-
-  // Sync Chess.com history — fetch, format, persist, then set state directly
-  // so the display never depends on a write→read roundtrip across Supabase/localStorage
   const handleSyncGames = async () => {
     const username = profile?.chesscom_username;
     if (!username) {
@@ -101,123 +93,126 @@ export default function Games() {
     setSyncProgress({ completed: 0, total: 0, gameCount: 0 });
 
     try {
-      const rawGames = await fetchChesscomAllGames(username, (progress) => {
-        setSyncProgress(progress);
+      const rawGames = await fetchChesscomAllGames(username, {
+        onProgress: (p) => setSyncProgress(p),
       });
 
-      const formatted = (rawGames || []).map((g) =>
-        formatChesscomGame(g, username, profile.id)
-      );
-
-      // Persist in the background — don't await or fail if it errors
-      replaceSyncedChesscomGames(profile.id, formatted).catch((err) =>
-        console.warn('Background persist failed:', err)
-      );
-
-      // Enrich with local IDs so the list renders immediately without a reload
-      const withIds = formatted.map((g) => ({
-        ...g,
-        id: g.id || `game-${g.chesscom_game_id}`,
-      }));
-
-      // Preserve any manual PGN imports already in state
-      const manualGames = games.filter(
-        (g) =>
-          String(g?.chesscom_game_id || '').startsWith('custom-') ||
-          String(g?.id || '').startsWith('pgn-')
-      );
-
-      setGames([...withIds, ...manualGames]);
-      setPage(1);
-
-      if (formatted.length === 0) {
+      if (!rawGames || rawGames.length === 0) {
         setSyncFeedback({
           type: 'info',
-          text: `No games found for @${username}. Your Chess.com game list is empty.`,
+          text: `No archives found for Chess.com user "${username}".`,
         });
-      } else {
-        setSyncFeedback({
-          type: 'success',
-          text: `Synced ${formatted.length.toLocaleString()} games from @${username}.`,
-        });
+        setSyncing(false);
+        setSyncProgress(null);
+        return;
       }
+
+      const formatted = rawGames
+        .map((g) => formatChesscomGame(g, profile.id))
+        .filter(Boolean);
+
+      setGames(formatted);
+      await replaceSyncedChesscomGames(profile.id, formatted);
+
+      setSyncFeedback({
+        type: 'success',
+        text: `Successfully synced ${formatted.length.toLocaleString()} games from Chess.com!`,
+      });
     } catch (err) {
+      console.error('Chess.com sync failed:', err);
       setSyncFeedback({
         type: 'error',
-        text: err.message || 'Failed to sync games from Chess.com Public API.',
+        text: 'Failed to sync games from Chess.com. Please try again.',
       });
     } finally {
       setSyncing(false);
       setSyncProgress(null);
-      setTimeout(() => setSyncFeedback(null), 6000);
     }
   };
 
   const handleImportCustomPgn = async (e) => {
     e.preventDefault();
     setImportError('');
+
     if (!pastedPgn.trim()) {
-      setImportError('Please enter valid PGN text.');
+      setImportError('Please paste a valid PGN.');
       return;
     }
 
     try {
-      const pgn = pastedPgn.trim();
       const chess = new Chess();
-      chess.loadPgn(pgn);
-      const moves = chess.history();
-      if (moves.length === 0) {
-        throw new Error('No moves found in the provided PGN.');
-      }
+      chess.loadPgn(pastedPgn);
 
-      const headers = typeof chess.header === 'function' ? chess.header() : {};
-      const openingInfo = openingFieldsFromDetection(detectOpening(pgn));
+      const header = chess.header();
+      const white = header.White || 'White';
+      const black = header.Black || 'Black';
+      const userIsWhite =
+        white.toLowerCase() === (profile?.chesscom_username || '').toLowerCase();
 
-      const customGame = {
-        id: `pgn-${Date.now()}`,
+      let result = 'draw';
+      if (header.Result === '1-0') result = userIsWhite ? 'win' : 'loss';
+      else if (header.Result === '0-1') result = userIsWhite ? 'loss' : 'win';
+
+      const detected = detectOpening(pastedPgn);
+      const openingFields = openingFieldsFromDetection(detected);
+
+      const newGame = {
+        id: `custom-${Date.now()}`,
         student_id: profile.id,
         chesscom_game_id: `custom-${Date.now()}`,
-        pgn,
-        time_class: headers.TimeControl ? 'live' : 'rapid',
-        result: 'win',
-        white_username: headers.White || 'Custom White',
-        black_username: headers.Black || 'Custom Black',
-        white_rating: Number(headers.WhiteElo) || 1500,
-        black_rating: Number(headers.BlackElo) || 1500,
-        url: '',
-        played_at: headers.Date
-          ? new Date(headers.Date.replace(/\./g, '-')).toISOString()
+        url: null,
+        pgn: pastedPgn,
+        time_control: header.TimeControl || 'Unknown',
+        time_class: 'rapid',
+        rated: false,
+        white_username: white,
+        white_rating: parseInt(header.WhiteElo, 10) || 1500,
+        black_username: black,
+        black_rating: parseInt(header.BlackElo, 10) || 1500,
+        result,
+        played_at: header.Date
+          ? new Date(header.Date.replace(/\./g, '-')).toISOString()
           : new Date().toISOString(),
-        synced_at: new Date().toISOString(),
-        ...openingInfo,
+        ...openingFields,
       };
 
-      await upsertGames([customGame]);
+      await upsertGames([newGame]);
+      setGames((prev) => [newGame, ...prev]);
       setIsImportModalOpen(false);
       setPastedPgn('');
-      await loadGames();
-      navigate(`/analysis?gameId=${customGame.id}`);
+      navigate(`/analysis?gameId=${newGame.id}`);
     } catch (err) {
-      setImportError(err.message || 'Failed to parse and import PGN.');
+      console.error('Failed to import PGN:', err);
+      setImportError('Invalid PGN format. Please verify the game notation.');
     }
   };
 
   const filteredGames = useMemo(() => {
-    return games.filter((g) => {
-      if (timeFilter !== 'all' && g.time_class !== timeFilter) return false;
-      if (resultFilter !== 'all' && g.result !== resultFilter) return false;
+    return games.filter((game) => {
+      if (timeFilter !== 'all' && game.time_class !== timeFilter) return false;
+      if (resultFilter !== 'all' && game.result !== resultFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchW = (g.white_username || '').toLowerCase().includes(q);
-        const matchB = (g.black_username || '').toLowerCase().includes(q);
-        const matchOpening = (g.opening || '').toLowerCase().includes(q);
-        const matchVariation = (g.variation || '').toLowerCase().includes(q);
-        const matchEco = (g.eco || '').toLowerCase().includes(q);
-        if (!matchW && !matchB && !matchOpening && !matchVariation && !matchEco) return false;
+        const opponent =
+          (game.white_username || '').toLowerCase() ===
+          (profile?.chesscom_username || '').toLowerCase()
+            ? (game.black_username || '').toLowerCase()
+            : (game.white_username || '').toLowerCase();
+
+        const opening = (game.opening || '').toLowerCase();
+        const eco = (game.eco || '').toLowerCase();
+        const variation = (game.variation || '').toLowerCase();
+
+        return (
+          opponent.includes(q) ||
+          opening.includes(q) ||
+          eco.includes(q) ||
+          variation.includes(q)
+        );
       }
       return true;
     });
-  }, [games, timeFilter, resultFilter, searchQuery]);
+  }, [games, timeFilter, resultFilter, searchQuery, profile?.chesscom_username]);
 
   const totalPages = Math.max(1, Math.ceil(filteredGames.length / GAMES_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -225,7 +220,6 @@ export default function Games() {
   const pagedGames = useMemo(() => {
     const start = (safePage - 1) * GAMES_PER_PAGE;
     const slice = filteredGames.slice(start, start + GAMES_PER_PAGE);
-    // Enrich openings only for the visible page (avoids lag on huge libraries)
     return slice.map((game) => {
       if (game.opening || game.eco || !game.pgn) return game;
       return { ...game, ...openingFieldsFromDetection(detectOpening(game.pgn)) };
@@ -238,26 +232,25 @@ export default function Games() {
   const getTimeClassIcon = (timeClass) => {
     switch (timeClass) {
       case 'bullet':
-        return <Flame className="w-3.5 h-3.5 text-rose-400" />;
+        return <Flame className="w-3.5 h-3.5 text-rose-500" />;
       case 'blitz':
-        return <Zap className="w-3.5 h-3.5 text-amber-400" />;
+        return <Zap className="w-3.5 h-3.5 text-amber-500" />;
       case 'rapid':
       case 'daily':
       default:
-        return <Clock className="w-3.5 h-3.5 text-emerald-400" />;
+        return <Clock className="w-3.5 h-3.5 text-emerald-600" />;
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      {/* Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-            <Database className="w-8 h-8 text-emerald-500" />
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
+            <Database className="w-8 h-8 text-emerald-600" />
             <span>Game Database</span>
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-600 text-sm mt-1">
             Sync your full Chess.com history and review games with Stockfish 18 NNUE.
             {games.length > 0 && (
               <span className="text-slate-500"> · {games.length.toLocaleString()} games stored</span>
@@ -268,16 +261,16 @@ export default function Games() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium border border-slate-700 transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 transition-colors shadow-sm"
           >
-            <PlusCircle className="w-4 h-4 text-emerald-400" />
+            <PlusCircle className="w-4 h-4 text-emerald-600" />
             <span>Import PGN</span>
           </button>
 
           <button
             onClick={handleSyncGames}
             disabled={syncing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold transition-all shadow-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
             <span>{syncing ? 'Syncing All Games…' : 'Sync Chess.com'}</span>
@@ -285,20 +278,19 @@ export default function Games() {
         </div>
       </div>
 
-      {/* Sync progress */}
       {syncing && syncProgress && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-slate-600">
             <span>
               Fetching archives{syncProgress.total > 0 ? ` ${syncProgress.completed}/${syncProgress.total}` : '…'}
             </span>
-            <span className="font-mono text-emerald-400">
+            <span className="font-mono font-semibold text-emerald-600">
               {syncProgress.gameCount.toLocaleString()} games
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300"
+              className="h-full bg-emerald-600 transition-all duration-300"
               style={{
                 width: `${
                   syncProgress.total > 0
@@ -311,29 +303,26 @@ export default function Games() {
         </div>
       )}
 
-      {/* Sync Feedback Toast */}
       {syncFeedback && (
         <div
           className={`p-3.5 rounded-xl text-sm flex items-center gap-2.5 ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               : syncFeedback.type === 'error'
-              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-              : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
+              ? 'bg-rose-50 text-rose-800 border border-rose-200'
+              : 'bg-blue-50 text-blue-800 border border-blue-200'
           }`}
         >
           {syncFeedback.type === 'error' ? (
-            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           ) : (
-            <Sparkles className="w-4 h-4 shrink-0" />
+            <Sparkles className="w-4 h-4 shrink-0 text-emerald-600" />
           )}
-          <span>{syncFeedback.text}</span>
+          <span className="font-medium">{syncFeedback.text}</span>
         </div>
       )}
 
-      {/* Filters Toolbar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Search */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -341,21 +330,20 @@ export default function Games() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search opponent, opening, or ECO..."
-            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          {/* Time Filter */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
             {['all', 'bullet', 'blitz', 'rapid', 'daily'].map((tc) => (
               <button
                 key={tc}
                 onClick={() => setTimeFilter(tc)}
-                className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-all ${
                   timeFilter === tc
-                    ? 'bg-emerald-600 text-white font-semibold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-emerald-700 font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {tc}
@@ -363,16 +351,15 @@ export default function Games() {
             ))}
           </div>
 
-          {/* Result Filter */}
-          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
             {['all', 'win', 'loss', 'draw'].map((res) => (
               <button
                 key={res}
                 onClick={() => setResultFilter(res)}
-                className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-all ${
                   resultFilter === res
-                    ? 'bg-emerald-600 text-white font-semibold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-white text-emerald-700 font-semibold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 {res}
@@ -382,18 +369,17 @@ export default function Games() {
         </div>
       </div>
 
-      {/* Games List */}
       {loading ? (
-        <div className="py-24 text-center text-slate-400 flex flex-col items-center gap-3">
-          <RefreshCw className="w-8 h-8 animate-spin text-emerald-500" />
-          <p className="text-sm">Loading game database...</p>
+        <div className="py-24 text-center text-slate-500 flex flex-col items-center gap-3">
+          <RefreshCw className="w-8 h-8 animate-spin text-emerald-600" />
+          <p className="text-sm font-medium">Loading game database...</p>
         </div>
       ) : filteredGames.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center space-y-4">
-          <Database className="w-12 h-12 text-slate-600 mx-auto" />
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4 shadow-sm">
+          <Database className="w-12 h-12 text-slate-400 mx-auto" />
           <div>
-            <h3 className="text-base font-semibold text-white">No games found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+            <h3 className="text-base font-bold text-slate-900">No games found</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
               {!profile?.chesscom_username
                 ? 'Link your Chess.com username in Profile to sync your games.'
                 : games.length === 0
@@ -405,14 +391,14 @@ export default function Games() {
             {profile?.chesscom_username ? (
               <button
                 onClick={handleSyncGames}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
               >
                 Sync Now
               </button>
             ) : (
               <button
                 onClick={() => navigate('/profile')}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
               >
                 Go to Profile
               </button>
@@ -421,7 +407,7 @@ export default function Games() {
         </div>
       ) : (
         <>
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-800">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
             {pagedGames.map((game) => {
               const isUserWhite =
                 (game.white_username || '').toLowerCase() ===
@@ -433,16 +419,16 @@ export default function Games() {
               return (
                 <div
                   key={game.id || game.chesscom_game_id}
-                  className="p-4 sm:p-5 hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border ${
                         game.result === 'win'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                           : game.result === 'loss'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                          : 'bg-slate-700/30 text-slate-300 border-slate-700'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
                       {game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D'}
@@ -450,28 +436,28 @@ export default function Games() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-white text-base">
+                        <span className="font-bold text-slate-900 text-base">
                           vs. {opponentName || 'Unknown Opponent'}
                         </span>
-                        <span className="text-xs text-slate-400 font-mono">({opponentRating || '?'})</span>
+                        <span className="text-xs text-slate-500 font-mono font-medium">({opponentRating || '?'})</span>
 
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-[11px] font-medium text-slate-300 capitalize">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 capitalize">
                           {getTimeClassIcon(game.time_class)}
                           <span>{game.time_class}</span>
                         </div>
 
                         {game.review && (
-                          <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[11px] font-mono font-semibold">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono font-semibold">
                             Acc: {isUserWhite ? game.review.accuracy_white : game.review.accuracy_black}%
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-                        <span className="flex items-center gap-1">
+                      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                        <span className="flex items-center gap-1.5">
                           <span
                             className={`w-2.5 h-2.5 rounded-full border ${
-                              isUserWhite ? 'bg-white border-slate-400' : 'bg-slate-900 border-slate-600'
+                              isUserWhite ? 'bg-white border-slate-400' : 'bg-slate-900 border-slate-900'
                             }`}
                           />
                           <span>Playing {isUserWhite ? 'White' : 'Black'} ({userRating || '?'})</span>
@@ -506,7 +492,7 @@ export default function Games() {
                         href={game.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-2 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
                         title="View on Chess.com"
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -515,7 +501,7 @@ export default function Games() {
 
                     <button
                       onClick={() => navigate(`/analysis?gameId=${game.id}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-600 text-white text-xs font-semibold border border-slate-700 hover:border-emerald-500 transition-all group"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-emerald-600 text-slate-800 hover:text-white text-xs font-semibold border border-slate-200 hover:border-emerald-600 transition-all group"
                     >
                       <span>{game.review ? 'View Analysis' : 'Review Game'}</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -526,15 +512,14 @@ export default function Games() {
             })}
           </div>
 
-          {/* Pagination — 50 games per page */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3">
-            <p className="text-xs text-slate-400">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+            <p className="text-xs text-slate-600">
               Showing{' '}
-              <span className="text-slate-200 font-mono font-semibold">
+              <span className="text-slate-900 font-mono font-semibold">
                 {rangeStart}–{rangeEnd}
               </span>{' '}
               of{' '}
-              <span className="text-slate-200 font-mono font-semibold">
+              <span className="text-slate-900 font-mono font-semibold">
                 {filteredGames.length.toLocaleString()}
               </span>{' '}
               games · {GAMES_PER_PAGE} per page
@@ -545,19 +530,19 @@ export default function Games() {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Prev
               </button>
-              <span className="text-xs font-mono text-slate-400 px-2">
+              <span className="text-xs font-mono text-slate-600 px-2 font-medium">
                 Page {safePage} / {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -567,24 +552,23 @@ export default function Games() {
         </>
       )}
 
-      {/* Custom PGN Import Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <PlusCircle className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-emerald-600" />
                 <span>Import Game PGN</span>
               </h3>
               <button
                 onClick={() => setIsImportModalOpen(false)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Paste a PGN to save and open it in analysis. ChessLogs will detect the opening and variation automatically.
             </p>
 
@@ -594,12 +578,12 @@ export default function Games() {
                 value={pastedPgn}
                 onChange={(e) => setPastedPgn(e.target.value)}
                 placeholder={'1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5...'}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
                 required
               />
 
               {importError && (
-                <div className="p-3 rounded-lg bg-rose-500/10 text-rose-400 text-xs border border-rose-500/20">
+                <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-xs border border-rose-200 font-medium">
                   {importError}
                 </div>
               )}
@@ -608,15 +592,15 @@ export default function Games() {
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
                 >
-                  Save & Analyze
+                  Save &amp; Analyze
                 </button>
               </div>
             </form>

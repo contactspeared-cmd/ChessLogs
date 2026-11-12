@@ -44,10 +44,9 @@ export default function MoveTrainer() {
 
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [deckMode, setDeckMode] = useState('auto'); // auto | annotations | line
+  const [deckMode, setDeckMode] = useState('auto');
   const [srsMap, setSrsMap] = useState({});
 
-  // B.3.3: default ON preserves legacy SRS timer auto-grade behavior
   const [autoAdvance, setAutoAdvance] = useState(() => {
     try {
       const stored = localStorage.getItem(AUTO_ADVANCE_KEY);
@@ -57,8 +56,7 @@ export default function MoveTrainer() {
     }
   });
 
-  // Session state
-  const [phase, setPhase] = useState('lobby'); // lobby | training | summary
+  const [phase, setPhase] = useState('lobby');
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [chess] = useState(() => new Chess());
@@ -155,7 +153,6 @@ export default function MoveTrainer() {
     if (cards.length === 0) return;
     const nextQueue = buildSessionQueue(cards, srsMap, { limit: SESSION_LIMIT });
     if (nextQueue.length === 0) {
-      // Everything scheduled for later — still allow practice of learned cards
       const practice = [...cards].sort(() => Math.random() - 0.5).slice(0, SESSION_LIMIT);
       setQueue(practice);
     } else {
@@ -218,9 +215,7 @@ export default function MoveTrainer() {
         setFen(chess.fen());
         setLastMove({ from: reply.from, to: reply.to });
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [chess, currentCard]);
 
   const handlePieceDrop = (sourceSquare, targetSquare) => {
@@ -262,12 +257,10 @@ export default function MoveTrainer() {
           failedAttempts === 0 ? TRAINER_GRADES.GOOD : TRAINER_GRADES.HARD;
 
         if (autoAdvance) {
-          // Legacy auto-grade path (B.3.3 opt-out of confirmation)
           setTimeout(() => {
             gradeCurrentCard(grade, failedAttempts > 0);
           }, 1100);
         } else {
-          // B.3.2: wait for explicit confirmation before advancing
           setPendingGrade({ grade, didFailFirst: failedAttempts > 0 });
           setAwaitingConfirm(true);
         }
@@ -305,7 +298,6 @@ export default function MoveTrainer() {
     try {
       const move = chess.move(currentCard.keyMove);
       if (!move) {
-        // Fallback to UCI squares
         chess.move({
           from: currentCard.from,
           to: currentCard.to,
@@ -342,14 +334,12 @@ export default function MoveTrainer() {
     setAutoAdvance(checked);
     try {
       localStorage.setItem(AUTO_ADVANCE_KEY, checked ? '1' : '0');
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   };
 
   if (loading) {
     return (
-      <div className="py-32 text-center text-slate-400 text-sm">
+      <div className="py-32 text-center text-slate-500 text-sm font-medium">
         Loading Move Trainer…
       </div>
     );
@@ -358,10 +348,10 @@ export default function MoveTrainer() {
   if (!course) {
     return (
       <div className="max-w-4xl mx-auto py-16 text-center space-y-4">
-        <h2 className="text-xl font-bold text-white">Course not found</h2>
+        <h2 className="text-xl font-bold text-slate-900">Course not found</h2>
         <button
           onClick={() => navigate('/courses')}
-          className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold"
+          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm"
         >
           Return to Courses
         </button>
@@ -382,28 +372,27 @@ export default function MoveTrainer() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button
           onClick={() => navigate(`/courses/${courseId}`)}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Course</span>
         </button>
 
-        <span className="inline-flex items-center gap-1.5 text-xs font-mono text-cyan-300 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
-          <Brain className="w-3.5 h-3.5" />
+        <span className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-cyan-700 bg-cyan-50 px-3 py-1 rounded-full border border-cyan-200">
+          <Brain className="w-3.5 h-3.5 text-cyan-600" />
           Move Trainer
         </span>
       </div>
 
-      {/* Lobby */}
       {phase === 'lobby' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             <div>
-              <h1 className="text-2xl font-extrabold text-white flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-cyan-400" />
+              <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-cyan-600" />
                 {course.title}
               </h1>
-              <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
                 Chessable-style spaced repetition: you&apos;re shown a position from this course,
                 play the correct move from memory, then review again on a schedule so the line sticks.
               </p>
@@ -432,8 +421,8 @@ export default function MoveTrainer() {
                     onClick={() => setDeckMode(opt.id)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
                       deckMode === opt.id
-                        ? 'bg-cyan-500/20 text-cyan-200 border-cyan-500/40'
-                        : 'bg-slate-950 text-slate-400 border-slate-800 hover:border-slate-600'
+                        ? 'bg-cyan-50 text-cyan-800 border-cyan-300 font-bold'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
                     {opt.label}
@@ -446,23 +435,23 @@ export default function MoveTrainer() {
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 Session pacing
               </p>
-              <label className="inline-flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+              <label className="inline-flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={autoAdvance}
                   onChange={(e) => toggleAutoAdvance(e.target.checked)}
-                  className="rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500/40"
+                  className="rounded border-slate-300 bg-white text-cyan-600 focus:ring-cyan-500/40"
                 />
                 Auto-advance after correct moves (skip confirmation)
               </label>
               <p className="text-[11px] text-slate-500">
-                Training side: <span className="text-slate-300 font-semibold">{trainColorLabel}</span>
+                Training side: <span className="text-slate-800 font-semibold">{trainColorLabel}</span>
                 {trainedSide ? ' (from course settings)' : ' (inferred from annotations)'}
               </p>
             </div>
 
             {cards.length === 0 ? (
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-400">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
                 This course has no PGN walkthrough moves to train yet. Ask your coach to add
                 annotated walkthrough chapters, or open a walkthrough course.
               </div>
@@ -470,7 +459,7 @@ export default function MoveTrainer() {
               <button
                 type="button"
                 onClick={startSession}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white text-sm font-bold shadow-lg shadow-cyan-900/30 transition-all"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm transition-all"
               >
                 <Brain className="w-4 h-4" />
                 <span>
@@ -484,9 +473,9 @@ export default function MoveTrainer() {
             )}
           </div>
 
-          <div className="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">How it works</h3>
-            <ol className="space-y-3 text-xs text-slate-400 list-decimal list-inside leading-relaxed">
+          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">How it works</h3>
+            <ol className="space-y-3 text-xs text-slate-600 list-decimal list-inside leading-relaxed font-medium">
               <li>A position from your course appears on the board.</li>
               <li>Play the move you studied — no engine help.</li>
               <li>Correct answers schedule the card further out (spaced repetition).</li>
@@ -495,7 +484,7 @@ export default function MoveTrainer() {
             <button
               type="button"
               onClick={() => navigate(`/courses/${courseId}`)}
-              className="w-full mt-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700"
+              className="w-full mt-2 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors"
             >
               Study chapter walkthrough first
             </button>
@@ -503,21 +492,20 @@ export default function MoveTrainer() {
         </div>
       )}
 
-      {/* Training */}
       {phase === 'training' && currentCard && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+          <div className="lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[11px] font-mono uppercase text-slate-500">
+                <p className="text-[11px] font-mono uppercase text-slate-500 font-medium">
                   Card {queueIndex + 1} / {queue.length} · {currentCard.chapterTitle}
                 </p>
-                <h2 className="text-lg font-bold text-white mt-0.5">Find the move</h2>
+                <h2 className="text-lg font-bold text-slate-900 mt-0.5">Find the move</h2>
               </div>
               <div className="w-40">
-                <div className="h-1.5 rounded-full bg-slate-950 border border-slate-800 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all"
+                    className="h-full bg-emerald-600 transition-all"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
@@ -539,20 +527,20 @@ export default function MoveTrainer() {
               <div
                 className={`p-4 rounded-xl text-xs flex items-start gap-3 ${
                   feedback.type === 'success'
-                    ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-200 font-medium'
                     : feedback.type === 'hint'
-                    ? 'bg-amber-500/10 text-amber-200 border border-amber-500/30'
+                    ? 'bg-amber-50 text-amber-900 border border-amber-200 font-medium'
                     : feedback.type === 'reveal'
-                    ? 'bg-rose-500/10 text-rose-200 border border-rose-500/30'
-                    : 'bg-rose-500/10 text-rose-300 border border-rose-500/30'
+                    ? 'bg-rose-50 text-rose-900 border border-rose-200 font-medium'
+                    : 'bg-rose-50 text-rose-900 border border-rose-200 font-medium'
                 }`}
               >
                 {feedback.type === 'success' ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                 ) : feedback.type === 'hint' ? (
-                  <Lightbulb className="w-5 h-5 text-amber-400 shrink-0" />
+                  <Lightbulb className="w-5 h-5 text-amber-600 shrink-0" />
                 ) : (
-                  <XCircle className="w-5 h-5 text-rose-400 shrink-0" />
+                  <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
                 )}
                 <p className="leading-relaxed">{feedback.message}</p>
               </div>
@@ -563,25 +551,25 @@ export default function MoveTrainer() {
                 type="button"
                 onClick={showHint}
                 disabled={revealed || awaitingGrade}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 disabled:opacity-40 transition-colors"
               >
-                <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
                 Hint
               </button>
               <button
                 type="button"
                 onClick={revealSolution}
                 disabled={revealed || awaitingGrade}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 disabled:opacity-40 transition-colors"
               >
-                <Eye className="w-3.5 h-3.5 text-rose-400" />
+                <Eye className="w-3.5 h-3.5 text-rose-600" />
                 Reveal
               </button>
               <button
                 type="button"
                 onClick={() => loadCardOntoBoard(currentCard)}
                 disabled={awaitingGrade}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 disabled:opacity-40 transition-colors"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 Reset
@@ -591,7 +579,7 @@ export default function MoveTrainer() {
                 <button
                   type="button"
                   onClick={confirmAndAdvance}
-                  className="ml-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+                  className="ml-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm"
                 >
                   Correct — continue
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -602,7 +590,7 @@ export default function MoveTrainer() {
                 <button
                   type="button"
                   onClick={continueAfterReveal}
-                  className="ml-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold"
+                  className="ml-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-sm"
                 >
                   Continue
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -612,8 +600,8 @@ export default function MoveTrainer() {
           </div>
 
           <div className="lg:col-span-4 space-y-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
-              <h3 className="text-sm font-bold text-white">This session</h3>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-slate-900">This session</h3>
               <div className="grid grid-cols-3 gap-2 text-center">
                 <MiniStat label="Done" value={sessionStats.reviewed} />
                 <MiniStat label="Hit" value={sessionStats.correct} tone="emerald" />
@@ -622,7 +610,7 @@ export default function MoveTrainer() {
               <button
                 type="button"
                 onClick={() => setPhase('lobby')}
-                className="w-full py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white border border-slate-800 hover:border-slate-600"
+                className="w-full py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors"
               >
                 End session early
               </button>
@@ -631,15 +619,14 @@ export default function MoveTrainer() {
         </div>
       )}
 
-      {/* Summary */}
       {phase === 'summary' && (
-        <div className="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl text-center space-y-5">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+        <div className="max-w-xl mx-auto bg-white border border-slate-200 rounded-2xl p-8 shadow-sm text-center space-y-5">
+          <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-200">
             <Trophy className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-white">Session complete</h2>
-            <p className="text-sm text-slate-400 mt-1">
+            <h2 className="text-xl font-extrabold text-slate-900">Session complete</h2>
+            <p className="text-sm text-slate-600 mt-1">
               Spaced repetition updated — due cards will return when you&apos;re ready.
             </p>
           </div>
@@ -654,14 +641,14 @@ export default function MoveTrainer() {
               onClick={() => {
                 setPhase('lobby');
               }}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold border border-slate-700"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-colors"
             >
               Back to lobby
             </button>
             <button
               type="button"
               onClick={startSession}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
+              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-colors"
             >
               Train again
             </button>
@@ -674,13 +661,13 @@ export default function MoveTrainer() {
 
 function StatPill({ icon: Icon, label, value, accent = 'slate' }) {
   const tones = {
-    slate: 'text-slate-200',
-    amber: 'text-amber-300',
-    cyan: 'text-cyan-300',
-    emerald: 'text-emerald-300',
+    slate: 'text-slate-900',
+    amber: 'text-amber-700',
+    cyan: 'text-cyan-700',
+    emerald: 'text-emerald-700',
   };
   return (
-    <div className="rounded-xl bg-slate-950 border border-slate-800 p-3 text-center">
+    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 text-center">
       <Icon className={`w-4 h-4 mx-auto mb-1 ${tones[accent]}`} />
       <div className={`text-lg font-extrabold font-mono ${tones[accent]}`}>{value}</div>
       <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
@@ -692,12 +679,12 @@ function StatPill({ icon: Icon, label, value, accent = 'slate' }) {
 
 function MiniStat({ label, value, tone = 'slate' }) {
   const tones = {
-    slate: 'text-white',
-    emerald: 'text-emerald-400',
-    rose: 'text-rose-400',
+    slate: 'text-slate-900',
+    emerald: 'text-emerald-700',
+    rose: 'text-rose-700',
   };
   return (
-    <div className="rounded-xl bg-slate-950 border border-slate-800 p-3">
+    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
       <div className={`text-lg font-extrabold font-mono ${tones[tone]}`}>{value}</div>
       <div className="text-[10px] uppercase text-slate-500 font-semibold">{label}</div>
     </div>

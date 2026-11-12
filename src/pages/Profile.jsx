@@ -45,14 +45,12 @@ export default function Profile() {
   const [statsData, setStatsData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
 
-  // Generate verification code when input changes
   useEffect(() => {
     if (chesscomInput) {
       setVerificationCode(generateVerificationCode(chesscomInput));
     }
   }, [chesscomInput]);
 
-  // Sync state if profile changes
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name || '');
@@ -66,7 +64,6 @@ export default function Profile() {
     }
   }, [profile]);
 
-  // Fetch live Chess.com stats
   const loadChesscomData = async (username) => {
     if (!username) return;
     setLoadingStats(true);
@@ -130,7 +127,6 @@ export default function Profile() {
       avatar_url: liveProfile?.avatar || profile?.avatar_url,
     });
 
-    // Username change must drop the previous account's synced games immediately
     if (profile?.id && prevUsername !== nextUsername) {
       await replaceSyncedChesscomGames(profile.id, []);
     }
@@ -158,7 +154,7 @@ export default function Profile() {
       } else {
         setVerifyMessage({
           type: 'error',
-          text: `Verification code was not found in @${chesscomInput}'s Chess.com bio. Please paste "${verificationCode}" into your bio and try again, or click "Quick Trusted Link".`,
+          text: `Verification code was not found in @${chesscomInput}'s Chess.com bio. Please paste "${verificationCode}" into your bio and try again, or click "Quick Link".`,
         });
       }
     } catch (err) {
@@ -200,18 +196,16 @@ export default function Profile() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header */}
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white">Student Profile & Settings</h1>
-        <p className="text-slate-400 mt-1">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Student Profile &amp; Settings</h1>
+        <p className="text-slate-600 mt-1">
           Manage your coach-student identity and link your Chess.com account to sync games and rating telemetry.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Profile Card & Edit */}
         <div className="space-y-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm relative overflow-hidden">
             <div className="flex items-center gap-4">
               <img
                 src={
@@ -219,32 +213,30 @@ export default function Profile() {
                   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
                 }
                 alt={profile?.display_name || 'Profile'}
-                className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-md"
+                className="w-16 h-16 rounded-full object-cover border-2 border-emerald-500 shadow-sm"
               />
               <div>
-                <h2 className="text-lg font-bold text-white">{profile?.display_name || 'Chess Enthusiast'}</h2>
+                <h2 className="text-lg font-bold text-slate-900">{profile?.display_name || 'Chess Enthusiast'}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs uppercase font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="text-xs uppercase font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
                     {profile?.role || 'student'}
                   </span>
                   {profile?.chesscom_username ? (
-                    <span className="text-xs text-emerald-400 font-mono flex items-center gap-1">
+                    <span className="text-xs text-emerald-700 font-mono font-medium flex items-center gap-1">
                       <ShieldCheck className="w-3.5 h-3.5" />
                       @{profile.chesscom_username}
                     </span>
                   ) : (
-                    <span className="text-xs text-amber-400">No Chess.com account linked</span>
+                    <span className="text-xs text-amber-700 font-medium">No Chess.com account linked</span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Profile Edit Form */}
-            <form onSubmit={handleSaveProfile} className="mt-6 space-y-4 pt-6 border-t border-slate-800">
-              {/* User Configurable Display Name */}
+            <form onSubmit={handleSaveProfile} className="mt-6 space-y-4 pt-6 border-t border-slate-100">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600">
                     Display Name
                   </label>
                   <button
@@ -258,7 +250,7 @@ export default function Profile() {
                       });
                       if (auto) setDisplayName(auto);
                     }}
-                    className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors"
+                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                   >
                     Auto-fill from Full Name
                   </button>
@@ -267,7 +259,7 @@ export default function Profile() {
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-colors"
                   placeholder="Your display name or handle"
                   required
                 />
@@ -277,26 +269,26 @@ export default function Profile() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
                   Full Name Composite
                 </span>
 
                 <div className="grid grid-cols-12 gap-2">
                   <div className="col-span-5">
-                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1">
                       First Name
                     </label>
                     <input
                       type="text"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                       required
                     />
                   </div>
 
                   <div className="col-span-2">
-                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1">
                       M.I.
                     </label>
                     <input
@@ -304,33 +296,33 @@ export default function Profile() {
                       maxLength={2}
                       value={middleInitial}
                       onChange={(e) => setMiddleInitial(e.target.value.toUpperCase())}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center font-bold focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 text-center font-bold focus:outline-none focus:border-emerald-500 focus:bg-white"
                       required
                     />
                   </div>
 
                   <div className="col-span-5">
-                    <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                    <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1">
                       Last Name
                     </label>
                     <input
                       type="text"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                       required
                     />
                   </div>
                 </div>
 
                 <div className="w-full sm:w-1/2">
-                  <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">
+                  <label className="block text-[10px] font-semibold uppercase text-slate-500 mb-1">
                     Suffix
                   </label>
                   <select
                     value={suffix}
                     onChange={(e) => setSuffix(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
                   >
                     <option value="">None</option>
                     <option value="Jr.">Jr.</option>
@@ -344,26 +336,26 @@ export default function Profile() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
                   Date of Birth
                 </label>
                 <input
                   type="date"
                   value={dateOfBirth}
                   onChange={(e) => setDateOfBirth(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                  Coach Bio & Goals
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
+                  Coach Bio &amp; Goals
                 </label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-colors"
                   placeholder="Describe your current study goals, rating target, opening rep..."
                 />
               </div>
@@ -372,13 +364,13 @@ export default function Profile() {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm transition-colors shadow-lg shadow-emerald-600/20 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm transition-colors shadow-sm disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   {isSaving ? 'Saving...' : 'Save Profile'}
                 </button>
                 {saveSuccess && (
-                  <span className="text-xs text-emerald-400 flex items-center gap-1">
+                  <span className="text-xs text-emerald-700 flex items-center gap-1 font-semibold">
                     <CheckCircle2 className="w-4 h-4" />
                     Updated!
                   </span>
@@ -387,15 +379,13 @@ export default function Profile() {
             </form>
           </div>
 
-          {/* Constraint #1 Architecture Notice */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-400 space-y-2">
-            <div className="flex items-center gap-1.5 text-slate-300 font-semibold">
-              <AlertCircle className="w-4 h-4 text-cyan-400" />
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-2">
+            <div className="flex items-center gap-1.5 text-slate-800 font-semibold">
+              <AlertCircle className="w-4 h-4 text-emerald-600" />
               <span>Chess.com Identity Architecture</span>
             </div>
-            <p>
-              Chess.com’s Public API is unauthenticated and read-only. Official OAuth requires manual partner approval.
-              ChessLogs uses secure Supabase Auth as identity provider with lightweight ownership linking.
+            <p className="leading-relaxed">
+              Chess.com’s Public API is unauthenticated and read-only. ChessLogs uses secure authentication with lightweight ownership linking.
             </p>
             <div className="text-[11px] font-mono text-slate-500">
               Config flag: <code>VITE_CHESSCOM_OAUTH_ENABLED={String(APP_CONFIG.chesscomOAuthEnabled)}</code>
@@ -403,21 +393,19 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Right Column: Chess.com Linking & Live Ratings */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Linking Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <span>Chess.com Account Linking</span>
                   {profile?.chesscom_username && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       Verified
                     </span>
                   )}
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Link your username to unlock game sync, Stockfish reviews, and coach progress tracking.
                 </p>
               </div>
@@ -425,7 +413,7 @@ export default function Profile() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">
                   Chess.com Username
                 </label>
                 <input
@@ -433,7 +421,7 @@ export default function Profile() {
                   value={chesscomInput}
                   onChange={(e) => setChesscomInput(e.target.value)}
                   placeholder="e.g. hikaru, magnuscarlsen, danielnaroditsky"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-white font-mono focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2 text-sm text-slate-900 font-mono focus:outline-none focus:border-emerald-500 focus:bg-white"
                 />
               </div>
 
@@ -442,39 +430,38 @@ export default function Profile() {
                   type="button"
                   onClick={handleQuickLink}
                   disabled={isVerifying || !chesscomInput.trim()}
-                  className="w-full px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shadow-sm disabled:opacity-50"
+                  className="w-full px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors shadow-sm disabled:opacity-50"
                 >
                   {isVerifying ? 'Checking...' : 'Link Account'}
                 </button>
               </div>
             </div>
 
-            {/* Verification Code Box */}
             {chesscomInput && (
-              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-300">Optional Bio Ownership Check:</span>
+                  <span className="font-semibold text-slate-800">Optional Bio Ownership Check:</span>
                   <button
                     type="button"
                     onClick={copyVerificationCode}
-                    className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors"
+                    className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-800 font-semibold transition-colors"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>{copied ? 'Copied!' : 'Copy Code'}</span>
                   </button>
                 </div>
-                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 font-mono text-xs text-emerald-400 font-semibold break-all flex items-center justify-between">
+                <div className="p-2.5 rounded-lg bg-white border border-slate-200 font-mono text-xs text-emerald-700 font-bold break-all flex items-center justify-between">
                   <span>{verificationCode}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="text-slate-400">
+                  <span className="text-slate-600">
                     Paste this into your Chess.com bio, then click &quot;Verify Bio Check&quot;.
                   </span>
                   <button
                     type="button"
                     onClick={handleVerifyBio}
                     disabled={isVerifying}
-                    className="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium whitespace-nowrap transition-colors"
+                    className="px-3 py-1.5 rounded-md bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium whitespace-nowrap transition-colors"
                   >
                     Verify Bio Check
                   </button>
@@ -484,31 +471,30 @@ export default function Profile() {
 
             {verifyMessage && (
               <div
-                className={`p-3 rounded-lg text-xs flex items-center gap-2 ${
+                className={`p-3 rounded-lg text-xs flex items-center gap-2 font-medium ${
                   verifyMessage.type === 'success'
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
                 }`}
               >
                 {verifyMessage.type === 'success' ? (
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
                 )}
                 <span>{verifyMessage.text}</span>
               </div>
             )}
           </div>
 
-          {/* Live Chess.com Telemetry & Ratings */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-amber-400" />
-                  <span>Chess.com Ratings & Stats</span>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-amber-500" />
+                  <span>Chess.com Ratings &amp; Stats</span>
                 </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-600 mt-0.5">
                   Synchronized live from <code>api.chess.com/pub/player/{profile?.chesscom_username || 'username'}/stats</code>
                 </p>
               </div>
@@ -517,31 +503,30 @@ export default function Profile() {
                 <button
                   onClick={() => loadChesscomData(profile.chesscom_username)}
                   disabled={loadingStats}
-                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
+                  className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                   title="Refresh Public API Stats"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loadingStats ? 'animate-spin text-emerald-400' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${loadingStats ? 'animate-spin text-emerald-600' : ''}`} />
                 </button>
               )}
             </div>
 
             {loadingStats ? (
-              <div className="py-12 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
-                <RefreshCw className="w-6 h-6 animate-spin text-emerald-500" />
+              <div className="py-12 text-center text-slate-500 text-sm flex flex-col items-center gap-3">
+                <RefreshCw className="w-6 h-6 animate-spin text-emerald-600" />
                 <span>Fetching live ratings from Chess.com Public API...</span>
               </div>
             ) : statsData ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Rapid */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-slate-600">
                     <span className="text-xs font-semibold uppercase tracking-wider">Rapid</span>
-                    <Clock className="w-4 h-4 text-emerald-400" />
+                    <Clock className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <div className="text-2xl font-black text-white">
+                  <div className="text-2xl font-black text-slate-900">
                     {statsData.chess_rapid?.last?.rating || '—'}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex justify-between">
+                  <div className="text-[11px] text-slate-500 flex justify-between font-medium">
                     <span>Best: {statsData.chess_rapid?.best?.rating || '—'}</span>
                     <span>
                       W: {statsData.chess_rapid?.record?.win || 0} / L: {statsData.chess_rapid?.record?.loss || 0}
@@ -549,16 +534,15 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Blitz */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-slate-600">
                     <span className="text-xs font-semibold uppercase tracking-wider">Blitz</span>
-                    <Zap className="w-4 h-4 text-amber-400" />
+                    <Zap className="w-4 h-4 text-amber-500" />
                   </div>
-                  <div className="text-2xl font-black text-white">
+                  <div className="text-2xl font-black text-slate-900">
                     {statsData.chess_blitz?.last?.rating || '—'}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex justify-between">
+                  <div className="text-[11px] text-slate-500 flex justify-between font-medium">
                     <span>Best: {statsData.chess_blitz?.best?.rating || '—'}</span>
                     <span>
                       W: {statsData.chess_blitz?.record?.win || 0} / L: {statsData.chess_blitz?.record?.loss || 0}
@@ -566,16 +550,15 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Bullet */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-slate-600">
                     <span className="text-xs font-semibold uppercase tracking-wider">Bullet</span>
-                    <Flame className="w-4 h-4 text-rose-400" />
+                    <Flame className="w-4 h-4 text-rose-500" />
                   </div>
-                  <div className="text-2xl font-black text-white">
+                  <div className="text-2xl font-black text-slate-900">
                     {statsData.chess_bullet?.last?.rating || '—'}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex justify-between">
+                  <div className="text-[11px] text-slate-500 flex justify-between font-medium">
                     <span>Best: {statsData.chess_bullet?.best?.rating || '—'}</span>
                     <span>
                       W: {statsData.chess_bullet?.record?.win || 0} / L: {statsData.chess_bullet?.record?.loss || 0}
@@ -583,16 +566,15 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {/* Daily */}
-                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-slate-600">
                     <span className="text-xs font-semibold uppercase tracking-wider">Daily</span>
-                    <Trophy className="w-4 h-4 text-cyan-400" />
+                    <Trophy className="w-4 h-4 text-blue-600" />
                   </div>
-                  <div className="text-2xl font-black text-white">
+                  <div className="text-2xl font-black text-slate-900">
                     {statsData.chess_daily?.last?.rating || '—'}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex justify-between">
+                  <div className="text-[11px] text-slate-500 flex justify-between font-medium">
                     <span>Best: {statsData.chess_daily?.best?.rating || '—'}</span>
                     <span>
                       W: {statsData.chess_daily?.record?.win || 0} / L: {statsData.chess_daily?.record?.loss || 0}
@@ -601,29 +583,29 @@ export default function Profile() {
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+              <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-200 rounded-xl">
                 No stats available. Link a valid Chess.com username above to load ratings automatically.
               </div>
             )}
 
             {chesscomData && (
-              <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 flex items-center justify-between text-xs">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3">
                   <img
                     src={chesscomData.avatar || profile?.avatar_url}
                     alt=""
-                    className="w-10 h-10 rounded-full border border-slate-700"
+                    className="w-10 h-10 rounded-full border border-slate-300"
                   />
                   <div>
-                    <div className="font-bold text-white flex items-center gap-1.5">
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5">
                       <span>{chesscomData.name || chesscomData.username}</span>
                       {chesscomData.title && (
-                        <span className="px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold">
+                        <span className="px-1 py-0.5 rounded bg-amber-100 text-amber-800 font-mono text-[10px] font-bold">
                           {chesscomData.title}
                         </span>
                       )}
                     </div>
-                    <div className="text-slate-400">Member since {new Date(chesscomData.joined * 1000).toLocaleDateString()}</div>
+                    <div className="text-slate-500">Member since {new Date(chesscomData.joined * 1000).toLocaleDateString()}</div>
                   </div>
                 </div>
 
@@ -631,7 +613,7 @@ export default function Profile() {
                   href={chesscomData.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 font-medium transition-colors shadow-sm"
                 >
                   <span>View on Chess.com</span>
                   <ExternalLink className="w-3.5 h-3.5" />

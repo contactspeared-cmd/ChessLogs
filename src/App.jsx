@@ -1,11 +1,19 @@
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
 
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import Marketplace from './pages/Marketplace';
+import CoachProfile from './pages/CoachProfile';
+import Chat from './pages/Chat';
+import Support from './pages/Support';
+import Feedback from './pages/Feedback';
 import Profile from './pages/Profile';
 import Games from './pages/Games';
 import Analysis from './pages/Analysis';
@@ -17,21 +25,34 @@ import CoachDashboard from './components/dashboard/CoachDashboard';
 
 function AppLayout({ children }) {
   const location = useLocation();
+  const { user, isCoach, isAdmin } = useAuth();
+
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
+  const isLandingPage = location.pathname === '/';
+  const isSidebarPage = ['/coach', '/admin'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-[#121417] text-slate-100 flex flex-col font-sans">
-      {!isAuthPage && <Navbar />}
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
+      {!isAuthPage && isSidebarPage && <Sidebar />}
+      {!isAuthPage && !isSidebarPage && <Navbar />}
 
-      <main className="flex-1 pb-16">{children}</main>
+      <main className={`flex-1 pb-16 ${isSidebarPage ? 'lg:pl-64 pt-16 lg:pt-0' : ''}`}>
+        {children}
+      </main>
 
       {!isAuthPage && (
-        <footer className="border-t border-slate-800/80 bg-[#0f1114] py-8 text-xs text-slate-500 text-center">
-          <div className="max-w-7xl mx-auto px-4 space-y-2">
-            <p className="font-semibold text-slate-400">
-              ChessLogs — Coach &amp; Student LMS for Chess Improvement
+        <footer className={`border-t border-slate-200 bg-white py-10 text-xs text-slate-500 text-center ${isSidebarPage ? 'lg:pl-64' : ''}`}>
+          <div className="max-w-7xl mx-auto px-4 space-y-3">
+            <div className="flex items-center justify-center gap-6 font-semibold text-slate-600">
+              <a href="/marketplace" className="hover:text-emerald-600">Marketplace</a>
+              <a href="/support" className="hover:text-emerald-600">Customer Support</a>
+              <a href="/feedback" className="hover:text-emerald-600">Community Feedback</a>
+              <a href="/login" className="hover:text-emerald-600">Account Access</a>
+            </div>
+            <p className="font-bold text-slate-700">
+              ChessLogs LMS — Science-Backed MoveTrainer &amp; Spaced Repetition Platform
             </p>
-            <p className="max-w-2xl mx-auto text-slate-500">
+            <p className="max-w-2xl mx-auto text-slate-400">
               Powered by Stockfish 18 NNUE (WASM Web Worker) &amp; Chess.com Public API. Evaluations closely reflect engine classifications.
             </p>
           </div>
@@ -47,15 +68,29 @@ export default function App() {
       <AuthProvider>
         <AppLayout>
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/coaches/:id" element={<CoachProfile />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/feedback" element={<Feedback />} />
 
             <Route
               path="/dashboard"
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <Chat />
                 </ProtectedRoute>
               }
             />
@@ -132,7 +167,7 @@ export default function App() {
               }
             />
 
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AppLayout>
       </AuthProvider>
