@@ -13,6 +13,7 @@ import {
   submitCoachCredential,
   getStudentEnrollments,
   reviewStudentEnrollment,
+  getGamesForStudent,
 } from '../../lib/db';
 import PgnImportWizard from '../PgnImportWizard';
 import EngineVariationTools from '../EngineVariationTools';
@@ -55,6 +56,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const [courses, setCourses] = useState([]);
   const [credentials, setCredentials] = useState([]);
   const [enrollments, setEnrollments] = useState([]);
+  const [myGames, setMyGames] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [studentSearch, setStudentSearch] = useState('');
@@ -101,12 +103,14 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [sData, cData] = await Promise.all([
+      const [sData, cData, mgData] = await Promise.all([
         getAllStudents().catch(() => []),
         getCourses({ role: 'admin' }).catch(() => []),
+        profile?.id ? getGamesForStudent(profile.id).catch(() => []) : [],
       ]);
       setStudents(sData || []);
       setCourses(cData || []);
+      setMyGames(mgData || []);
 
       const creds = getCoachCredentials(profile?.id);
       setCredentials(creds || []);
@@ -742,6 +746,8 @@ export default function CoachDashboard({ onPreviewStudentView }) {
             courses={coachCourses}
             credentials={credentials}
             enrollments={enrollments}
+            myGames={myGames}
+            profile={profile}
           />
         </div>
       )}

@@ -5,6 +5,7 @@ import { getCourses, getGamesForStudent } from '../lib/db';
 import { fetchChesscomStats } from '../lib/chesscom';
 import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
+import StatisticsPanel from '../components/dashboard/StatisticsPanel';
 import {
   Trophy,
   BookOpen,
@@ -328,6 +329,16 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="pt-2">
+        <StatisticsPanel
+          role="student"
+          games={games}
+          courses={courses}
+          profile={profile}
+          chessStats={chessStats}
+        />
       </div>
     </div>
   );
