@@ -55,7 +55,7 @@ export default function Feedback() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="bg-gradient-to-r from-teal-800 via-emerald-800 to-slate-900 rounded-3xl p-6 sm:p-10 text-white shadow-lg space-y-3">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-bold uppercase tracking-wider text-teal-200">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/10 backdrop-blur-md border border-white/20 text-xs font-bold uppercase tracking-wider text-teal-200">
           <MessageCircle className="w-3.5 h-3.5" />
           Community Feedback &amp; Ideas
         </span>
@@ -66,17 +66,17 @@ export default function Feedback() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-        <div className="md:col-span-5 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="md:col-span-5 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-emerald-600" />
               <span>Share Your Feedback</span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Let us know how we can improve.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Let us know how we can improve.</p>
           </div>
 
           {submitted && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>Thank you! Your feedback has been posted.</span>
             </div>
@@ -84,11 +84,11 @@ export default function Feedback() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Feedback Category</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Feedback Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
               >
                 <option value="Feature Request">Feature Request</option>
                 <option value="User Experience">User Experience / UI</option>
@@ -99,7 +99,7 @@ export default function Feedback() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Satisfaction Rating</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Satisfaction Rating</label>
               <div className="flex items-center gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -115,31 +115,31 @@ export default function Feedback() {
                     />
                   </button>
                 ))}
-                <span className="text-xs font-semibold text-slate-500 ml-2">{rating} / 5 Stars</span>
+                <span className="text-xs font-semibold text-slate-400 ml-2">{rating} / 5 Stars</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Feedback Title</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Feedback Title</label>
               <input
                 type="text"
                 required
                 placeholder="e.g. Export training cards to PGN"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Comments &amp; Details</label>
+              <label className="block text-xs font-bold text-slate-300 mb-1">Comments &amp; Details</label>
               <textarea
                 rows={3}
                 required
                 placeholder="Describe your idea or experience..."
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 placeholder:text-slate-400"
               />
             </div>
 
@@ -153,23 +153,23 @@ export default function Feedback() {
           </form>
         </div>
 
-        <div className="md:col-span-7 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="md:col-span-7 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-emerald-600" />
               <span>Community Ideas &amp; Upvotes</span>
             </h2>
-            <span className="text-xs font-mono text-slate-500">{feedbacks.length} ideas</span>
+            <span className="text-xs font-mono text-slate-400">{feedbacks.length} ideas</span>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-800">
             {feedbacks.map((fb) => (
               <div key={fb.id} className="py-4 space-y-2 text-xs">
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900">{fb.title}</span>
-                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <span className="font-bold text-sm text-white">{fb.title}</span>
+                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                         {fb.category}
                       </span>
                     </div>
@@ -186,14 +186,14 @@ export default function Feedback() {
 
                   <button
                     onClick={() => handleUpvote(fb.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 text-slate-700 font-bold transition-all shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-emerald-500/10 hover:text-emerald-400 border border-slate-800 hover:border-emerald-500/20 text-slate-300 font-bold transition-all shrink-0"
                   >
                     <ThumbsUp className="w-3.5 h-3.5" />
                     <span>{fb.upvotes || 0}</span>
                   </button>
                 </div>
 
-                <p className="text-slate-600 leading-relaxed">{fb.comments}</p>
+                <p className="text-slate-400 leading-relaxed">{fb.comments}</p>
               </div>
             ))}
           </div>

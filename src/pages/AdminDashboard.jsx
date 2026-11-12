@@ -462,23 +462,23 @@ export default function AdminDashboard({ onPreviewStudentView }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {}
-      <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-emerald-950/40 border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-emerald-950/40 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 font-bold flex items-center gap-1.5">
+            <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-500/100/20 text-purple-400 border border-purple-500/30 font-bold flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               Platform Command Center
             </span>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/100/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
               <Server className="w-3.5 h-3.5" />
               Engine: Stockfish 18 NNUE Active
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Administrator Command Center
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
             Platform-wide governance, user tier oversight, coach credential verification queues, and curriculum moderation.
           </p>
         </div>
@@ -496,7 +496,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           {onPreviewStudentView && (
             <button
               onClick={onPreviewStudentView}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-700 text-xs font-semibold border border-slate-200 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-800 transition-all"
               title="Preview how learners experience the portal"
             >
               <Eye className="w-4 h-4 text-emerald-400" />
@@ -508,58 +508,58 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
       {}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Total Accounts
             </span>
-            <div className="text-2xl font-black text-slate-900">{totalUsers}</div>
+            <div className="text-2xl font-black text-white">{totalUsers}</div>
             <p className="text-[10px] text-purple-400">
               {studentCount} Students • {coachCount} Coaches • {adminCount} Admins
             </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+          <div className="w-11 h-11 rounded-xl bg-purple-500/100/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
             <Users className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Verified Coaches
             </span>
-            <div className="text-2xl font-black text-slate-900">{verifiedCoachesCount}</div>
+            <div className="text-2xl font-black text-white">{verifiedCoachesCount}</div>
             <p className="text-[10px] text-emerald-400">
               {coachCount} registered coaching accounts
             </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <div className="w-11 h-11 rounded-xl bg-emerald-500/100/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
             <ShieldCheck className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Verification Queue
             </span>
-            <div className="text-2xl font-black text-slate-900">{pendingCredentialsCount}</div>
+            <div className="text-2xl font-black text-white">{pendingCredentialsCount}</div>
             <p className="text-[10px] text-amber-400">
               {pendingCredentialsCount > 0 ? 'Pending credential reviews' : 'Queue up to date'}
             </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/100/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
             <Clock className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Platform Courses
             </span>
-            <div className="text-2xl font-black text-slate-900">{courses.length}</div>
-            <p className="text-[10px] text-slate-500">
+            <div className="text-2xl font-black text-white">{courses.length}</div>
+            <p className="text-[10px] text-slate-400">
               {courses.reduce((acc, c) => acc + (c.chapters?.length || 0), 0)} interactive chapters
             </p>
           </div>
@@ -568,30 +568,30 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-lg flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Stockfish Reviews
             </span>
-            <div className="text-2xl font-black text-slate-900">{reviewedGamesCount}</div>
+            <div className="text-2xl font-black text-white">{reviewedGamesCount}</div>
             <p className="text-[10px] text-cyan-400">
               Across {allGames.length} synced matches
             </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+          <div className="w-11 h-11 rounded-xl bg-cyan-500/100/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
             <Zap className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {}
-      <div className="flex border-b border-slate-200 gap-2 sm:gap-4 overflow-x-auto pb-1 text-sm font-semibold">
+      <div className="flex border-b border-slate-800 gap-2 sm:gap-4 overflow-x-auto pb-1 text-sm font-semibold">
         <button
           onClick={() => setActiveTab('telemetry')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'telemetry'
-              ? 'border-purple-400 text-purple-400 bg-purple-500/5'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <Activity className="w-4 h-4" />
@@ -602,8 +602,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           onClick={() => setActiveTab('users')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'users'
-              ? 'border-purple-400 text-purple-400 bg-purple-500/5'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -614,8 +614,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           onClick={() => setActiveTab('coaches')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'coaches'
-              ? 'border-purple-400 text-purple-400 bg-purple-500/5'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <Award className="w-4 h-4" />
@@ -626,8 +626,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           onClick={() => setActiveTab('enrollments')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'enrollments'
-              ? 'border-purple-400 text-purple-400 bg-purple-500/5'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <UserCheck className="w-4 h-4" />
@@ -638,8 +638,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           onClick={() => setActiveTab('courses')}
           className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
             activeTab === 'courses' || activeTab === 'courseBuilder'
-              ? 'border-purple-400 text-purple-400 bg-purple-500/5'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
           }`}
         >
           <BookOpen className="w-4 h-4" />
@@ -663,13 +663,13 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           {}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-7 space-y-6">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
-                <div className="border-b border-slate-200 pb-4">
-                  <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl">
+                <div className="border-b border-slate-800 pb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
                     <Activity className="w-5 h-5 text-purple-400" />
                     <span>Platform Tier Distribution &amp; Operational Health</span>
                   </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Real-time status of all account tiers, services, and chess calculation engines.
                   </p>
                 </div>
@@ -678,16 +678,16 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-600">
+                      <span className="font-semibold text-slate-400">
                         Students &amp; Learners ({studentCount})
                       </span>
-                      <span className="text-slate-500 font-mono">
+                      <span className="text-slate-400 font-mono">
                         {totalUsers > 0 ? Math.round((studentCount / totalUsers) * 100) : 0}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-50 h-2 rounded-full overflow-hidden border border-slate-200">
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div
-                        className="bg-emerald-500 h-full rounded-full transition-all"
+                        className="bg-emerald-500/100 h-full rounded-full transition-all"
                         style={{
                           width: `${totalUsers > 0 ? (studentCount / totalUsers) * 100 : 0}%`,
                         }}
@@ -697,16 +697,16 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-600">
+                      <span className="font-semibold text-slate-400">
                         Coaches &amp; Mentors ({coachCount})
                       </span>
-                      <span className="text-slate-500 font-mono">
+                      <span className="text-slate-400 font-mono">
                         {totalUsers > 0 ? Math.round((coachCount / totalUsers) * 100) : 0}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-50 h-2 rounded-full overflow-hidden border border-slate-200">
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div
-                        className="bg-amber-500 h-full rounded-full transition-all"
+                        className="bg-amber-500/100 h-full rounded-full transition-all"
                         style={{
                           width: `${totalUsers > 0 ? (coachCount / totalUsers) * 100 : 0}%`,
                         }}
@@ -716,16 +716,16 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-600">
+                      <span className="font-semibold text-slate-400">
                         System Administrators ({adminCount})
                       </span>
-                      <span className="text-slate-500 font-mono">
+                      <span className="text-slate-400 font-mono">
                         {totalUsers > 0 ? Math.round((adminCount / totalUsers) * 100) : 0}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-50 h-2 rounded-full overflow-hidden border border-slate-200">
+                    <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-800">
                       <div
-                        className="bg-purple-500 h-full rounded-full transition-all"
+                        className="bg-purple-500/100 h-full rounded-full transition-all"
                         style={{
                           width: `${totalUsers > 0 ? (adminCount / totalUsers) * 100 : 0}%`,
                         }}
@@ -735,34 +735,34 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                 </div>
 
                 {}
-                <div className="pt-4 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-slate-500">Database Engine</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                <div className="pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Database Engine</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/100/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       MySQL / Store OK
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-slate-500">Stockfish NNUE Worker</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Stockfish NNUE Worker</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/100/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       WASM Ready
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-slate-500">Chess.com Public API</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Chess.com Public API</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/100/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Connected
                     </span>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                    <span className="text-slate-500">Spaced Repetition Scheduler</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
+                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Spaced Repetition Scheduler</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/100/10 text-emerald-400 font-bold border border-emerald-500/20 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3" />
                       Active
                     </span>
@@ -773,44 +773,44 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
             {}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
-                <div className="border-b border-slate-200 pb-3">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-5 shadow-xl">
+                <div className="border-b border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-purple-400" />
                     <span>Platform Audit &amp; Event Feed</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5">
                     Recent platform administrative and governance events.
                   </p>
                 </div>
 
                 <div className="space-y-3 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
                       <span className="font-semibold text-purple-400">Coach Verification</span>
                       <span>Recent</span>
                     </div>
-                    <p className="text-slate-900">
+                    <p className="text-white">
                       Verified coach credentials for GM Magnus Carlsen (FIDE Senior Trainer).
                     </p>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
                       <span className="font-semibold text-emerald-400">Account Registration</span>
                       <span>Recent</span>
                     </div>
-                    <p className="text-slate-900">
+                    <p className="text-white">
                       New student profile registered and linked to Chess.com game database.
                     </p>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                    <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                  <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
+                    <div className="flex items-center justify-between text-slate-400 text-[11px]">
                       <span className="font-semibold text-amber-400">Curriculum Publishing</span>
                       <span>Recent</span>
                     </div>
-                    <p className="text-slate-900">
+                    <p className="text-white">
                       Interactive walkthrough module &quot;Sicilian Najdorf Novelty&quot; published.
                     </p>
                   </div>
@@ -826,22 +826,22 @@ export default function AdminDashboard({ onPreviewStudentView }) {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search accounts by name, email, or Chess.com username..."
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-purple-500 placeholder:text-slate-500"
+                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-white focus:outline-none focus:border-purple-500 placeholder:text-slate-400"
               />
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-slate-500" />
+              <Filter className="w-4 h-4 text-slate-400" />
               <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
-                className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-purple-500"
+                className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
               >
                 <option value="all">All Roles ({accounts.length})</option>
                 <option value="student">Students ({studentCount})</option>
@@ -860,10 +860,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           </div>
 
           {}
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-400">
+                <thead className="bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">User Identity</th>
                     <th className="py-3.5 px-4">Contact &amp; Chess.com</th>
@@ -872,10 +872,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                     <th className="py-3.5 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100/80">
+                <tbody className="divide-y divide-slate-800/80">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
                         No accounts found matching search or filter criteria.
                       </td>
                     </tr>
@@ -893,8 +893,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                               className="w-9 h-9 rounded-full object-cover border border-purple-500/20 shrink-0"
                             />
                             <div>
-                              <div className="font-bold text-slate-900 text-xs">{user.display_name}</div>
-                              <div className="text-[11px] text-slate-500">
+                              <div className="font-bold text-white text-xs">{user.display_name}</div>
+                              <div className="text-[11px] text-slate-400">
                                 DOB: {user.date_of_birth || 'Not set'}
                               </div>
                             </div>
@@ -902,7 +902,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <div className="font-mono text-slate-600">{user.email || 'No email'}</div>
+                          <div className="font-mono text-slate-400">{user.email || 'No email'}</div>
                           {user.chesscom_username ? (
                             <a
                               href={`https://www.chess.com/member/${user.chesscom_username}`}
@@ -914,7 +914,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                               <ExternalLink className="w-2.5 h-2.5" />
                             </a>
                           ) : (
-                            <span className="text-[11px] text-slate-500">Not linked</span>
+                            <span className="text-[11px] text-slate-400">Not linked</span>
                           )}
                         </td>
 
@@ -922,10 +922,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
                               user.role === 'admin'
-                                ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
+                                ? 'bg-purple-500/100/10 text-purple-400 border-purple-500/30'
                                 : user.role === 'coach'
-                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-amber-500/100/10 text-amber-400 border-amber-500/30'
+                                : 'bg-emerald-500/100/10 text-emerald-400 border-emerald-500/20'
                             }`}
                           >
                             {user.role || 'student'}
@@ -938,7 +938,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             {user.role !== 'coach' && (
                               <button
                                 onClick={() => handleUpdateRole(user.id, 'coach')}
-                                className="px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-[11px] font-semibold border border-amber-500/20 transition-colors"
+                                className="px-2 py-1 rounded-lg bg-amber-500/100/10 hover:bg-amber-500/100/20 text-amber-400 text-[11px] font-semibold border border-amber-500/20 transition-colors"
                                 title="Promote user to Coach status"
                               >
                                 Make Coach
@@ -948,7 +948,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             {user.role !== 'student' && (
                               <button
                                 onClick={() => handleUpdateRole(user.id, 'student')}
-                                className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20 transition-colors"
+                                className="px-2 py-1 rounded-lg bg-emerald-500/100/10 hover:bg-emerald-500/100/20 text-emerald-400 text-[11px] font-semibold border border-emerald-500/20 transition-colors"
                                 title="Demote to standard Student status"
                               >
                                 Set Student
@@ -958,7 +958,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             {user.role !== 'admin' && (
                               <button
                                 onClick={() => handleUpdateRole(user.id, 'admin')}
-                                className="px-2 py-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-[11px] font-semibold border border-purple-500/20 transition-colors"
+                                className="px-2 py-1 rounded-lg bg-purple-500/100/10 hover:bg-purple-500/100/20 text-purple-400 text-[11px] font-semibold border border-purple-500/20 transition-colors"
                                 title="Grant Administrator status"
                               >
                                 Grant Admin
@@ -971,7 +971,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => handleOpenEditUser(user)}
-                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-600 hover:text-slate-900 transition-colors"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                               title="Edit user details"
                             >
                               <Edit className="w-3.5 h-3.5" />
@@ -980,7 +980,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             {user.email?.toLowerCase() !== 'satoalt33@gmail.com' && (
                               <button
                                 onClick={() => handleDeleteUser(user.id, user.display_name)}
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                                className="p-1.5 rounded-lg bg-rose-500/100/10 hover:bg-rose-500/100/20 text-rose-400 transition-colors"
                                 title="Permanently delete account"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1003,11 +1003,11 @@ export default function AdminDashboard({ onPreviewStudentView }) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <Award className="w-5 h-5 text-amber-400" />
                 <span>Coach Credential Verification Desk</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Review submitted FIDE, USCF, and national federation credentials to certify coaching accounts.
               </p>
             </div>
@@ -1016,10 +1016,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-400">
+                <thead className="bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">Coach</th>
                     <th className="py-3.5 px-4">Credential Title</th>
@@ -1029,10 +1029,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                     <th className="py-3.5 px-4 text-right">Verification Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100/80">
+                <tbody className="divide-y divide-slate-800/80">
                   {credentials.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
                         No coach credentials currently submitted.
                       </td>
                     </tr>
@@ -1040,12 +1040,12 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                     credentials.map((cred) => (
                       <tr key={cred.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{cred.coach_name}</div>
-                          <div className="text-[11px] text-slate-500">{cred.coach_email}</div>
+                          <div className="font-bold text-white">{cred.coach_name}</div>
+                          <div className="text-[11px] text-slate-400">{cred.coach_email}</div>
                         </td>
 
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-slate-900">{cred.credential_type}</div>
+                          <div className="font-semibold text-white">{cred.credential_type}</div>
                           {cred.document_url && (
                             <a
                               href={cred.document_url}
@@ -1059,9 +1059,9 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           )}
                         </td>
 
-                        <td className="py-3.5 px-4 text-slate-600">{cred.issuer || 'Federation'}</td>
+                        <td className="py-3.5 px-4 text-slate-400">{cred.issuer || 'Federation'}</td>
 
-                        <td className="py-3.5 px-4 text-slate-500">
+                        <td className="py-3.5 px-4 text-slate-400">
                           {cred.submitted_at ? new Date(cred.submitted_at).toLocaleDateString() : '—'}
                         </td>
 
@@ -1069,10 +1069,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                               cred.verification_status === 'verified'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-emerald-500/100/10 text-emerald-400 border-emerald-500/20'
                                 : cred.verification_status === 'rejected'
-                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                ? 'bg-rose-500/100/10 text-rose-400 border-rose-500/20'
+                                : 'bg-amber-500/100/10 text-amber-400 border-amber-500/20'
                             }`}
                           >
                             {cred.verification_status}
@@ -1093,7 +1093,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             {cred.verification_status !== 'rejected' && (
                               <button
                                 onClick={() => handleOpenRejectCredential(cred)}
-                                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-600 hover:text-slate-900 text-xs font-semibold transition-all"
+                                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white text-xs font-semibold transition-all"
                               >
                                 Reject
                               </button>
@@ -1115,23 +1115,23 @@ export default function AdminDashboard({ onPreviewStudentView }) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-purple-400" />
                 <span>Mentorship &amp; Cohort Enrollment Governance</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Audit student-coach pairings, coaching standard compliance, and dispute resolution.
               </p>
             </div>
-            <div className="text-xs text-slate-500 font-mono">
+            <div className="text-xs text-slate-400 font-mono">
               Total Pairings: {enrollments.length}
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-600">
-                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+              <table className="w-full text-left text-xs text-slate-400">
+                <thead className="bg-slate-950 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
                   <tr>
                     <th className="py-3.5 px-4">Student</th>
                     <th className="py-3.5 px-4">Assigned Coach</th>
@@ -1141,10 +1141,10 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                     <th className="py-3.5 px-4 text-right">Governance Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100/80">
+                <tbody className="divide-y divide-slate-800/80">
                   {enrollments.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-8 text-center text-slate-500">
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
                         No mentorship enrollments active.
                       </td>
                     </tr>
@@ -1152,8 +1152,8 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                     enrollments.map((enr) => (
                       <tr key={enr.id} className="hover:bg-slate-800/40 transition-colors">
                         <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{enr.student_name}</div>
-                          <div className="text-[11px] text-slate-500 font-mono">
+                          <div className="font-bold text-white">{enr.student_name}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">
                             {enr.student_elo || 1200} Elo
                           </div>
                         </td>
@@ -1162,7 +1162,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           <div className="font-bold text-amber-400">{enr.coach_name}</div>
                         </td>
 
-                        <td className="py-3.5 px-4 text-slate-500">
+                        <td className="py-3.5 px-4 text-slate-400">
                           {enr.applied_at ? new Date(enr.applied_at).toLocaleDateString() : '—'}
                         </td>
 
@@ -1170,17 +1170,17 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           <span
                             className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                               enr.review_status === 'approved'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-emerald-500/100/10 text-emerald-400 border-emerald-500/20'
                                 : enr.review_status === 'rejected'
-                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                ? 'bg-rose-500/100/10 text-rose-400 border-rose-500/20'
+                                : 'bg-amber-500/100/10 text-amber-400 border-amber-500/20'
                             }`}
                           >
                             {enr.review_status}
                           </span>
                         </td>
 
-                        <td className="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                        <td className="py-3.5 px-4 text-slate-400 max-w-xs truncate">
                           {enr.review_notes || '—'}
                         </td>
 
@@ -1205,7 +1205,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                                   const updated = getStudentEnrollments();
                                   setEnrollments(updated);
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-600 hover:text-slate-900 text-[11px]"
+                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white text-[11px]"
                               >
                                 Reject
                               </button>
@@ -1227,11 +1227,11 @@ export default function AdminDashboard({ onPreviewStudentView }) {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-purple-400" />
                 <span>Platform Curriculum Moderation</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Oversee all courses authored across the platform, edit content, and assign modules.
               </p>
             </div>
@@ -1248,53 +1248,53 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             {courses.map((course) => (
               <div
                 key={course.id}
-                className="bg-white border border-slate-200 hover:border-slate-200 rounded-2xl p-6 shadow-xl transition-all flex flex-col justify-between group"
+                className="bg-slate-900 border border-slate-800 hover:border-slate-800 rounded-2xl p-6 shadow-xl transition-all flex flex-col justify-between group"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                         course.type === 'walkthrough'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          ? 'bg-emerald-500/100/10 text-emerald-400 border-emerald-500/20'
                           : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                       }`}
                     >
                       {course.type === 'walkthrough' ? 'Interactive Board' : 'Video Masterclass'}
                     </span>
-                    <span className="text-xs text-slate-500 font-mono">
+                    <span className="text-xs text-slate-400 font-mono">
                       {course.chapters?.length || 0} chapters
                     </span>
                   </div>
 
-                  <h3 className="font-bold text-slate-900 text-base group-hover:text-purple-400 transition-colors">
+                  <h3 className="font-bold text-white text-base group-hover:text-purple-400 transition-colors">
                     {course.title}
                   </h3>
-                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
                     {course.description || 'No description provided.'}
                   </p>
 
-                  <div className="text-[11px] text-slate-500 pt-2 flex items-center gap-2 flex-wrap">
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-600 font-mono">
+                  <div className="text-[11px] text-slate-400 pt-2 flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
                       Elo {course.min_elo || 0} - {course.max_elo || 3000}
                     </span>
-                    <span className="capitalize px-2 py-0.5 rounded bg-slate-800 text-slate-600">
+                    <span className="capitalize px-2 py-0.5 rounded bg-slate-800 text-slate-400">
                       Orientation: {course.orientation || 'white'}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-200 flex items-center justify-between gap-2">
+                <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleEditCourse(course)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-600 hover:text-slate-900 transition-colors"
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
                       title="Edit course"
                     >
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDeleteCourse(course.id)}
-                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                      className="p-1.5 rounded-lg bg-rose-500/100/10 hover:bg-rose-500/100/20 text-rose-400 transition-colors"
                       title="Delete course"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1304,13 +1304,13 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleOpenAssignModal(course)}
-                      className="px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 text-xs font-semibold border border-purple-500/20 transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-purple-500/100/10 hover:bg-purple-500/100/20 text-purple-400 text-xs font-semibold border border-purple-500/20 transition-colors"
                     >
                       Assign
                     </button>
                     <button
                       onClick={() => navigate(`/courses/${course.id}`)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-700 text-xs font-semibold transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
                     >
                       View
                     </button>
@@ -1324,27 +1324,27 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
       {}
       {activeTab === 'courseBuilder' && (
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-purple-400" />
                 <span>{editingCourseId ? 'Edit Curriculum Module' : 'Create Platform Curriculum'}</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-400 mt-0.5">
                 Set module parameters, chapter variation trees, and Stockfish analysis notes.
               </p>
             </div>
             <button
               onClick={() => setActiveTab('courses')}
-              className="text-xs text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800"
+              className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800"
             >
               Cancel
             </button>
           </div>
 
           {courseSaveError && (
-            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-rose-500/100/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{courseSaveError}</span>
             </div>
@@ -1353,7 +1353,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
           <form onSubmit={handleSaveCourse} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Course Title *
                 </label>
                 <input
@@ -1362,18 +1362,18 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                   placeholder="e.g. Master the Ruy Lopez: Open Variation"
                   value={courseTitle}
                   onChange={(e) => setCourseTitle(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-purple-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Course Mode
                 </label>
                 <select
                   value={courseType}
                   onChange={(e) => setCourseType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:border-purple-500"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
                 >
                   <option value="walkthrough">Interactive Board Walkthrough</option>
                   <option value="video">Video Masterclass &amp; Lecture</option>
@@ -1382,7 +1382,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 Course Description
               </label>
               <textarea
@@ -1390,43 +1390,43 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                 placeholder="Overview, strategic goals, and target outcomes for students..."
                 value={courseDesc}
                 onChange={(e) => setCourseDesc(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-purple-500"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 bg-slate-950 p-4 rounded-2xl border border-slate-800">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Min Student Elo
                 </label>
                 <input
                   type="number"
                   value={courseMinElo}
                   onChange={(e) => setCourseMinElo(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Max Student Elo
                 </label>
                 <input
                   type="number"
                   value={courseMaxElo}
                   onChange={(e) => setCourseMaxElo(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Board Orientation
                 </label>
                 <select
                   value={courseOrientation}
                   onChange={(e) => setCourseOrientation(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 >
                   <option value="white">White</option>
                   <option value="black">Black</option>
@@ -1434,13 +1434,13 @@ export default function AdminDashboard({ onPreviewStudentView }) {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                   Trained Side
                 </label>
                 <select
                   value={courseTrainedSide}
                   onChange={(e) => setCourseTrainedSide(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 >
                   <option value="white">White</option>
                   <option value="black">Black</option>
@@ -1449,18 +1449,18 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             </div>
 
             {}
-            <div className="space-y-4 pt-4 border-t border-slate-200">
+            <div className="space-y-4 pt-4 border-t border-slate-800">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Course Chapters ({chapters.length})</h3>
-                  <p className="text-[11px] text-slate-500">
+                  <h3 className="font-bold text-white text-sm">Course Chapters ({chapters.length})</h3>
+                  <p className="text-[11px] text-slate-400">
                     Add chapters with PGN variations and tactical moment notes.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={handleAddChapter}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-400 text-xs font-semibold border border-slate-200"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-400 text-xs font-semibold border border-slate-800"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Add Chapter</span>
@@ -1471,7 +1471,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                 {chapters.map((ch, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 space-y-3.5 relative"
+                    className="bg-slate-950 border border-slate-800 rounded-2xl p-4.5 space-y-3.5 relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">
@@ -1491,7 +1491,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500">Chapter Title</label>
+                        <label className="text-[11px] font-semibold text-slate-400">Chapter Title</label>
                         <input
                           type="text"
                           value={ch.title}
@@ -1500,12 +1500,12 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             next[idx].title = e.target.value;
                             setChapters(next);
                           }}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-500">
+                        <label className="text-[11px] font-semibold text-slate-400">
                           Video URL (YouTube / MP4)
                         </label>
                         <input
@@ -1517,13 +1517,13 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                             next[idx].video_url = e.target.value;
                             setChapters(next);
                           }}
-                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-semibold text-slate-500">
+                      <label className="text-[11px] font-semibold text-slate-400">
                         PGN Notation / Move Sequence
                       </label>
                       <textarea
@@ -1535,7 +1535,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                           next[idx].pgn = e.target.value;
                           setChapters(next);
                         }}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-emerald-400"
                       />
                     </div>
                   </div>
@@ -1543,11 +1543,11 @@ export default function AdminDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setActiveTab('courses')}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
               >
                 Cancel
               </button>
@@ -1566,34 +1566,34 @@ export default function AdminDashboard({ onPreviewStudentView }) {
       {}
       {showCreateUserModal && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-xl w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <PlusCircle className="w-5 h-5 text-purple-400" />
                   <span>Create Site Account</span>
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Direct administrative creation of Student, Coach, or Admin profiles.
                 </p>
               </div>
               <button
                 onClick={() => setShowCreateUserModal(false)}
-                className="text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
+                className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
               >
                 Close
               </button>
             </div>
 
             {createUserError && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-rose-500/100/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{createUserError}</span>
               </div>
             )}
 
             {createUserSuccess && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-emerald-500/100/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>{createUserSuccess}</span>
               </div>
@@ -1602,67 +1602,67 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="col-span-2">
-                  <label className="text-[11px] font-semibold text-slate-500">First Name *</label>
+                  <label className="text-[11px] font-semibold text-slate-400">First Name *</label>
                   <input
                     type="text"
                     required
                     value={newFirstName}
                     onChange={(e) => setNewFirstName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">M.I. *</label>
+                  <label className="text-[11px] font-semibold text-slate-400">M.I. *</label>
                   <input
                     type="text"
                     required
                     maxLength={2}
                     value={newMI}
                     onChange={(e) => setNewMI(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Suffix</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Suffix</label>
                   <input
                     type="text"
                     placeholder="Jr., III"
                     value={newSuffix}
                     onChange={(e) => setNewSuffix(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-500">Last Name *</label>
+                <label className="text-[11px] font-semibold text-slate-400">Last Name *</label>
                 <input
                   type="text"
                   required
                   value={newLastName}
                   onChange={(e) => setNewLastName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Email Address *</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Email Address *</label>
                   <input
                     type="email"
                     required
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Account Tier / Role</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Account Tier / Role</label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-semibold"
                   >
                     <option value="student">Student / Player</option>
                     <option value="coach">Chess Coach</option>
@@ -1673,44 +1673,44 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Date of Birth *</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Date of Birth *</label>
                   <input
                     type="date"
                     required
                     value={newDob}
                     onChange={(e) => setNewDob(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Chess.com Username</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Chess.com Username</label>
                   <input
                     type="text"
                     placeholder="Optional"
                     value={newChesscom}
                     onChange={(e) => setNewChesscom(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-500">Initial Password *</label>
+                <label className="text-[11px] font-semibold text-slate-400">Initial Password *</label>
                 <input
                   type="text"
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-mono"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCreateUserModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
                 >
                   Cancel
                 </button>
@@ -1730,15 +1730,15 @@ export default function AdminDashboard({ onPreviewStudentView }) {
       {}
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Edit User Profile</h3>
-                <p className="text-xs text-slate-500">{editingUser.email}</p>
+                <h3 className="text-lg font-bold text-white">Edit User Profile</h3>
+                <p className="text-xs text-slate-400">{editingUser.email}</p>
               </div>
               <button
                 onClick={() => setEditingUser(null)}
-                className="text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
+                className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
               >
                 Close
               </button>
@@ -1747,52 +1747,52 @@ export default function AdminDashboard({ onPreviewStudentView }) {
             <form onSubmit={handleSaveUserEdit} className="space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="text-[11px] font-semibold text-slate-500">First Name</label>
+                  <label className="text-[11px] font-semibold text-slate-400">First Name</label>
                   <input
                     type="text"
                     value={editFirstName}
                     onChange={(e) => setEditFirstName(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">M.I.</label>
+                  <label className="text-[11px] font-semibold text-slate-400">M.I.</label>
                   <input
                     type="text"
                     maxLength={2}
                     value={editMI}
                     onChange={(e) => setEditMI(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-500">Last Name</label>
+                <label className="text-[11px] font-semibold text-slate-400">Last Name</label>
                 <input
                   type="text"
                   value={editLastName}
                   onChange={(e) => setEditLastName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Date of Birth</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Date of Birth</label>
                   <input
                     type="date"
                     value={editDob}
                     onChange={(e) => setEditDob(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-500">Role Tier</label>
+                  <label className="text-[11px] font-semibold text-slate-400">Role Tier</label>
                   <select
                     value={editingRole}
                     onChange={(e) => setEditingRole(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white font-semibold"
                   >
                     <option value="student">Student</option>
                     <option value="coach">Coach</option>
@@ -1802,30 +1802,30 @@ export default function AdminDashboard({ onPreviewStudentView }) {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-500">Chess.com Username</label>
+                <label className="text-[11px] font-semibold text-slate-400">Chess.com Username</label>
                 <input
                   type="text"
                   value={editChesscom}
                   onChange={(e) => setEditChesscom(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-500">Bio</label>
+                <label className="text-[11px] font-semibold text-slate-400">Bio</label>
                 <textarea
                   rows={2}
                   value={editBio}
                   onChange={(e) => setEditBio(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
                 >
                   Cancel
                 </button>
@@ -1845,24 +1845,24 @@ export default function AdminDashboard({ onPreviewStudentView }) {
       {}
       {rejectingCred && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-900">Reject Coach Credential</h3>
-            <p className="text-xs text-slate-500">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 shadow-2xl">
+            <h3 className="text-base font-bold text-white">Reject Coach Credential</h3>
+            <p className="text-xs text-slate-400">
               Provide an official reason for rejecting the credential submission for{' '}
-              <strong className="text-slate-900">{rejectingCred.coach_name}</strong>.
+              <strong className="text-white">{rejectingCred.coach_name}</strong>.
             </p>
 
             <textarea
               rows={3}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-rose-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
             />
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setRejectingCred(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-600 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-400 text-xs font-semibold"
               >
                 Cancel
               </button>
@@ -1880,29 +1880,29 @@ export default function AdminDashboard({ onPreviewStudentView }) {
       {}
       {assigningCourse && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Assign Platform Curriculum</h3>
-                <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{assigningCourse.title}</p>
+                <h3 className="text-lg font-bold text-white">Assign Platform Curriculum</h3>
+                <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{assigningCourse.title}</p>
               </div>
               <button
                 onClick={() => setAssigningCourse(null)}
-                className="text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
+                className="text-slate-400 hover:text-white px-3 py-1.5 rounded-lg bg-slate-800 text-xs font-semibold"
               >
                 Cancel
               </button>
             </div>
 
             {assignSuccess && (
-              <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-emerald-500/100/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>Assignments successfully updated!</span>
               </div>
             )}
 
             {assignError && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+              <div className="p-3.5 rounded-xl bg-rose-500/100/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{assignError}</span>
               </div>
@@ -1910,7 +1910,7 @@ export default function AdminDashboard({ onPreviewStudentView }) {
 
             <div className="space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-600 uppercase tracking-wider">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">
                   Select Students ({selectedStudentIds.length} selected)
                 </span>
                 <button
@@ -1928,24 +1928,24 @@ export default function AdminDashboard({ onPreviewStudentView }) {
                 </button>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-200 rounded-2xl p-2 bg-slate-50">
+              <div className="max-h-60 overflow-y-auto space-y-2 border border-slate-800 rounded-2xl p-2 bg-slate-950">
                 {students.map((s) => {
                   const isChecked = selectedStudentIds.includes(s.id);
                   return (
                     <div
                       key={s.id}
                       onClick={() => handleToggleStudentSelection(s.id)}
-                      className="p-2.5 rounded-xl hover:bg-white cursor-pointer flex items-center justify-between text-xs transition-colors"
+                      className="p-2.5 rounded-xl hover:bg-slate-900 cursor-pointer flex items-center justify-between text-xs transition-colors"
                     >
                       <div className="flex items-center gap-2.5">
                         {isChecked ? (
                           <CheckSquare className="w-4 h-4 text-purple-400 shrink-0" />
                         ) : (
-                          <Square className="w-4 h-4 text-slate-600 shrink-0" />
+                          <Square className="w-4 h-4 text-slate-400 shrink-0" />
                         )}
-                        <span className="font-semibold text-slate-900">{s.display_name}</span>
+                        <span className="font-semibold text-white">{s.display_name}</span>
                       </div>
-                      <span className="text-[11px] text-slate-500 font-mono">
+                      <span className="text-[11px] text-slate-400 font-mono">
                         {s.current_elo || 1200} Elo
                       </span>
                     </div>
@@ -1954,11 +1954,11 @@ export default function AdminDashboard({ onPreviewStudentView }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
               <button
                 type="button"
                 onClick={() => setAssigningCourse(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-600 text-xs font-semibold"
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 text-xs font-semibold"
               >
                 Cancel
               </button>

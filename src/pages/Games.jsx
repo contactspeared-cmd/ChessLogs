@@ -246,14 +246,14 @@ export default function Games() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
             <Database className="w-8 h-8 text-emerald-600" />
             <span>Game Database</span>
           </h1>
-          <p className="text-slate-600 text-sm mt-1">
+          <p className="text-slate-400 text-sm mt-1">
             Sync your full Chess.com history and review games with Stockfish 18 NNUE.
             {games.length > 0 && (
-              <span className="text-slate-500"> · {games.length.toLocaleString()} games stored</span>
+              <span className="text-slate-400"> · {games.length.toLocaleString()} games stored</span>
             )}
           </p>
         </div>
@@ -261,7 +261,7 @@ export default function Games() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold border border-slate-300 transition-colors shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-950 text-slate-300 text-sm font-semibold border border-slate-700 transition-colors shadow-sm"
           >
             <PlusCircle className="w-4 h-4 text-emerald-600" />
             <span>Import PGN</span>
@@ -279,8 +279,8 @@ export default function Games() {
       </div>
 
       {syncing && syncProgress && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-600">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-slate-400">
             <span>
               Fetching archives{syncProgress.total > 0 ? ` ${syncProgress.completed}/${syncProgress.total}` : '…'}
             </span>
@@ -288,7 +288,7 @@ export default function Games() {
               {syncProgress.gameCount.toLocaleString()} games
             </span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
             <div
               className="h-full bg-emerald-600 transition-all duration-300"
               style={{
@@ -307,9 +307,9 @@ export default function Games() {
         <div
           className={`p-3.5 rounded-xl text-sm flex items-center gap-2.5 ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+              ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20'
               : syncFeedback.type === 'error'
-              ? 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-rose-500/10 text-rose-800 border border-rose-500/20'
               : 'bg-blue-50 text-blue-800 border border-blue-200'
           }`}
         >
@@ -322,7 +322,7 @@ export default function Games() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -330,20 +330,20 @@ export default function Games() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search opponent, opening, or ECO..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-10 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+            className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-3 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-slate-900 transition-all"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-800 text-xs">
             {['all', 'bullet', 'blitz', 'rapid', 'daily'].map((tc) => (
               <button
                 key={tc}
                 onClick={() => setTimeFilter(tc)}
                 className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-all ${
                   timeFilter === tc
-                    ? 'bg-white text-emerald-700 font-semibold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-slate-900 text-emerald-400 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {tc}
@@ -351,15 +351,15 @@ export default function Games() {
             ))}
           </div>
 
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+          <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl border border-slate-800 text-xs">
             {['all', 'win', 'loss', 'draw'].map((res) => (
               <button
                 key={res}
                 onClick={() => setResultFilter(res)}
                 className={`px-3 py-1.5 rounded-lg capitalize font-medium transition-all ${
                   resultFilter === res
-                    ? 'bg-white text-emerald-700 font-semibold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-slate-900 text-emerald-400 font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {res}
@@ -370,16 +370,16 @@ export default function Games() {
       </div>
 
       {loading ? (
-        <div className="py-24 text-center text-slate-500 flex flex-col items-center gap-3">
+        <div className="py-24 text-center text-slate-400 flex flex-col items-center gap-3">
           <RefreshCw className="w-8 h-8 animate-spin text-emerald-600" />
           <p className="text-sm font-medium">Loading game database...</p>
         </div>
       ) : filteredGames.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4 shadow-sm">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center space-y-4 shadow-sm">
           <Database className="w-12 h-12 text-slate-400 mx-auto" />
           <div>
-            <h3 className="text-base font-bold text-slate-900">No games found</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
+            <h3 className="text-base font-bold text-white">No games found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
               {!profile?.chesscom_username
                 ? 'Link your Chess.com username in Profile to sync your games.'
                 : games.length === 0
@@ -407,7 +407,7 @@ export default function Games() {
         </div>
       ) : (
         <>
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-100">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-sm overflow-hidden divide-y divide-slate-800">
             {pagedGames.map((game) => {
               const isUserWhite =
                 (game.white_username || '').toLowerCase() ===
@@ -419,16 +419,16 @@ export default function Games() {
               return (
                 <div
                   key={game.id || game.chesscom_game_id}
-                  className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 hover:bg-slate-950/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border ${
                         game.result === 'win'
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                           : game.result === 'loss'
-                          ? 'bg-rose-50 text-rose-700 border-rose-200'
-                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          : 'bg-slate-800 text-slate-300 border-slate-800'
                       }`}
                     >
                       {game.result === 'win' ? 'W' : game.result === 'loss' ? 'L' : 'D'}
@@ -436,12 +436,12 @@ export default function Games() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-slate-900 text-base">
+                        <span className="font-bold text-white text-base">
                           vs. {opponentName || 'Unknown Opponent'}
                         </span>
-                        <span className="text-xs text-slate-500 font-mono font-medium">({opponentRating || '?'})</span>
+                        <span className="text-xs text-slate-400 font-mono font-medium">({opponentRating || '?'})</span>
 
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[11px] font-medium text-slate-700 capitalize">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-800 text-[11px] font-medium text-slate-300 capitalize">
                           {getTimeClassIcon(game.time_class)}
                           <span>{game.time_class}</span>
                         </div>
@@ -453,11 +453,11 @@ export default function Games() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
                         <span className="flex items-center gap-1.5">
                           <span
                             className={`w-2.5 h-2.5 rounded-full border ${
-                              isUserWhite ? 'bg-white border-slate-400' : 'bg-slate-900 border-slate-900'
+                              isUserWhite ? 'bg-slate-900 border-slate-400' : 'bg-slate-900 border-slate-900'
                             }`}
                           />
                           <span>Playing {isUserWhite ? 'White' : 'Black'} ({userRating || '?'})</span>
@@ -492,7 +492,7 @@ export default function Games() {
                         href={game.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-2 rounded-xl text-slate-400 hover:text-slate-300 hover:bg-slate-800 transition-colors"
                         title="View on Chess.com"
                       >
                         <ExternalLink className="w-4 h-4" />
@@ -501,7 +501,7 @@ export default function Games() {
 
                     <button
                       onClick={() => navigate(`/analysis?gameId=${game.id}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-emerald-600 text-slate-800 hover:text-white text-xs font-semibold border border-slate-200 hover:border-emerald-600 transition-all group"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-semibold border border-slate-800 hover:border-emerald-600 transition-all group"
                     >
                       <span>{game.review ? 'View Analysis' : 'Review Game'}</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -512,14 +512,14 @@ export default function Games() {
             })}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
-            <p className="text-xs text-slate-600">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
+            <p className="text-xs text-slate-400">
               Showing{' '}
-              <span className="text-slate-900 font-mono font-semibold">
+              <span className="text-white font-mono font-semibold">
                 {rangeStart}–{rangeEnd}
               </span>{' '}
               of{' '}
-              <span className="text-slate-900 font-mono font-semibold">
+              <span className="text-white font-mono font-semibold">
                 {filteredGames.length.toLocaleString()}
               </span>{' '}
               games · {GAMES_PER_PAGE} per page
@@ -530,19 +530,19 @@ export default function Games() {
                 type="button"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={safePage <= 1}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Prev
               </button>
-              <span className="text-xs font-mono text-slate-600 px-2 font-medium">
+              <span className="text-xs font-mono text-slate-400 px-2 font-medium">
                 Page {safePage} / {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage >= totalPages}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next
                 <ChevronRight className="w-4 h-4" />
@@ -554,21 +554,21 @@ export default function Games() {
 
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <PlusCircle className="w-5 h-5 text-emerald-600" />
                 <span>Import Game PGN</span>
               </h3>
               <button
                 onClick={() => setIsImportModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg"
+                className="text-slate-400 hover:text-slate-300 p-1 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               Paste a PGN to save and open it in analysis. ChessLogs will detect the opening and variation automatically.
             </p>
 
@@ -578,12 +578,12 @@ export default function Games() {
                 value={pastedPgn}
                 onChange={(e) => setPastedPgn(e.target.value)}
                 placeholder={'1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5...'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500 focus:bg-slate-900 transition-all"
                 required
               />
 
               {importError && (
-                <div className="p-3 rounded-lg bg-rose-50 text-rose-700 text-xs border border-rose-200 font-medium">
+                <div className="p-3 rounded-lg bg-rose-500/10 text-rose-400 text-xs border border-rose-500/20 font-medium">
                   {importError}
                 </div>
               )}
@@ -592,7 +592,7 @@ export default function Games() {
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800"
                 >
                   Cancel
                 </button>

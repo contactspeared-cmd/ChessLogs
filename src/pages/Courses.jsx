@@ -40,15 +40,15 @@ export default function Courses() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               Personal Study Track
             </span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mt-1 flex items-center gap-2.5">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white mt-1 flex items-center gap-2.5">
             <BookOpen className="w-8 h-8 text-emerald-600" />
             <span>My Enrolled Masterclasses</span>
           </h1>
-          <p className="text-slate-600 text-sm mt-1">
+          <p className="text-slate-400 text-sm mt-1">
             Repertoires, tactical courses, and endgame walkthroughs enrolled in your personal study schedule.
           </p>
         </div>
@@ -69,10 +69,10 @@ export default function Courses() {
           Loading your curriculum...
         </div>
       ) : courses.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 shadow-sm max-w-lg mx-auto">
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center space-y-4 shadow-sm max-w-lg mx-auto">
           <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
-          <h3 className="text-lg font-bold text-slate-900">No courses in your library yet</h3>
-          <p className="text-xs text-slate-500 leading-relaxed">
+          <h3 className="text-lg font-bold text-white">No courses in your library yet</h3>
+          <p className="text-xs text-slate-400 leading-relaxed">
             Browse the course marketplace to enroll in interactive masterclasses or ask your coach to assign modules.
           </p>
           <Link
@@ -98,11 +98,11 @@ export default function Courses() {
             return (
               <div
                 key={course.id}
-                className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between group"
+                className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all flex flex-col justify-between group"
               >
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       <PlaySquare className="w-3.5 h-3.5" />
                       <span>{course.trained_side || 'White'}</span>
                     </span>
@@ -114,29 +114,29 @@ export default function Courses() {
                   </div>
 
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors line-clamp-1">
+                    <h2 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
                       {course.title}
                     </h2>
-                    <p className="text-xs text-slate-500 mt-1.5 line-clamp-2 leading-relaxed">
+                    <p className="text-xs text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                       {course.description || 'Comprehensive training module.'}
                     </p>
                   </div>
 
                   {course.coach_name && (
-                    <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs">
                       <img
                         src={
                           course.coach_avatar ||
                           'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80'
                         }
                         alt={course.coach_name}
-                        className="w-7 h-7 rounded-full object-cover border border-slate-200 shrink-0"
+                        className="w-7 h-7 rounded-full object-cover border border-slate-800 shrink-0"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                           Author
                         </div>
-                        <div className="font-bold text-slate-800 text-xs truncate">
+                        <div className="font-bold text-slate-200 text-xs truncate">
                           {course.coach_name}
                         </div>
                       </div>
@@ -146,9 +146,9 @@ export default function Courses() {
 
                 <div className="mt-6 pt-4 border-t border-slate-100 space-y-3.5">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
                       <span>Memory Progress</span>
-                      <span className="font-mono font-bold text-slate-800">{progressPercent}%</span>
+                      <span className="font-mono font-bold text-slate-200">{progressPercent}%</span>
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -182,7 +182,7 @@ export default function Courses() {
 
                     <button
                       onClick={() => navigate(`/courses/${course.id}`)}
-                      className="py-2 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                      className="py-2 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
                     >
                       Walkthrough
                     </button>

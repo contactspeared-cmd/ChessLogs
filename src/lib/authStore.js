@@ -686,6 +686,11 @@ export function submitCoachCredential({
   documentUrl,
   coachName = '',
   coachEmail = '',
+  title = '',
+  rating = '',
+  specialty = '',
+  experience = '',
+  bio = '',
 }) {
   const credentials = getCoachCredentials();
   const id = `cred-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -698,6 +703,11 @@ export function submitCoachCredential({
     credential_type: credentialType,
     issuer: issuer || 'Chess Federation',
     document_url: documentUrl,
+    title,
+    rating,
+    specialty,
+    experience,
+    bio,
     verification_status: 'pending',
     rejection_reason: null,
     submitted_at: new Date().toISOString(),
@@ -727,6 +737,11 @@ export function reviewCoachCredential(credentialId, status, rejectionReason = nu
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(STORAGE_CREDENTIALS, JSON.stringify(credentials));
   }
+
+  if (status === 'verified' && credentials[idx].coach_id) {
+    updateAccountRole(credentials[idx].coach_id, 'coach');
+  }
+
   return credentials[idx];
 }
 

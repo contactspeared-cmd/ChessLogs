@@ -454,19 +454,19 @@ export default function Analysis() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+            <span className="text-xs font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
               {currentGame?.time_class ? currentGame.time_class.toUpperCase() : 'FRESH BOARD'}
             </span>
-            <span className="text-xs text-slate-500 font-medium">
+            <span className="text-xs text-slate-400 font-medium">
               {currentGame?.played_at
                 ? new Date(currentGame.played_at).toLocaleDateString()
                 : 'Interactive Sandbox'}
             </span>
           </div>
-          <h1 className="text-xl font-extrabold text-slate-900 mt-1">
+          <h1 className="text-xl font-extrabold text-white mt-1">
             {currentGame ? (
               `${currentGame.white_username || 'White'} (${currentGame.white_rating || '—'}) vs. ${currentGame.black_username || 'Black'} (${currentGame.black_rating || '—'})`
             ) : (
@@ -482,13 +482,13 @@ export default function Analysis() {
               />
             </div>
           ) : currentGame?.pgn ? (
-            <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1.5 font-medium">
+            <p className="text-xs text-slate-400 mt-1.5 inline-flex items-center gap-1.5 font-medium">
               <BookOpen className="w-3.5 h-3.5 text-slate-400" />
               Opening not identified for this game
             </p>
           ) : null}
           {!currentGame && (
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Make moves on the board or paste a game to start analyzing.
             </p>
           )}
@@ -497,7 +497,7 @@ export default function Analysis() {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setIsPasteModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-all shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-800 transition-all shadow-sm"
             title="Paste Game (PGN or FEN)"
           >
             <ClipboardPaste className="w-4 h-4 text-emerald-600" />
@@ -506,10 +506,10 @@ export default function Analysis() {
 
           <button
             onClick={handleNewAnalysis}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition-all shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-800 transition-all shadow-sm"
             title="Reset to fresh board"
           >
-            <Trash2 className="w-4 h-4 text-slate-500" />
+            <Trash2 className="w-4 h-4 text-slate-400" />
             <span>Fresh Board</span>
           </button>
 
@@ -517,8 +517,8 @@ export default function Analysis() {
             onClick={() => setDeepAnalysisEnabled(!deepAnalysisEnabled)}
             className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
               deepAnalysisEnabled
-                ? 'bg-sky-50 text-sky-800 border-sky-300 shadow-sm'
-                : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                ? 'bg-sky-500/10 text-sky-300 border-sky-300 shadow-sm'
+                : 'bg-slate-800 text-slate-300 border-slate-800 hover:bg-slate-700'
             }`}
           >
             <Cpu className="w-4 h-4 text-sky-600" />
@@ -537,36 +537,36 @@ export default function Analysis() {
       </div>
 
       {reviewData && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               White Accuracy
             </span>
-            <span className="text-2xl font-black text-emerald-700 font-mono">
+            <span className="text-2xl font-black text-emerald-400 font-mono">
               {reviewData.accuracyWhite}%
             </span>
           </div>
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               Black Accuracy
             </span>
-            <span className="text-2xl font-black text-emerald-700 font-mono">
+            <span className="text-2xl font-black text-emerald-400 font-mono">
               {reviewData.accuracyBlack}%
             </span>
           </div>
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               Engine Version
             </span>
-            <span className="text-sm font-semibold text-slate-800 truncate block mt-1">
+            <span className="text-sm font-semibold text-slate-200 truncate block mt-1">
               Stockfish 18 NNUE
             </span>
           </div>
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold block">
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+            <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               Key Moments
             </span>
-            <span className="text-sm font-semibold text-slate-800 mt-1 flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-slate-200 mt-1 flex items-center gap-1.5">
               <Award className="w-4 h-4 text-emerald-600" />
               <span>
                 {reviewData.moveClassifications.filter((m) =>
@@ -600,10 +600,10 @@ export default function Analysis() {
               onPieceDrop={handlePieceDrop}
             />
 
-            <div className="mt-3 flex items-center justify-between bg-white border border-slate-200 p-2.5 rounded-xl shadow-sm">
+            <div className="mt-3 flex items-center justify-between bg-slate-900 border border-slate-800 p-2.5 rounded-xl shadow-sm">
               <button
                 onClick={() => setBoardOrientation(boardOrientation === 'white' ? 'black' : 'white')}
-                className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
                 title="Flip Board"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -613,7 +613,7 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(0)}
                   disabled={currentPly === 0}
-                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
                   title="First Move"
                 >
                   <ChevronLeft className="w-5 h-5 -mr-2" />
@@ -622,18 +622,18 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(currentPly - 1)}
                   disabled={currentPly === 0}
-                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
                   title="Previous Move"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="px-3 py-1 font-mono text-xs font-semibold text-slate-700">
+                <span className="px-3 py-1 font-mono text-xs font-semibold text-slate-300">
                   {currentPly} / {history.length}
                 </span>
                 <button
                   onClick={() => goToPly(currentPly + 1)}
                   disabled={currentPly === history.length}
-                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
                   title="Next Move"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -641,7 +641,7 @@ export default function Analysis() {
                 <button
                   onClick={() => goToPly(history.length)}
                   disabled={currentPly === history.length}
-                  className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 transition-colors"
+                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 transition-colors"
                   title="Last Move"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -649,7 +649,7 @@ export default function Analysis() {
                 </button>
               </div>
 
-              <div className="text-xs text-slate-600 font-mono font-medium">
+              <div className="text-xs text-slate-400 font-mono font-medium">
                 {currentPly > 0 ? history[currentPly - 1]?.san : 'Start'}
               </div>
             </div>
@@ -657,9 +657,9 @@ export default function Analysis() {
         </div>
 
         <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                 Move Inspection
               </span>
               {currentClassification && (
@@ -672,33 +672,33 @@ export default function Analysis() {
             {currentPly > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
-                  <div className="font-bold text-lg text-slate-900">
+                  <div className="font-bold text-lg text-white">
                     {Math.ceil(currentPly / 2)}.{currentPly % 2 === 1 ? '' : '..'}{' '}
-                    <span className="text-emerald-700">{history[currentPly - 1]?.san}</span>
+                    <span className="text-emerald-400">{history[currentPly - 1]?.san}</span>
                   </div>
                   {currentClassification?.accuracy !== undefined && (
-                    <span className="text-xs font-mono text-slate-500">
-                      Accuracy: <strong className="text-slate-900">{currentClassification.accuracy}%</strong>
+                    <span className="text-xs font-mono text-slate-400">
+                      Accuracy: <strong className="text-white">{currentClassification.accuracy}%</strong>
                     </span>
                   )}
                 </div>
 
                 {bestMoveSan && (
-                  <div className="text-xs text-slate-600 flex items-center gap-1.5 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-emerald-700 font-semibold">Engine Best Move:</span>
-                    <span className="font-mono text-slate-900 font-bold">
+                  <div className="text-xs text-slate-400 flex items-center gap-1.5 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span className="text-emerald-400 font-semibold">Engine Best Move:</span>
+                    <span className="font-mono text-white font-bold">
                       {bestMoveSan}
                     </span>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-slate-500">Initial position before move 1.</p>
+              <p className="text-xs text-slate-400">Initial position before move 1.</p>
             )}
 
             {deepAnalysisEnabled && (
               <div className="pt-2 border-t border-slate-100 text-xs space-y-1.5">
-                <div className="flex items-center justify-between text-slate-600">
+                <div className="flex items-center justify-between text-slate-400">
                   <span className="flex items-center gap-1 font-medium">
                     <Zap className="w-3.5 h-3.5 text-sky-600" />
                     <span>Deep Analysis (Depth 20)</span>
@@ -706,7 +706,7 @@ export default function Analysis() {
                   {isDeepSearching && <RefreshCw className="w-3 h-3 animate-spin text-sky-600" />}
                 </div>
                 {deepEngineInfo ? (
-                  <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 font-mono text-[11px] text-slate-800 space-y-1">
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 font-mono text-[11px] text-slate-200 space-y-1">
                     <div className="flex justify-between font-semibold">
                       <span>Depth: {deepEngineInfo.depth}</span>
                       <span>
@@ -717,7 +717,7 @@ export default function Analysis() {
                       </span>
                     </div>
                     {pvSan && (
-                      <div className="text-slate-600 leading-relaxed break-words whitespace-normal">
+                      <div className="text-slate-400 leading-relaxed break-words whitespace-normal">
                         <span className="text-slate-400">Line: </span>{pvSan}
                       </div>
                     )}
@@ -729,10 +729,10 @@ export default function Analysis() {
             )}
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 flex items-center justify-between">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center justify-between">
               <span>Game Move History</span>
-              <span className="font-mono text-slate-600">{history.length} Plies</span>
+              <span className="font-mono text-slate-400">{history.length} Plies</span>
             </h3>
 
             <div className="max-h-[360px] overflow-y-auto space-y-1 pr-1 font-mono text-xs">
@@ -749,7 +749,7 @@ export default function Analysis() {
                 return (
                   <div
                     key={moveNumIdx}
-                    className="grid grid-cols-12 gap-1 items-center py-1 px-2 rounded-lg hover:bg-slate-50 transition-colors text-slate-700"
+                    className="grid grid-cols-12 gap-1 items-center py-1 px-2 rounded-lg hover:bg-slate-950 transition-colors text-slate-300"
                   >
                     <span className="col-span-2 text-slate-400 font-semibold">
                       {moveNumIdx + 1}.
@@ -760,7 +760,7 @@ export default function Analysis() {
                       className={`col-span-5 text-left px-2 py-1 rounded transition-colors flex items-center justify-between ${
                         currentPly === whitePly
                           ? 'bg-emerald-600 text-white font-bold'
-                          : 'hover:bg-slate-100 text-slate-800'
+                          : 'hover:bg-slate-800 text-slate-200'
                       }`}
                     >
                       <span>{whiteMove?.san}</span>
@@ -780,7 +780,7 @@ export default function Analysis() {
                         className={`col-span-5 text-left px-2 py-1 rounded transition-colors flex items-center justify-between ${
                           currentPly === blackPly
                             ? 'bg-emerald-600 text-white font-bold'
-                            : 'hover:bg-slate-100 text-slate-800'
+                            : 'hover:bg-slate-800 text-slate-200'
                         }`}
                       >
                         <span>{blackMove.san}</span>
@@ -806,9 +806,9 @@ export default function Analysis() {
 
       {isPasteModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <ClipboardPaste className="w-5 h-5 text-emerald-600" />
                 <span>Paste Game or FEN Position</span>
               </h3>
@@ -817,19 +817,19 @@ export default function Analysis() {
                   setIsPasteModalOpen(false);
                   setPasteError('');
                 }}
-                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-slate-400 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-800 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-600 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed">
               Paste standard PGN notation (from Chess.com, Lichess, etc.) or a FEN string.
               For PGN games, ChessLogs will identify the opening and variation automatically.
             </p>
 
             {pasteError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-medium">
                 {pasteError}
               </div>
             )}
@@ -840,7 +840,7 @@ export default function Analysis() {
                 onChange={(e) => setPasteInput(e.target.value)}
                 placeholder="Paste PGN (e.g. 1. e4 e5 2. Nf3...) or FEN string here"
                 rows={6}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white focus:ring-1 focus:ring-emerald-500 transition-all"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-slate-900 focus:ring-1 focus:ring-emerald-500 transition-all"
                 autoFocus
               />
 
@@ -851,7 +851,7 @@ export default function Analysis() {
                     setIsPasteModalOpen(false);
                     setPasteError('');
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:bg-slate-800 transition-colors"
                 >
                   Cancel
                 </button>

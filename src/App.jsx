@@ -22,6 +22,7 @@ import CoursePlayer from './pages/CoursePlayer';
 import MoveTrainer from './pages/MoveTrainer';
 import AdminDashboard from './pages/AdminDashboard';
 import CoachDashboard from './components/dashboard/CoachDashboard';
+import Applications from './pages/Applications';
 
 function AppLayout({ children }) {
   const location = useLocation();
@@ -32,7 +33,7 @@ function AppLayout({ children }) {
   const isSidebarPage = ['/coach', '/admin'].includes(location.pathname);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
       {!isAuthPage && isSidebarPage && <Sidebar />}
       {!isAuthPage && !isSidebarPage && <Navbar />}
 
@@ -41,15 +42,16 @@ function AppLayout({ children }) {
       </main>
 
       {!isAuthPage && (
-        <footer className={`border-t border-slate-200 bg-white py-10 text-xs text-slate-500 text-center ${isSidebarPage ? 'lg:pl-64' : ''}`}>
+        <footer className={`border-t border-slate-800 bg-slate-900 py-10 text-xs text-slate-400 text-center ${isSidebarPage ? 'lg:pl-64' : ''}`}>
           <div className="max-w-7xl mx-auto px-4 space-y-3">
-            <div className="flex items-center justify-center gap-6 font-semibold text-slate-600">
-              <a href="/marketplace" className="hover:text-emerald-600">Marketplace</a>
-              <a href="/support" className="hover:text-emerald-600">Customer Support</a>
-              <a href="/feedback" className="hover:text-emerald-600">Community Feedback</a>
-              <a href="/login" className="hover:text-emerald-600">Account Access</a>
+            <div className="flex items-center justify-center gap-6 font-semibold text-slate-300">
+              <a href="/marketplace" className="hover:text-emerald-400">Marketplace</a>
+              <a href="/applications" className="hover:text-emerald-400">Coach Applications</a>
+              <a href="/support" className="hover:text-emerald-400">Customer Support</a>
+              <a href="/feedback" className="hover:text-emerald-400">Community Feedback</a>
+              <a href="/login" className="hover:text-emerald-400">Account Access</a>
             </div>
-            <p className="font-bold text-slate-700">
+            <p className="font-bold text-slate-200">
               ChessLogs LMS — Science-Backed MoveTrainer &amp; Spaced Repetition Platform
             </p>
             <p className="max-w-2xl mx-auto text-slate-400">
@@ -76,6 +78,14 @@ export default function App() {
             <Route path="/coaches/:id" element={<CoachProfile />} />
             <Route path="/support" element={<Support />} />
             <Route path="/feedback" element={<Feedback />} />
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute>
+                  <Applications />
+                </ProtectedRoute>
+              }
+            />
 
             <Route
               path="/dashboard"

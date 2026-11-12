@@ -60,7 +60,7 @@ if ($action === 'signup' && $method === 'POST') {
     $password = (string)($body['password'] ?? '');
     $confirmPassword = isset($body['confirmPassword']) ? (string)$body['confirmPassword'] : null;
     $chesscomUsername = trim($body['chesscomUsername'] ?? $body['chesscom_username'] ?? '');
-    $role = in_array($body['role'] ?? '', ['student', 'coach', 'admin']) ? $body['role'] : 'student';
+    $role = 'student';
 
     if (!$firstName || !$lastName) {
         jsonError('First name and last name are required.', 400);
