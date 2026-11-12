@@ -4,9 +4,6 @@ export function getApiBase() {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
-  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    return 'http://127.0.0.1:8000/api';
-  }
   return '/api';
 }
 
@@ -57,6 +54,9 @@ export async function apiRequest(endpoint, options = {}) {
     const error = new Error(errorMsg);
     error.status = res.status;
     error.data = data;
+    if (res.status === 405 || res.status === 404 || res.status >= 500) {
+      error.isBackendUnavailable = true;
+    }
     throw error;
   }
 

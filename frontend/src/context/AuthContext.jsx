@@ -111,7 +111,6 @@ export function AuthProvider({ children }) {
   const signInWithEmail = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    let apiErr = null;
     try {
       const res = await api.auth.login(cleanEmail, password);
       if (res?.user && res?.profile) {
@@ -120,12 +119,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(res.profile));
         return res;
       }
-    } catch (err) {
-      apiErr = err;
-    }
-
-    if (apiErr && apiErr.status === 401) {
-      throw new Error('Incorrect password. Please verify and try again.');
+    } catch {
     }
 
     try {
@@ -187,11 +181,11 @@ export function AuthProvider({ children }) {
         return res;
       }
     } catch (apiErr) {
-      if (apiErr?.status === 409) {
+      if (apiErr?.status === 409 || apiErr?.data?.error?.toLowerCase().includes('already exists')) {
         throw new Error('An account with this email already exists. Please sign in instead.');
       }
-      if (apiErr?.status >= 400) {
-        throw new Error(apiErr.message || 'Registration failed. Please try again.');
+      if (apiErr?.status === 400 && apiErr?.data?.error) {
+        throw new Error(apiErr.data.error);
       }
     }
 
