@@ -5,33 +5,23 @@ import {
   CLASSIFICATION_THRESHOLDS as T,
 } from '../config/engine';
 
-/**
- * Converts a centipawn evaluation score to winning probability (0% - 100%)
- * based on standard CAPS / Lichess win probability model.
- */
 export function cpToWinPercent(cp, isMate = false, mateIn = null) {
   if (isMate && mateIn !== null && mateIn !== undefined) {
     return mateIn > 0 ? 100 : 0;
   }
   if (typeof cp !== 'number') return 50;
-  // Clip extreme centipawn values per A.1
+  
   const clipped = Math.max(-1000, Math.min(1000, cp));
   return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * clipped)) - 1);
 }
 
-/**
- * Calculates CAPS-like single move accuracy percentage
- */
 export function calculateMoveAccuracy(winProbBefore, winProbAfter) {
   const loss = Math.max(0, winProbBefore - winProbAfter);
-  // CAPS exponential decay function
+  
   const raw = 103.1668 * Math.exp(-0.04354 * loss) - 3.1669;
   return Math.max(0, Math.min(100, Math.round(raw * 10) / 10));
 }
 
-/**
- * Stockfish UCI Engine Wrapper using Web Worker
- */
 export class StockfishEngine {
   constructor() {
     this.worker = null;
@@ -46,7 +36,7 @@ export class StockfishEngine {
     if (typeof window === 'undefined') return;
 
     try {
-      // Initialize Stockfish worker
+      
       this.worker = new Worker(ENGINE_CONFIG.workerUrl);
 
       this.worker.onmessage = (event) => {
@@ -58,7 +48,7 @@ export class StockfishEngine {
         console.warn('Stockfish Worker encountered error, running with fallback evaluator:', err);
       };
 
-      // Send initial UCI handshake
+      
       this.send('uci');
       await this.waitForReady();
       this.isReady = true;
@@ -75,7 +65,7 @@ export class StockfishEngine {
   }
 
   handleMessage(line) {
-    // UCI handshake
+    
     if (line === 'uciok') {
       this.send('setoption name Threads value 1');
       this.send('setoption name Hash value 32');
@@ -90,7 +80,7 @@ export class StockfishEngine {
       }
     }
 
-    // Parse info line: "info depth 12 seldepth 16 multipv 1 score cp 45 nodes 12344 nps 450000 pv e2e4 e7e5 ..."
+    
     if (line.startsWith('info ') && line.includes(' score ')) {
       const parsedInfo = this.parseInfoLine(line);
       if (parsedInfo && this.searchProgressCallback) {
@@ -98,7 +88,7 @@ export class StockfishEngine {
       }
     }
 
-    // Parse bestmove line: "bestmove e2e4 ponder e7e5"
+    
     if (line.startsWith('bestmove ')) {
       const parts = line.split(' ');
       const bestMove = parts[1];
@@ -156,12 +146,7 @@ export class StockfishEngine {
     this.send('stop');
   }
 
-  /**
-   * Evaluates a single position (FEN)
-   * @param {string} fen
-   * @param {Object} options { depth, movetime, multiPv }
-   * @param {Function} [onProgress]
-   */
+  
   async evaluatePosition(fen, options = {}, onProgress = null) {
     await this.initPromise;
 
@@ -195,7 +180,7 @@ export class StockfishEngine {
       if (onProgress) onProgress(latestInfo);
     };
 
-    // If worker is running, use it
+    
     if (this.worker && this.isReady) {
       await this.waitForReady();
 
@@ -220,13 +205,11 @@ export class StockfishEngine {
       };
     }
 
-    // Fallback: fast in-process heuristic evaluation
+    
     return this.fallbackEvaluate(fen);
   }
 
-  /**
-   * Resilient fallback evaluator when WASM worker is not available
-   */
+  
   fallbackEvaluate(fen) {
     try {
       const chess = new Chess(fen);
@@ -238,7 +221,7 @@ export class StockfishEngine {
         return { scoreCp: 0, isMate: false, mateIn: null, bestMove: null, depth: 1, pv: [] };
       }
 
-      // Material values
+      
       const PIECE_VALS = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 20000 };
       let whiteScore = 0;
       let blackScore = 0;
@@ -249,7 +232,7 @@ export class StockfishEngine {
           const piece = board[r][c];
           if (piece) {
             const val = PIECE_VALS[piece.type] || 0;
-            // Center control bonus
+            
             const centerBonus = (3.5 - Math.abs(3.5 - r)) + (3.5 - Math.abs(3.5 - c));
             if (piece.color === 'w') {
               whiteScore += val + centerBonus * 3;
@@ -262,7 +245,7 @@ export class StockfishEngine {
 
       const turn = chess.turn();
       const evalFromWhite = whiteScore - blackScore;
-      // Score in Stockfish UCI is from the perspective of the side to move
+      
       const scoreCp = turn === 'w' ? evalFromWhite : -evalFromWhite;
 
       const topMove = moves[0] ? `${moves[0].from}${moves[0].to}${moves[0].promotion || ''}` : null;
@@ -288,9 +271,6 @@ export class StockfishEngine {
   }
 }
 
-/**
- * Singleton engine manager instance
- */
 let globalEngine = null;
 
 export function getEngineInstance() {
@@ -300,16 +280,10 @@ export function getEngineInstance() {
   return globalEngine;
 }
 
-/**
- * Expected points lost for a move (0–1), from CAPS/Lichess win probabilities.
- */
 export function expectedPointsLost(winProbBefore, winProbAfter) {
   return Math.max(0, (winProbBefore - winProbAfter) / 100);
 }
 
-/**
- * Critical evaluation swing: losing→equal/better, or equal→winning.
- */
 export function isCriticalEvalSwing(evalBefore, evalAfter) {
   const rescued =
     evalBefore <= T.greatLosingCp && evalAfter >= T.greatEqualizedCp;
@@ -318,15 +292,9 @@ export function isCriticalEvalSwing(evalBefore, evalAfter) {
   return rescued || converted;
 }
 
-/**
- * Classifies a move per Section A specifications:
- * - A.3: Core six-tier win%-loss thresholds
- * - A.3a: Decided-position dampening (caps severity at Mistake if position is already winning/lost)
- * - A.4: Special classifications overlay (Book -> Brilliant -> Great -> Miss -> SixTier)
- */
 export function classifyMove({
-  evalBefore, // cp from mover's perspective before move
-  evalAfter, // cp from mover's perspective after move
+  evalBefore, 
+  evalAfter, 
   playedMoveUci,
   bestMoveUci,
   isSacrifice,
@@ -339,11 +307,11 @@ export function classifyMove({
   bestMoveIsMate = false,
   playedMoveIsMate = false,
 }) {
-  // Step 2: Compute Win% loss
+  
   const winpctLoss = Math.max(0, winProbBefore - winProbAfter);
   const isTopMove = playedMoveUci === bestMoveUci;
 
-  // Step 3: Core Six-Tier Classification (A.3)
+  
   let sixTier = CLASSIFICATIONS.BLUNDER;
   if (isTopMove || winpctLoss <= 0.5) {
     sixTier = CLASSIFICATIONS.BEST;
@@ -359,8 +327,8 @@ export function classifyMove({
     sixTier = CLASSIFICATIONS.BLUNDER;
   }
 
-  // A.3a Decided-position dampening (required):
-  // If the position is already lopsided before the move, cap severity at Mistake
+  
+  
   if (
     (winProbBefore >= 95 && winProbAfter >= 85) ||
     (winProbBefore <= 5 && winProbAfter <= 15)
@@ -370,9 +338,9 @@ export function classifyMove({
     }
   }
 
-  // Step 4: Special Classifications Overlay (A.4)
+  
 
-  // A.4a Book: engine-approved opening moves
+  
   if (isBookCandidate) {
     return {
       display: CLASSIFICATIONS.BOOK,
@@ -381,8 +349,8 @@ export function classifyMove({
     };
   }
 
-  // A.4b Brilliant (!!): piece sacrifice, sound, not forced, not already trivially winning
-  // not_forced: a safe non-sacrificial alternative existed (i.e. this wasn't the only good move)
+  
+  
   const soundnessHolds =
     winpctLoss <= 1 || (evalAfter >= T.brilliantMinEvalAfter && winpctLoss <= 2);
   const notForced = !isOnlyGoodMove;
@@ -400,7 +368,7 @@ export function classifyMove({
     };
   }
 
-  // A.4c Great (!): Best move that is the only good move (>=10 win% gap) or critical eval swing
+  
   if (sixTier === CLASSIFICATIONS.BEST && (isOnlyGoodMove || isCriticalSwing)) {
     return {
       display: CLASSIFICATIONS.GREAT,
@@ -409,7 +377,7 @@ export function classifyMove({
     };
   }
 
-  // A.4d Miss: Failed to capitalize on opponent mistake or missed forced tactic/mate
+  
   const opponentMadeError =
     opponentPreviousClassification === 'mistake' ||
     opponentPreviousClassification === 'blunder';
@@ -433,10 +401,6 @@ export function classifyMove({
   };
 }
 
-/**
- * True piece sacrifice: N/B/R/Q offered with meaningful net material loss,
- * and the destination can be recaptured by the opponent.
- */
 function checkMaterialSacrifice(chessBefore, move) {
   const PIECE_VALUES = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 
@@ -444,7 +408,7 @@ function checkMaterialSacrifice(chessBefore, move) {
   const capturedVal = move.captured ? PIECE_VALUES[move.captured] : 0;
   const netOffered = movingPieceVal - capturedVal;
 
-  // Pawns don't count; require a real material offer (≈2+ pawns)
+  
   if (movingPieceVal < 3 || netOffered < T.brilliantMinNetSacrifice) {
     return false;
   }
@@ -459,9 +423,6 @@ function checkMaterialSacrifice(chessBefore, move) {
   return canRecapture;
 }
 
-/**
- * Opening moves that count as "book" for this ply (engine best, optionally near-equal #2).
- */
 function getBookCandidateUcis(evalInfo) {
   const candidates = new Set();
   if (evalInfo?.bestMove) {
@@ -479,12 +440,6 @@ function getBookCandidateUcis(evalInfo) {
   return candidates;
 }
 
-/**
- * Fast Game Review: Batch-analyzes all moves in a game using fastReview configuration
- * @param {string} pgn
- * @param {Function} [onProgress] callback with { currentMove, totalMoves, percent }
- * @returns {Promise<Object>} { moveClassifications, accuracyWhite, accuracyBlack, summary }
- */
 export async function runFastReview(pgn, onProgress = null) {
   const engine = getEngineInstance();
   const chess = new Chess();
@@ -520,13 +475,13 @@ export async function runFastReview(pgn, onProgress = null) {
     black: { brilliant: 0, great: 0, best: 0, excellent: 0, good: 0, inaccuracy: 0, mistake: 0, miss: 0, blunder: 0, book: 0 },
   };
 
-  // 1. Initial starting position eval
+  
   let currentEval = await engine.evaluatePosition(
     reviewBoard.fen(),
     ENGINE_CONFIG.fastReview
   );
 
-  // Stay in book only while both sides keep playing engine-approved opening moves
+  
   let stillInBook = true;
   let previousClassificationId = null;
 
@@ -536,8 +491,8 @@ export async function runFastReview(pgn, onProgress = null) {
     const isWhite = move.color === 'w';
     const playedMoveUci = `${move.from}${move.to}${move.promotion || ''}`;
 
-    // Normalised eval before move from current player's perspective
-    // Note: Stockfish reports score from perspective of side to move in current fen
+    
+    
     const evalBeforePlayer = currentEval.scoreCp;
     const winProbBefore = cpToWinPercent(
       evalBeforePlayer,
@@ -546,17 +501,17 @@ export async function runFastReview(pgn, onProgress = null) {
     );
     const isSacrifice = checkMaterialSacrifice(reviewBoard, move);
 
-    // Apply move on review board
+    
     reviewBoard.move(move);
     const fenAfter = reviewBoard.fen();
 
-    // Evaluate position after move
+    
     const evalAfterObj = await engine.evaluatePosition(
       fenAfter,
       ENGINE_CONFIG.fastReview
     );
 
-    // After the move, it is opponent's turn, so invert score to get mover's perspective
+    
     const evalAfterPlayer = -evalAfterObj.scoreCp;
     const winProbAfter = cpToWinPercent(
       evalAfterPlayer,
@@ -564,7 +519,7 @@ export async function runFastReview(pgn, onProgress = null) {
       evalAfterObj.mateIn !== null ? -evalAfterObj.mateIn : null
     );
 
-    // Calculate move accuracy
+    
     const moveAccuracy = calculateMoveAccuracy(winProbBefore, winProbAfter);
     if (isWhite) {
       whiteAccuracySum += moveAccuracy;
@@ -574,7 +529,7 @@ export async function runFastReview(pgn, onProgress = null) {
       blackMoveCount++;
     }
 
-    // Great-move: MultiPV #2 loses 10+ win% vs the actual best move (A.4c)
+    
     const secondLine = currentEval.lines?.[1];
     let isOnlyGoodMove = false;
     if (secondLine) {
@@ -591,7 +546,7 @@ export async function runFastReview(pgn, onProgress = null) {
       evalAfterPlayer
     );
 
-    // Book: early, roughly equal, still in book sequence, engine-approved move
+    
     const bookUcis = getBookCandidateUcis(currentEval);
     const isBookCandidate =
       stillInBook &&
@@ -603,7 +558,7 @@ export async function runFastReview(pgn, onProgress = null) {
       stillInBook = false;
     }
 
-    // Determine classification (Section A overlay pipeline)
+    
     const classificationResult = classifyMove({
       evalBefore: evalBeforePlayer,
       evalAfter: evalAfterPlayer,
@@ -622,7 +577,7 @@ export async function runFastReview(pgn, onProgress = null) {
 
     const displayClassification = classificationResult.display || classificationResult;
     const sixTierClassification = classificationResult.sixTier || displayClassification;
-    // Miss (A.4d) keys off the opponent's underlying mistake/blunder grade, not overlays
+    
     previousClassificationId = sixTierClassification.id;
 
     const playerKey = isWhite ? 'white' : 'black';
@@ -630,7 +585,7 @@ export async function runFastReview(pgn, onProgress = null) {
       classificationCounts[playerKey][displayClassification.id]++;
     }
 
-    // White's view of mate (positive = White mating, negative = White mated)
+    
     const whiteMateIn = evalAfterObj.isMate
       ? (isWhite ? -evalAfterObj.mateIn : evalAfterObj.mateIn)
       : null;
@@ -658,7 +613,7 @@ export async function runFastReview(pgn, onProgress = null) {
       is_sacrifice: isSacrifice,
       engine_depth: ENGINE_CONFIG.fastReview.depth,
       multipv_used: ENGINE_CONFIG.fastReview.multiPv,
-      // Evaluation from White's perspective for global eval graph/bar
+      
       evalWhiteView: isWhite ? evalAfterPlayer : -evalAfterPlayer,
       isMate: Boolean(evalAfterObj.isMate),
       mateIn: whiteMateIn,
@@ -671,7 +626,7 @@ export async function runFastReview(pgn, onProgress = null) {
       expectedPointsLost: Math.round(expectedPointsLost(winProbBefore, winProbAfter) * 1000) / 1000,
     });
 
-    // Update currentEval for next iteration
+    
     currentEval = evalAfterObj;
 
     if (onProgress) {

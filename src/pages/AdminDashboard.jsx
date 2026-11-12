@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StatisticsPanel from '../components/dashboard/StatisticsPanel';
 import {
@@ -53,8 +53,25 @@ import {
 export default function AdminDashboard() {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
 
-  const [activeTab, setActiveTab] = useState('telemetry');
+  const [activeTab, setActiveTabState] = useState(
+    tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder'].includes(tabParam)
+      ? tabParam
+      : 'telemetry'
+  );
+
+  useEffect(() => {
+    if (tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder'].includes(tabParam)) {
+      setActiveTabState(tabParam);
+    }
+  }, [tabParam]);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  };
 
   const [accounts, setAccounts] = useState([]);
   const [courses, setCourses] = useState([]);

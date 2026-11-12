@@ -447,7 +447,7 @@ export async function getCourses(userProfile) {
     localStorage.setItem(STORAGE_ASSIGNMENTS, JSON.stringify(assignments));
   }
 
-  if (userProfile?.role === 'admin' || userProfile?.role === 'coach') {
+  if (userProfile?.role === 'admin') {
     return rawCourses.map((c) => enrichCourseWithCoach({ ...c, chapters: normalizeChapters(c.chapters) }));
   }
 

@@ -1,14 +1,11 @@
-/**
- * ChessLogs PHP Backend Client
- * Connects React frontend directly to the PHP/MySQL REST API
- */
+
 
 export function getApiBase() {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
-  // When running locally on dev ports where /api is not proxied (e.g. VS Code Live Server on 5500, Vite preview on 4173),
-  // route to the PHP built-in server on 127.0.0.1:8000
+  
+  
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     if (window.location.port !== '3000' && window.location.port !== '8000') {
       return 'http://127.0.0.1:8000/api';
@@ -17,9 +14,6 @@ export function getApiBase() {
   return '/api';
 }
 
-/**
- * Perform JSON request to the PHP backend
- */
 export async function apiRequest(endpoint, options = {}) {
   const base = getApiBase();
   const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
@@ -73,9 +67,6 @@ export async function apiRequest(endpoint, options = {}) {
   return data;
 }
 
-/**
- * Health check to verify PHP server & MySQL connectivity
- */
 export async function checkBackendHealth() {
   try {
     const base = getApiBase();
@@ -91,11 +82,8 @@ export async function checkBackendHealth() {
   }
 }
 
-/**
- * API Collections
- */
 export const api = {
-  // Authentication
+  
   auth: {
     login: (email, password) =>
       apiRequest('/auth.php?action=login', {
@@ -123,7 +111,7 @@ export const api = {
       apiRequest(`/auth.php?action=me&id=${encodeURIComponent(id)}`),
   },
 
-  // Courses
+  
   courses: {
     getAll: (role = 'student', studentId = null) => {
       const params = new URLSearchParams();
@@ -147,7 +135,7 @@ export const api = {
       }),
   },
 
-  // Assignments & Progress
+  
   assignments: {
     assign: (courseId, studentIds) =>
       apiRequest('/assignments.php?action=assign', {
@@ -173,7 +161,7 @@ export const api = {
       apiRequest(`/assignments.php?course_id=${encodeURIComponent(courseId)}&student_id=${encodeURIComponent(studentId)}`),
   },
 
-  // Games & Reviews
+  
   games: {
     getById: (gameId) =>
       apiRequest(`/games.php?id=${encodeURIComponent(gameId)}`),
@@ -196,7 +184,7 @@ export const api = {
       }),
   },
 
-  // Students Oversight
+  
   students: {
     getAll: () =>
       apiRequest('/students.php'),

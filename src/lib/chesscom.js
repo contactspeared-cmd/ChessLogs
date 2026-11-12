@@ -12,10 +12,6 @@ function chesscomHeaders() {
   return { 'User-Agent': 'ChessLogs-Improvement-Platform/1.0 (contact: support@chesslogs.app)' };
 }
 
-/**
- * Fetch public profile for a Chess.com user
- * @param {string} username
- */
 export async function fetchChesscomProfile(username) {
   if (!username) return null;
   const cleanUsername = username.trim().toLowerCase();
@@ -38,10 +34,6 @@ export async function fetchChesscomProfile(username) {
   }
 }
 
-/**
- * Fetch player ratings and statistics across bullet, blitz, rapid, daily
- * @param {string} username
- */
 export async function fetchChesscomStats(username) {
   if (!username) return null;
   const cleanUsername = username.trim().toLowerCase();
@@ -61,9 +53,6 @@ export async function fetchChesscomStats(username) {
   }
 }
 
-/**
- * List all monthly archive URLs for a player (all-time).
- */
 export async function fetchChesscomArchiveUrls(username) {
   if (!username) return [];
   const cleanUsername = username.trim().toLowerCase();
@@ -80,12 +69,6 @@ export async function fetchChesscomArchiveUrls(username) {
   return data.archives || [];
 }
 
-/**
- * Fetch games for a specific month (or latest available month)
- * @param {string} username
- * @param {number} [year]
- * @param {number|string} [month]
- */
 export async function fetchChesscomMonthlyGames(username, year, month) {
   if (!username) return [];
   const cleanUsername = username.trim().toLowerCase();
@@ -93,7 +76,7 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
   let targetYear = year;
   let targetMonth = month;
 
-  // If year/month not provided, fetch archives list and use the latest
+  
   if (!targetYear || !targetMonth) {
     try {
       const archives = await fetchChesscomArchiveUrls(cleanUsername);
@@ -108,7 +91,7 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
     }
   }
 
-  // Fallback to current date if archives empty
+  
   if (!targetYear || !targetMonth) {
     const now = new Date();
     targetYear = now.getFullYear();
@@ -142,7 +125,7 @@ async function fetchGamesFromArchiveUrl(archiveUrl, retries = 3) {
     try {
       const res = await fetch(archiveUrl, { headers: chesscomHeaders() });
       if (res.status === 429) {
-        // Rate limited by Chess.com, back off and retry
+        
         await new Promise((r) => setTimeout(r, 600 * attempt));
         continue;
       }
@@ -164,14 +147,6 @@ async function fetchGamesFromArchiveUrl(archiveUrl, retries = 3) {
   return [];
 }
 
-/**
- * Fetch games across monthly archives for a player (defaults to past 6 months).
- * @param {string} username
- * @param {Function} [onProgress] ({ completed, total, gameCount })
- * @param {Object} [options]
- * @param {number} [options.monthsLimit=6] Number of recent monthly archives to fetch (default: 6)
- * @returns {Promise<Object[]>} raw Chess.com game objects, newest first, deduped
- */
 export async function fetchChesscomAllGames(username, onProgress = null, options = {}) {
   if (!username) return [];
   const cleanUsername = username.trim().toLowerCase();
@@ -179,7 +154,7 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
 
   const monthsLimit = typeof options.monthsLimit === 'number' ? options.monthsLimit : 6;
 
-  // Pull archives newest-first
+  
   const allOrdered = [...archives].reverse();
   const ordered = monthsLimit > 0 ? allOrdered.slice(0, monthsLimit) : allOrdered;
 
@@ -216,13 +191,13 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
       }
     }
 
-    // Small delay between batches to respect Chess.com rate limits
+    
     if (i + ARCHIVE_CONCURRENCY < ordered.length) {
       await new Promise((r) => setTimeout(r, 50));
     }
   }
 
-  // Also fetch live daily/in-progress games of the current month if available
+  
   try {
     const liveRes = await fetch(`${BASE_URL}/player/${cleanUsername}/games`, {
       headers: chesscomHeaders(),
@@ -234,10 +209,10 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
       }
     }
   } catch {
-    // Ignore current live game probe failure
+    
   }
 
-  // Deduplicate by URL / uuid / end_time
+  
   const seen = new Set();
   const unique = [];
   for (const game of allGames) {
@@ -254,7 +229,6 @@ export async function fetchChesscomAllGames(username, onProgress = null, options
   return unique;
 }
 
-/** Fast Opening/ECO extraction from PGN tags (no full ECO move walk). */
 function detectOpeningFromPgnTags(pgn) {
   if (!pgn) return null;
   const headers = {};

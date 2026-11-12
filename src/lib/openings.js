@@ -1,23 +1,18 @@
 import { Chess } from 'chess.js';
 import ecoOpenings from '../data/ecoOpenings.json';
 
-/** @type {Map<string, { eco: string, name: string, moves: string }> | null} */
 let movesIndex = null;
 
 function getMovesIndex() {
   if (movesIndex) return movesIndex;
   movesIndex = new Map();
   for (const opening of ecoOpenings) {
-    // Longer / later entries overwrite shorter prefixes with same key
+    
     movesIndex.set(opening.moves, opening);
   }
   return movesIndex;
 }
 
-/**
- * Split a full opening title into family + variation.
- * e.g. "Sicilian Defense: Najdorf Variation" → { family, variation }
- */
 export function splitOpeningName(fullName) {
   if (!fullName || typeof fullName !== 'string') {
     return { family: null, variation: null };
@@ -32,9 +27,6 @@ export function splitOpeningName(fullName) {
   return { family, variation };
 }
 
-/**
- * Normalize a list of SAN moves into the eco index key format.
- */
 export function normalizeSanMoves(sans) {
   return (sans || [])
     .map((san) => String(san).replace(/[+#]/g, ''))
@@ -42,9 +34,6 @@ export function normalizeSanMoves(sans) {
     .join(' ');
 }
 
-/**
- * Find the deepest ECO match for a SAN move sequence.
- */
 export function findOpeningByMoves(sans) {
   const index = getMovesIndex();
   const tokens = (sans || []).map((san) => String(san).replace(/[+#]/g, '')).filter(Boolean);
@@ -68,9 +57,6 @@ export function findOpeningByMoves(sans) {
   return null;
 }
 
-/**
- * Read Opening / ECO / Variation from PGN headers when present.
- */
 export function findOpeningFromHeaders(headers = {}) {
   const eco = headers.ECO || headers.Eco || null;
   const openingHeader = headers.Opening || headers.opening || null;
@@ -98,10 +84,6 @@ export function findOpeningFromHeaders(headers = {}) {
   };
 }
 
-/**
- * Detect opening + variation for a PGN string or SAN list.
- * Prefers PGN headers when they include Opening/ECO; otherwise ECO move lookup.
- */
 export function detectOpening(pgnOrMoves) {
   if (!pgnOrMoves) return null;
 
@@ -118,7 +100,7 @@ export function detectOpening(pgnOrMoves) {
     const headers = typeof chess.header === 'function' ? chess.header() : {};
     const fromHeaders = findOpeningFromHeaders(headers);
 
-    // Prefer named opening from headers; if only ECO code, still try move lookup for a name
+    
     if (fromHeaders?.name && fromHeaders.source === 'pgn' && (headers.Opening || headers.Variation)) {
       return fromHeaders;
     }
@@ -130,7 +112,7 @@ export function detectOpening(pgnOrMoves) {
       return { ...fromMoves, eco: fromHeaders.eco };
     }
     if (fromMoves) {
-      // Keep header ECO if present (often more specific annotation)
+      
       if (fromHeaders?.eco) {
         return { ...fromMoves, eco: fromHeaders.eco, source: 'eco+pgn' };
       }
@@ -143,9 +125,6 @@ export function detectOpening(pgnOrMoves) {
   }
 }
 
-/**
- * Compact display helpers for UI.
- */
 export function formatOpeningLabel(opening) {
   if (!opening) return null;
   const eco = opening.eco ? `${opening.eco} · ` : '';

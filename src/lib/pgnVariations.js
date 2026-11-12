@@ -1,8 +1,5 @@
 import { Chess } from 'chess.js';
 
-/**
- * Format a variation SAN sequence from a starting FEN (PGN parenthesis body).
- */
 export function formatVariationSans(fenBefore, sans = []) {
   const board = new Chess(fenBefore);
   const parts = [];
@@ -30,10 +27,6 @@ export function formatVariationSans(fenBefore, sans = []) {
   return parts.join(' ');
 }
 
-/**
- * Insert an engine variation as an alternative to the mainline move at plyIndex0.
- * Returns updated PGN text (headers preserved when present).
- */
 export function insertVariationIntoPgn(pgn, plyIndex0, variationSans) {
   if (!pgn || !variationSans?.length) return pgn;
 
@@ -95,9 +88,6 @@ export function insertVariationIntoPgn(pgn, plyIndex0, variationSans) {
   return headerLines.length ? `${headerLines.join('\n')}\n\n${body}` : body;
 }
 
-/**
- * Convert a UCI PV (list of uci strings) into SAN moves from fenBefore.
- */
 export function uciPvToSans(fenBefore, uciMoves = [], maxPlies = 6) {
   const board = new Chess(fenBefore);
   const sans = [];

@@ -14,11 +14,6 @@ import {
   Layers,
 } from 'lucide-react';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/** Parse a PGN string and return a flat array of move objects */
 function parsePgn(pgnText) {
   try {
     const chess = new Chess();
@@ -26,28 +21,28 @@ function parsePgn(pgnText) {
     const verbose = chess.history({ verbose: true });
     if (!verbose.length) return { moves: [], error: 'No moves found in PGN.' };
 
-    // Rebuild FEN at each ply
+    
     const moves = [];
     const replay = new Chess();
     for (let i = 0; i < verbose.length; i++) {
       const m = verbose[i];
       replay.move(m);
       moves.push({
-        ply: i + 1,          // 1-indexed
+        ply: i + 1,          
         san: m.san,
         from: m.from,
         to: m.to,
-        color: m.color,      // 'w' | 'b'
+        color: m.color,      
         promotion: m.promotion || undefined,
         moveNumber: Math.ceil((i + 1) / 2),
         fenAfter: replay.fen(),
-        // annotation defaults
+        
         isKeyMove: false,
         comment: '',
       });
     }
 
-    // Extract PGN headers for metadata
+    
     const headers = chess.header();
     return { moves, headers, error: null };
   } catch (err) {
@@ -55,10 +50,9 @@ function parsePgn(pgnText) {
   }
 }
 
-/** Build a chapter-sliced PGN from a subset of the full move list */
 function buildChapterPgn(allMoves, fromPly, toPly) {
-  // fromPly and toPly are 1-indexed, inclusive.
-  // Replay prior moves so mid-game chapters start from the correct position.
+  
+  
   const setup = new Chess();
   for (let i = 0; i < fromPly - 1; i++) {
     const m = allMoves[i];
@@ -92,10 +86,6 @@ function buildChapterPgn(allMoves, fromPly, toPly) {
   return pgn || '*';
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
 function MoveChip({ move, isKeyMove, onClick, isChapterStart, isChapterEnd }) {
   const label =
     move.color === 'w'
@@ -121,36 +111,32 @@ function MoveChip({ move, isKeyMove, onClick, isChapterStart, isChapterEnd }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Wizard
-// ---------------------------------------------------------------------------
-
 export default function PgnImportWizard({ onConfirm, onClose }) {
-  // Step 1: paste PGN
+  
   const [pgnInput, setPgnInput] = useState('');
   const [parseError, setParseError] = useState('');
-  const [step, setStep] = useState('input'); // 'input' | 'divide' | 'annotate'
+  const [step, setStep] = useState('input'); 
 
-  // Parsed data
-  const [allMoves, setAllMoves] = useState([]); // full flat move list
+  
+  const [allMoves, setAllMoves] = useState([]); 
   const [pgnHeaders, setPgnHeaders] = useState({});
 
-  // Chapter split points: array of ply numbers where a new chapter STARTS (first chapter always starts at ply 1)
+  
   const [splitPoints, setSplitPoints] = useState([1]);
 
-  // Per-move annotations: { [ply]: { isKeyMove, comment } }
+  
   const [annotations, setAnnotations] = useState({});
 
-  // Per-chapter metadata: { [chapterIndex]: { title, description } }
+  
   const [chapterMeta, setChapterMeta] = useState({});
 
-  // Which chapter is expanded in the annotate step
+  
   const [expandedChapter, setExpandedChapter] = useState(0);
   const [confirmError, setConfirmError] = useState('');
 
-  // ------------------------------------------------------------------
-  // Step 1: Parse PGN
-  // ------------------------------------------------------------------
+  
+  
+  
   const handleParse = () => {
     setParseError('');
     const { moves, headers, error } = parsePgn(pgnInput);
@@ -163,7 +149,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
     setSplitPoints([1]);
     setAnnotations({});
 
-    // Pre-fill first chapter title from PGN headers
+    
     const defaultTitle =
       headers?.White && headers?.Black
         ? `${headers.White} vs ${headers.Black}`
@@ -172,17 +158,17 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
     setStep('divide');
   };
 
-  // ------------------------------------------------------------------
-  // Step 2: Divide into chapters
-  // ------------------------------------------------------------------
+  
+  
+  
 
-  // Compute ordered unique split points (always starts with 1)
+  
   const orderedSplits = useMemo(
     () => [...new Set([1, ...splitPoints])].sort((a, b) => a - b),
     [splitPoints]
   );
 
-  // Chapters: array of { startPly, endPly }
+  
   const chapters = useMemo(() => {
     return orderedSplits.map((startPly, i) => ({
       startPly,
@@ -191,15 +177,15 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
   }, [orderedSplits, allMoves.length]);
 
   const toggleSplitAt = (ply) => {
-    if (ply === 1) return; // can't remove first split
+    if (ply === 1) return; 
     setSplitPoints((prev) =>
       prev.includes(ply) ? prev.filter((p) => p !== ply) : [...prev, ply]
     );
   };
 
-  // ------------------------------------------------------------------
-  // Step 3: Annotate
-  // ------------------------------------------------------------------
+  
+  
+  
 
   const toggleKeyMove = (ply) => {
     setAnnotations((prev) => ({
@@ -223,9 +209,9 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
     setChapterMeta((prev) => ({ ...prev, [idx]: { ...prev[idx], description } }));
   };
 
-  // ------------------------------------------------------------------
-  // Confirm: build chapters array for saveCourse
-  // ------------------------------------------------------------------
+  
+  
+  
   const handleConfirm = () => {
     setConfirmError('');
     try {
@@ -233,11 +219,11 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
         const meta = chapterMeta[idx] || {};
         const chMoves = allMoves.slice(ch.startPly - 1, ch.endPly);
 
-        // Build annotations array: only moves with isKeyMove = true
+        
         const chAnnotations = chMoves
           .filter((m) => annotations[m.ply]?.isKeyMove)
           .map((m) => ({
-            ply: m.ply - ch.startPly + 1, // relative ply within chapter
+            ply: m.ply - ch.startPly + 1, 
             keyMove: m.san,
             comment: annotations[m.ply]?.comment?.trim() || '',
           }));
@@ -260,14 +246,14 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
     }
   };
 
-  // ------------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------------
+  
+  
+  
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
       <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh]">
-        {/* Header */}
+        {}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -281,7 +267,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
             </div>
           </div>
 
-          {/* Step indicator */}
+          {}
           <div className="flex items-center gap-2 mr-6">
             {['input', 'divide', 'annotate'].map((s, i) => (
               <div key={s} className="flex items-center gap-1">
@@ -311,12 +297,10 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
           </button>
         </div>
 
-        {/* Body */}
+        {}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
 
-          {/* ============================================================
-              STEP 1: Paste PGN
-              ============================================================ */}
+          {}
           {step === 'input' && (
             <div className="space-y-4">
               <div>
@@ -343,9 +327,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
             </div>
           )}
 
-          {/* ============================================================
-              STEP 2: Divide into chapters
-              ============================================================ */}
+          {}
           {step === 'divide' && (
             <div className="space-y-4">
               <div>
@@ -359,7 +341,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                 </p>
               </div>
 
-              {/* Move grid */}
+              {}
               <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-wrap gap-1.5 max-h-64 overflow-y-auto">
                 {allMoves.map((move) => {
                   const isSplit = orderedSplits.includes(move.ply) && move.ply !== 1;
@@ -392,7 +374,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                 })}
               </div>
 
-              {/* Chapter preview */}
+              {}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Chapter Preview ({chapters.length} chapters)
@@ -428,9 +410,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
             </div>
           )}
 
-          {/* ============================================================
-              STEP 3: Annotate chapters & moves
-              ============================================================ */}
+          {}
           {step === 'annotate' && (
             <div className="space-y-3">
               <div>
@@ -456,7 +436,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                     key={chIdx}
                     className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden"
                   >
-                    {/* Chapter header */}
+                    {}
                     <button
                       type="button"
                       onClick={() => setExpandedChapter(isExpanded ? -1 : chIdx)}
@@ -488,7 +468,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
 
                     {isExpanded && (
                       <div className="px-4 pb-4 space-y-4 border-t border-slate-800">
-                        {/* Chapter metadata */}
+                        {}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
                           <div className="space-y-1">
                             <label className="block text-[11px] font-semibold uppercase text-slate-400">
@@ -516,7 +496,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                           </div>
                         </div>
 
-                        {/* Move annotation list */}
+                        {}
                         <div>
                           <h5 className="text-[11px] font-bold uppercase text-slate-500 mb-2 flex items-center gap-1.5">
                             <Layers className="w-3.5 h-3.5" />
@@ -535,7 +515,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                                       : 'border-slate-800 bg-slate-900/40'
                                   }`}
                                 >
-                                  {/* Move row */}
+                                  {}
                                   <div className="flex items-center gap-2 px-3 py-2">
                                     <button
                                       type="button"
@@ -571,7 +551,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                                     )}
                                   </div>
 
-                                  {/* Comment input — only visible when key move */}
+                                  {}
                                   {anno.isKeyMove && (
                                     <div className="px-3 pb-2.5 flex items-center gap-2">
                                       <MessageSquare className="w-3.5 h-3.5 text-slate-500 shrink-0" />
@@ -600,7 +580,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
           )}
         </div>
 
-        {/* Footer */}
+        {}
         <div className="px-6 py-4 border-t border-slate-800 flex flex-col gap-3 shrink-0">
           {confirmError && (
             <div className="flex items-start gap-2 rounded-xl bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
@@ -652,7 +632,7 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
                 <button
                   type="button"
                   onClick={() => {
-                    // Pre-fill chapter meta if missing
+                    
                     chapters.forEach((_, i) => {
                       if (!chapterMeta[i]) {
                         setChapterMeta((prev) => ({

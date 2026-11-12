@@ -1,11 +1,5 @@
 import { Chess } from 'chess.js';
 
-/**
- * Chessable-style Move Trainer helpers:
- * - Build flashcards from chapter annotations and/or full PGN lines
- * - SM-2–inspired spaced repetition scheduling
- */
-
 export const TRAINER_GRADES = {
   AGAIN: 'again',
   HARD: 'hard',
@@ -16,7 +10,6 @@ export const TRAINER_GRADES = {
 const DEFAULT_EASE = 2.5;
 const MIN_EASE = 1.3;
 
-/** Milliseconds helpers */
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
@@ -28,10 +21,6 @@ function cardId(chapterId, ply, keyMove) {
   return `${chapterId || 'ch'}:${ply}:${normalizeSan(keyMove)}`;
 }
 
-/**
- * Infer which color the student should train (majority of annotated key moves).
- * Falls back to 'b' for opening repertoires when unclear.
- */
 export function inferTrainColor(chapters = []) {
   let white = 0;
   let black = 0;
@@ -49,7 +38,7 @@ export function inferTrainColor(chapters = []) {
         else black++;
       }
     } catch {
-      // ignore bad pgn
+      
     }
   }
 
@@ -57,11 +46,6 @@ export function inferTrainColor(chapters = []) {
   return black >= white ? 'b' : 'w';
 }
 
-/**
- * Resolve trained color from admin `trained_side` (white|black|both),
- * falling back to inferTrainColor when unset.
- * Returns 'w' | 'b' | 'both'.
- */
 export function resolveTrainColor(chapters = [], trainedSide = null) {
   const side = String(trainedSide || '').toLowerCase();
   if (side === 'white') return 'w';
@@ -70,7 +54,6 @@ export function resolveTrainColor(chapters = [], trainedSide = null) {
   return inferTrainColor(chapters);
 }
 
-/** True when a move matches the configured trained side. */
 export function isTrainedMoveColor(moveColor, trainedSide) {
   const side = String(trainedSide || 'both').toLowerCase();
   if (side === 'both') return true;
@@ -79,9 +62,6 @@ export function isTrainedMoveColor(moveColor, trainedSide) {
   return true;
 }
 
-/**
- * Build a single card for a key move at a given ply in a chapter PGN.
- */
 function buildCardFromPly(chapter, history, ply, keyMove, comment, source) {
   const idx = ply - 1;
   if (idx < 0 || idx >= history.length) return null;
@@ -89,7 +69,7 @@ function buildCardFromPly(chapter, history, ply, keyMove, comment, source) {
   const move = history[idx];
   const expected = normalizeSan(keyMove || move.san);
   if (normalizeSan(move.san) !== expected && keyMove) {
-    // Prefer explicit annotation keyMove even if it drifts from PGN SAN slightly
+    
   }
 
   const replay = new Chess();
@@ -100,7 +80,7 @@ function buildCardFromPly(chapter, history, ply, keyMove, comment, source) {
   const fenBefore = replay.fen();
   const orientation = move.color === 'w' ? 'white' : 'black';
 
-  // Opponent reply SAN (auto-play after correct answer), if any
+  
   const reply = history[idx + 1] || null;
 
   return {
@@ -119,13 +99,10 @@ function buildCardFromPly(chapter, history, ply, keyMove, comment, source) {
     to: move.to,
     replySan: reply ? normalizeSan(reply.san) : null,
     replyUci: reply ? `${reply.from}${reply.to}${reply.promotion || ''}` : null,
-    source, // 'annotation' | 'line'
+    source, 
   };
 }
 
-/**
- * Cards from coach annotations only (key moments).
- */
 export function buildAnnotationCards(chapters = []) {
   const cards = [];
 
@@ -156,10 +133,6 @@ export function buildAnnotationCards(chapters = []) {
   return cards;
 }
 
-/**
- * Full-variation cards: every move for the trainee's color across chapters with PGN.
- * trainColor: 'w' | 'b' | 'both'
- */
 export function buildLineCards(chapters = [], trainColor = 'b') {
   const cards = [];
   const courseColor =
@@ -202,9 +175,6 @@ export function buildLineCards(chapters = [], trainColor = 'b') {
   return cards;
 }
 
-/**
- * Preferred deck: annotations if any exist, otherwise full line for inferred/configured color.
- */
 export function buildCourseCards(
   chapters = [],
   { mode = 'auto', trainColor, trainedSide } = {}
@@ -216,7 +186,7 @@ export function buildCourseCards(
   if (mode === 'annotations') return annotations;
   if (mode === 'line') return buildLineCards(chapters, color);
 
-  // auto
+  
   if (annotations.length > 0) return annotations;
   return buildLineCards(chapters, color);
 }
@@ -236,10 +206,6 @@ export function createInitialSrsState(now = Date.now()) {
   };
 }
 
-/**
- * Apply SM-2–inspired grade to a card's SRS state.
- * Returns updated state (does not mutate input).
- */
 export function applyTrainerGrade(prevState, grade, now = Date.now()) {
   const state = { ...(prevState || createInitialSrsState(now)) };
   state.seen = (state.seen || 0) + 1;
@@ -256,7 +222,7 @@ export function applyTrainerGrade(prevState, grade, now = Date.now()) {
     ease = Math.max(MIN_EASE, ease - 0.2);
     state.lapses = (state.lapses || 0) + 1;
     state.streak = 0;
-    state.dueAt = now + 1 * MINUTE; // retry soon in session / next minute
+    state.dueAt = now + 1 * MINUTE; 
   } else if (grade === TRAINER_GRADES.HARD) {
     repetitions += 1;
     interval = repetitions === 1 ? 1 : Math.max(1, Math.round(interval * 1.2));
@@ -274,7 +240,7 @@ export function applyTrainerGrade(prevState, grade, now = Date.now()) {
     state.streak = (state.streak || 0) + 1;
     state.dueAt = now + interval * DAY;
   } else {
-    // GOOD
+    
     repetitions += 1;
     if (repetitions === 1) interval = 1;
     else if (repetitions === 2) interval = 3;
@@ -290,9 +256,6 @@ export function applyTrainerGrade(prevState, grade, now = Date.now()) {
   return state;
 }
 
-/**
- * Build a training queue: due reviews first, then unseen (new) cards.
- */
 export function buildSessionQueue(cards, srsMap = {}, { limit = 20, now = Date.now() } = {}) {
   const due = [];
   const neu = [];
@@ -306,7 +269,7 @@ export function buildSessionQueue(cards, srsMap = {}, { limit = 20, now = Date.n
     }
   }
 
-  // Stable-ish shuffle for variety
+  
   const shuffle = (arr) => {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {

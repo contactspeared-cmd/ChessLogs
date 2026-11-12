@@ -163,7 +163,7 @@ export default function Applications() {
             Apply to Become an Official Coach
           </h1>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-            By default, all ChessLogs accounts are created as Tournament Students. Certified instructors, titled players (GM/IM/FM/NM), and experienced coaches can apply here to unlock Coach Studio tools, publish masterclasses to the Marketplace, and mentor students 1-on-1.
+            By default, all ChessLogs accounts are created as Tournament Students. Certified instructors, titled players (GM/IM/FM/NM), and experienced coaches can apply here to unlock Coach Studio tools, publish masterclasses to the Marketplace, and mentor students 1-on-1. You retain your personal student learning portal and rating level to continue your own study journey without duplicate accounts.
           </p>
         </div>
 

@@ -37,11 +37,11 @@ export default function Sidebar() {
   };
 
   const adminLinks = [
-    { name: 'Command Center', path: '/admin', icon: LayoutDashboard },
-    { name: 'User Management', path: '/admin', icon: Users, tab: 'users' },
-    { name: 'Course Library', path: '/admin', icon: BookMarked, tab: 'courses' },
-    { name: 'Coach Applications', path: '/admin', icon: ClipboardList, tab: 'coaches' },
-    { name: 'Enrollment Requests', path: '/admin', icon: GraduationCap, tab: 'enrollments' },
+    { name: 'Command Center', path: '/admin?tab=telemetry', tab: 'telemetry', icon: LayoutDashboard },
+    { name: 'User Management', path: '/admin?tab=users', tab: 'users', icon: Users },
+    { name: 'Course Library', path: '/admin?tab=courses', tab: 'courses', icon: BookMarked },
+    { name: 'Coach Applications', path: '/admin?tab=coaches', tab: 'coaches', icon: ClipboardList },
+    { name: 'Enrollment Requests', path: '/admin?tab=enrollments', tab: 'enrollments', icon: GraduationCap },
     { name: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
     { name: 'Support Desk', path: '/support', icon: HelpCircle },
     { name: 'Feedback Hub', path: '/feedback', icon: MessageCircle },
@@ -59,7 +59,13 @@ export default function Sidebar() {
 
   const links = isAdmin ? adminLinks : coachLinks;
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (item) => {
+    if (isAdmin && item.tab) {
+      const searchTab = new URLSearchParams(location.search).get('tab') || 'telemetry';
+      return location.pathname === '/admin' && searchTab === item.tab;
+    }
+    return location.pathname === item.path;
+  };
 
   return (
     <>
@@ -158,10 +164,10 @@ export default function Sidebar() {
           <nav className="px-3 py-2 space-y-0.5">
             {links.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.path) && !item.tab;
+              const active = isActive(item);
               return (
                 <Link
-                  key={item.path + (item.tab || '')}
+                  key={item.path}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
                   title={collapsed ? item.name : undefined}

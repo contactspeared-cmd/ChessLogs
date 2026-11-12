@@ -1,10 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { Chessboard } from 'react-chessboard';
 
-/**
- * Responsive chessboard that always fits its parent card/column.
- * Uses ResizeObserver so fixed default widths cannot overflow the layout.
- */
 export default function ChessboardView({
   position,
   onPieceDrop,
@@ -12,7 +8,7 @@ export default function ChessboardView({
   customArrows = [],
   customSquareStyles = {},
   isDraggable = true,
-  lastMove = null, // { from: 'e2', to: 'e4' }
+  lastMove = null, 
   boardWidth,
 }) {
   const containerRef = useRef(null);
@@ -33,7 +29,7 @@ export default function ChessboardView({
         (parseFloat(styles.paddingLeft) || 0) +
         (parseFloat(styles.paddingRight) || 0);
       const available = Math.max(0, el.clientWidth - padX);
-      // Fit parent content box; clamp only the upper bound for large desktops.
+      
       const target = Math.max(160, Math.min(available, 580));
       setComputedWidth(target);
     };
@@ -49,7 +45,7 @@ export default function ChessboardView({
     };
   }, [boardWidth]);
 
-  // Combine square styles for last move
+  
   const squareStyles = { ...customSquareStyles };
   if (lastMove?.from && lastMove?.to) {
     squareStyles[lastMove.from] = {
@@ -62,7 +58,7 @@ export default function ChessboardView({
     };
   }
 
-  // Normalize arrows to react-chessboard v5 format: { startSquare, endSquare, color }
+  
   const formattedArrows = (customArrows || []).map((arr) => {
     if (Array.isArray(arr)) {
       return {
@@ -74,7 +70,7 @@ export default function ChessboardView({
     return arr;
   });
 
-  // Handler for drop in react-chessboard v5
+  
   const handlePieceDrop = ({ piece, sourceSquare, targetSquare }) => {
     if (!targetSquare) return false;
     if (!onPieceDrop) return false;

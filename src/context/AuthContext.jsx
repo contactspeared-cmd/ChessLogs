@@ -18,17 +18,17 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load profile from PHP API, or fallback to Local Site Accounts
+  
   const fetchProfile = useCallback(async (userId) => {
-    // 1. Try PHP MySQL backend first
+    
     try {
       const data = await api.auth.getProfile(userId);
       if (data && data.id) return data;
     } catch {
-      // ignore and proceed to fallback
+      
     }
 
-    // 2. Check local site accounts store
+    
     const siteAcc = findSiteAccountById(userId);
     if (siteAcc) {
       const safe = { ...siteAcc };
@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
       return safe;
     }
 
-    // 3. Fallback to active profile in localStorage
+    
     try {
       const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
       if (saved) {
@@ -45,23 +45,23 @@ export function AuthProvider({ children }) {
         if (parsed?.id === userId) return parsed;
       }
     } catch {
-      // ignore
+      
     }
 
     return null;
   }, []);
 
-  // Initialize auth state
+  
   useEffect(() => {
     let mounted = true;
 
     async function initialize() {
-      // Ensure seed accounts exist in storage
+      
       getSiteAccounts();
 
       let restored = false;
 
-      // Restore active profile from localStorage and refresh from PHP backend
+      
       const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
       if (saved) {
         try {
@@ -107,11 +107,11 @@ export function AuthProvider({ children }) {
     };
   }, [fetchProfile]);
 
-  // Sign in with email & password
+  
   const signInWithEmail = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    // 1. Authenticate with PHP MySQL backend
+    
     let apiErr = null;
     try {
       const res = await api.auth.login(cleanEmail, password);
@@ -126,7 +126,7 @@ export function AuthProvider({ children }) {
       console.warn('PHP API login failed, checking local credentials fallback:', err?.message);
     }
 
-    // 2. Fall back to local site accounts
+    
     try {
       const siteResult = await verifySiteCredentials(cleanEmail, password);
       if (siteResult?.user && siteResult?.profile) {
@@ -136,12 +136,12 @@ export function AuthProvider({ children }) {
         return siteResult;
       }
     } catch (localErr) {
-      // If the PHP backend returned 401 Unauthorized (invalid credentials explicitly rejected by backend), show that
+      
       if (apiErr && apiErr.status === 401) {
         throw apiErr;
       }
-      // If the API had a routing/connection error (e.g. 405 Method Not Allowed on static hosts, 404, or network failure),
-      // bubble up the local validation error (e.g. "Incorrect password" or "No account found with this email")
+      
+      
       if (localErr && localErr.message) {
         throw localErr;
       }
@@ -149,11 +149,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  /**
-   * Sign up with complete user details:
-   * Composite name (First Name, MI, Last Name required*), Suffix, Date of Birth,
-   * Email, Chess.com username, Password and Confirm Password.
-   */
+  
   const signUpWithEmail = async ({
     firstName,
     middleInitial,
@@ -166,7 +162,7 @@ export function AuthProvider({ children }) {
     confirmPassword,
     role = 'student',
   }) => {
-    // 1. Confirm password check
+    
     if (!password) {
       throw new Error('Password is required.');
     }
@@ -174,7 +170,7 @@ export function AuthProvider({ children }) {
       throw new Error('Passwords do not match. Please re-enter.');
     }
 
-    // 2. Register via PHP MySQL backend
+    
     try {
       const res = await api.auth.signup({
         firstName,
@@ -197,7 +193,7 @@ export function AuthProvider({ children }) {
       }
     } catch (apiErr) {
       console.warn('PHP API signup error, falling back to local storage creation:', apiErr?.message);
-      // Fallback
+      
       const { user: siteUser, profile: siteProfile } = await createSiteAccount({
         firstName,
         middleInitial,
@@ -217,14 +213,14 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Sign in using Chess.com account (verifies against Chess.com API)
+  
   const signInWithChesscom = async (username) => {
     if (!username || !username.trim()) {
       throw new Error('Please enter your Chess.com username.');
     }
     const cleanUsername = username.trim().toLowerCase();
 
-    // Verify existence with Chess.com Public API
+    
     const liveProfile = await fetchChesscomProfile(cleanUsername);
     if (!liveProfile) {
       throw new Error(`Chess.com username "${cleanUsername}" was not found.`);
@@ -278,7 +274,7 @@ export function AuthProvider({ children }) {
     return { user: sessionUser, profile: finalProfile };
   };
 
-  // Google OAuth mock / fallback
+  
   const signInWithGoogle = async () => {
     const mockGoogleUser = {
       id: `google-${Date.now()}`,
@@ -300,14 +296,14 @@ export function AuthProvider({ children }) {
     return { user: { id: mockGoogleUser.id, email: 'student@gmail.com' } };
   };
 
-  // Sign out
+  
   const signOut = async () => {
     setUser(null);
     setProfile(null);
     localStorage.removeItem(STORAGE_KEY_LOCAL_USER);
   };
 
-  // Update profile
+  
   const updateProfile = async (updates) => {
     if (!profile) return null;
 

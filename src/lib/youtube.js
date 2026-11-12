@@ -1,7 +1,4 @@
-/**
- * Extract a YouTube video ID from common URL formats.
- * Supports watch, youtu.be, embed, shorts, and mobile URLs.
- */
+
 export function getYouTubeVideoId(url) {
   if (!url || typeof url !== 'string') return null;
 
@@ -33,7 +30,6 @@ export function isYouTubeUrl(url) {
   return Boolean(getYouTubeVideoId(url));
 }
 
-/** Convert a YouTube watch/share URL into an embeddable iframe src. */
 export function getYouTubeEmbedUrl(url) {
   const id = getYouTubeVideoId(url);
   if (!id) return null;

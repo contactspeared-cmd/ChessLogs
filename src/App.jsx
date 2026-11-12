@@ -79,7 +79,7 @@ export default function App() {
             <Route
               path="/applications"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <Applications />
                 </ProtectedRoute>
               }
@@ -88,7 +88,7 @@ export default function App() {
             <Route
               path="/dashboard"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <Dashboard />
                 </ProtectedRoute>
               }
@@ -115,7 +115,7 @@ export default function App() {
             <Route
               path="/games"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <Games />
                 </ProtectedRoute>
               }
@@ -124,7 +124,7 @@ export default function App() {
             <Route
               path="/analysis"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <Analysis />
                 </ProtectedRoute>
               }
@@ -133,7 +133,7 @@ export default function App() {
             <Route
               path="/courses"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <Courses />
                 </ProtectedRoute>
               }
@@ -142,7 +142,7 @@ export default function App() {
             <Route
               path="/courses/:id"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <CoursePlayer />
                 </ProtectedRoute>
               }
@@ -151,7 +151,7 @@ export default function App() {
             <Route
               path="/courses/:id/train"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute disallowAdmin>
                   <MoveTrainer />
                 </ProtectedRoute>
               }

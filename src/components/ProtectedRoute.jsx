@@ -5,6 +5,7 @@ export function ProtectedRoute({
   children,
   requireAdmin = false,
   requireCoach = false,
+  disallowAdmin = false,
   allowedRoles = null,
 }) {
   const { user, profile, isAdmin, isCoach, loading } = useAuth();
@@ -26,17 +27,17 @@ export function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requireCoach && !isCoach && !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+  if (requireCoach && !isCoach) {
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
   }
 
-  if (isAdmin && !requireAdmin) {
+  if (isAdmin && disallowAdmin) {
     return <Navigate to="/admin" replace />;
   }
 
   const role = profile?.role || 'student';
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={isAdmin ? '/admin' : '/dashboard'} replace />;
   }
 
   return children;

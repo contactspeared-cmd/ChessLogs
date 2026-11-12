@@ -5,9 +5,6 @@ import { ENGINE_CONFIG } from '../config/engine';
 import { insertVariationIntoPgn, uciPvToSans } from '../lib/pgnVariations';
 import { Sparkles, Loader2 } from 'lucide-react';
 
-/**
- * B.8.1 — Admin tool: pick a mainline ply, fetch MultiPV alternatives, insert as PGN variation.
- */
 export default function EngineVariationTools({ pgn, onPgnChange }) {
   const [selectedPly, setSelectedPly] = useState(0);
   const [alts, setAlts] = useState([]);

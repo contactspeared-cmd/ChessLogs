@@ -10,10 +10,6 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 const now = () => new Date();
 
 function startOf(period) {
@@ -49,10 +45,6 @@ function pct(num, den) {
   return Math.round((num / den) * 100);
 }
 
-// ---------------------------------------------------------------------------
-// Time bucket helpers
-// ---------------------------------------------------------------------------
-
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -85,8 +77,8 @@ function getBucketIndex(dateStr, period) {
     case 'daily':
       return d.getHours();
     case 'weekly': {
-      const day = d.getDay(); // 0=Sun
-      return day === 0 ? 6 : day - 1; // Mon=0 … Sun=6
+      const day = d.getDay(); 
+      return day === 0 ? 6 : day - 1; 
     }
     case 'monthly': {
       const dayOfMonth = d.getDate();
@@ -105,10 +97,6 @@ function getBucketIndex(dateStr, period) {
       return -1;
   }
 }
-
-// ---------------------------------------------------------------------------
-// SVG Bar Chart
-// ---------------------------------------------------------------------------
 
 function BarChart({ buckets, data, color = '#10b981', height = 160 }) {
   const max = Math.max(...data, 1);
@@ -129,7 +117,7 @@ function BarChart({ buckets, data, color = '#10b981', height = 160 }) {
       height="auto"
       aria-label="Games activity bar chart"
     >
-      {/* Y gridlines */}
+      {}
       {[0, 0.25, 0.5, 0.75, 1].map((frac) => {
         const y = padT + innerH * (1 - frac);
         return (
@@ -156,7 +144,7 @@ function BarChart({ buckets, data, color = '#10b981', height = 160 }) {
         );
       })}
 
-      {/* Bars */}
+      {}
       {buckets.map((label, i) => {
         const val = data[i] || 0;
         const barH = (val / max) * innerH;
@@ -201,7 +189,7 @@ function BarChart({ buckets, data, color = '#10b981', height = 160 }) {
         );
       })}
 
-      {/* X-axis labels for non-daily */}
+      {}
       {buckets.length <= 12 &&
         buckets.map((label, i) => {
           const x =
@@ -222,10 +210,6 @@ function BarChart({ buckets, data, color = '#10b981', height = 160 }) {
     </svg>
   );
 }
-
-// ---------------------------------------------------------------------------
-// SVG Donut Chart
-// ---------------------------------------------------------------------------
 
 function DonutChart({ wins, draws, losses }) {
   const total = wins + draws + losses;
@@ -305,10 +289,6 @@ function DonutChart({ wins, draws, losses }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// SVG Line Chart
-// ---------------------------------------------------------------------------
-
 function LineChart({ buckets, data, height = 140 }) {
   const validData = data.map((v) => (isNaN(v) ? null : v));
   const hasData = validData.some((v) => v !== null);
@@ -336,7 +316,7 @@ function LineChart({ buckets, data, height = 140 }) {
       height="auto"
       aria-label="Accuracy trend line chart"
     >
-      {/* Gridlines */}
+      {}
       {[0, 25, 50, 75, 100].map((pctVal) => {
         const y = toY(pctVal);
         return (
@@ -357,7 +337,7 @@ function LineChart({ buckets, data, height = 140 }) {
         );
       })}
 
-      {/* Line */}
+      {}
       {hasData && (
         <polyline
           points={points}
@@ -369,7 +349,7 @@ function LineChart({ buckets, data, height = 140 }) {
         />
       )}
 
-      {/* Dots */}
+      {}
       {hasData &&
         validData.map((v, i) =>
           v !== null ? (
@@ -379,7 +359,7 @@ function LineChart({ buckets, data, height = 140 }) {
           ) : null
         )}
 
-      {/* X labels */}
+      {}
       {buckets.map((label, i) => (
         <text
           key={label}
@@ -395,10 +375,6 @@ function LineChart({ buckets, data, height = 140 }) {
     </svg>
   );
 }
-
-// ---------------------------------------------------------------------------
-// KPI Card
-// ---------------------------------------------------------------------------
 
 function KpiCard({ icon: Icon, label, value, accent }) {
   const accentClasses =
@@ -416,10 +392,6 @@ function KpiCard({ icon: Icon, label, value, accent }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// ELO Distribution (admin only)
-// ---------------------------------------------------------------------------
 
 const ELO_BANDS = [
   { label: '<1000', min: 0, max: 999 },
@@ -453,10 +425,6 @@ function EloDistribution({ students }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Top Openings Table
-// ---------------------------------------------------------------------------
 
 function OpeningsTable({ games, accent }) {
   const openingMap = useMemo(() => {
@@ -519,10 +487,6 @@ function OpeningsTable({ games, accent }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Empty State
-// ---------------------------------------------------------------------------
-
 function EmptyState({ message = 'No data for this period.' }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-10 text-slate-500">
@@ -531,10 +495,6 @@ function EmptyState({ message = 'No data for this period.' }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Section wrapper
-// ---------------------------------------------------------------------------
 
 function Section({ title, icon: Icon, children, className = '' }) {
   return (
@@ -549,10 +509,6 @@ function Section({ title, icon: Icon, children, className = '' }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------------
 
 const PERIODS = [
   { key: 'daily', label: 'Daily' },
@@ -579,7 +535,7 @@ export default function StatisticsPanel({
     : 'bg-amber-500 text-white shadow-lg shadow-amber-900/40';
   const inactivePillClass = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800';
 
-  // ---- Collect all games across students filtered by period ----
+  
   const allGames = useMemo(() => {
     return students.flatMap((s) =>
       (s.games || []).map((g) => ({ ...g, _student: s }))
@@ -590,7 +546,7 @@ export default function StatisticsPanel({
     return allGames.filter((g) => inPeriod(g.played_at, period));
   }, [allGames, period]);
 
-  // ---- Win/Draw/Loss ----
+  
   const wdl = useMemo(() => {
     return filteredGames.reduce(
       (acc, g) => {
@@ -603,7 +559,7 @@ export default function StatisticsPanel({
     );
   }, [filteredGames]);
 
-  // ---- Accuracy values ----
+  
   const accuracyValues = useMemo(() => {
     return filteredGames
       .filter((g) => g.review)
@@ -617,7 +573,7 @@ export default function StatisticsPanel({
 
   const avgAccuracy = useMemo(() => avg(accuracyValues), [accuracyValues]);
 
-  // ---- Time buckets ----
+  
   const buckets = useMemo(() => getBuckets(period), [period]);
 
   const bucketGameCounts = useMemo(() => {
@@ -648,13 +604,13 @@ export default function StatisticsPanel({
     return sums.map((s, i) => (cnts[i] ? s / cnts[i] : null));
   }, [filteredGames, buckets, period]);
 
-  // ---- Active students (played at least 1 game in period) ----
+  
   const activeStudents = useMemo(() => {
     const ids = new Set(filteredGames.map((g) => g.student_id || g._student?.id));
     return ids.size;
   }, [filteredGames]);
 
-  // ---- Courses completed ----
+  
   const coursesCompletionRate = useMemo(() => {
     const totalChapters = courses.reduce((s, c) => s + ((c.chapters || []).length || 1), 0);
     if (!totalChapters) return 0;
@@ -671,15 +627,15 @@ export default function StatisticsPanel({
     return pct(completed, totalChapters);
   }, [students, courses]);
 
-  // ---- Admin: total accounts filtered by created_at ----
+  
   const filteredAccounts = useMemo(() => {
     return accounts.filter((a) => inPeriod(a.created_at || a.joined_at, period));
   }, [accounts, period]);
 
-  // ---- Admin: ELO distribution (all students, not period-filtered) ----
+  
   const eloStudents = useMemo(() => students.filter((s) => s.current_elo != null), [students]);
 
-  // ---- KPI data ----
+  
   const kpiItems = useMemo(() => {
     if (isAdmin) {
       return [
@@ -725,7 +681,7 @@ export default function StatisticsPanel({
 
   return (
     <div className="bg-slate-950 min-h-screen p-4 md:p-6 space-y-6">
-      {/* Header + Period Filter */}
+      {}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2 text-white font-semibold text-lg">
           <Filter size={18} className={isAdmin ? 'text-purple-400' : 'text-amber-400'} />
@@ -756,21 +712,21 @@ export default function StatisticsPanel({
         </div>
       </div>
 
-      {/* KPI Row */}
+      {}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {kpiItems.map(({ icon, label, value }) => (
           <KpiCard key={label} icon={icon} label={label} value={value} accent={accent} />
         ))}
       </div>
 
-      {/* Charts Row */}
+      {}
       {!hasGames ? (
         <Section>
           <EmptyState message="No games found for this time period." />
         </Section>
       ) : (
         <>
-          {/* Bar Chart */}
+          {}
           <Section title="Games Activity" icon={BarChart2}>
             <BarChart
               buckets={buckets}
@@ -779,7 +735,7 @@ export default function StatisticsPanel({
             />
           </Section>
 
-          {/* Donut + Line Charts */}
+          {}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Section title="Win / Draw / Loss" icon={Trophy}>
               <div className="flex justify-center py-2">
@@ -800,7 +756,7 @@ export default function StatisticsPanel({
             </Section>
           </div>
 
-          {/* Openings + ELO */}
+          {}
           <div className={`grid grid-cols-1 ${isAdmin ? 'md:grid-cols-2' : ''} gap-6`}>
             <Section title="Top Openings" icon={Calendar}>
               <OpeningsTable games={filteredGames} accent={accent} />
