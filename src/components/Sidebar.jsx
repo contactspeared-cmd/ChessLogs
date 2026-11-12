@@ -17,7 +17,11 @@ import {
   X,
   CheckCircle2,
   BookOpen,
-  Award,
+  Users,
+  LayoutDashboard,
+  ClipboardList,
+  BookMarked,
+  ArrowRight,
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -33,10 +37,12 @@ export default function Sidebar() {
   };
 
   const adminLinks = [
-    { name: 'Command Center', path: '/admin', icon: ShieldAlert },
-    { name: 'Coach Applications', path: '/applications', icon: Award },
+    { name: 'Command Center', path: '/admin', icon: LayoutDashboard },
+    { name: 'User Management', path: '/admin', icon: Users, tab: 'users' },
+    { name: 'Course Library', path: '/admin', icon: BookMarked, tab: 'courses' },
+    { name: 'Coach Applications', path: '/admin', icon: ClipboardList, tab: 'coaches' },
+    { name: 'Enrollment Requests', path: '/admin', icon: GraduationCap, tab: 'enrollments' },
     { name: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
-    { name: 'Direct Messages', path: '/messages', icon: MessageSquare },
     { name: 'Support Desk', path: '/support', icon: HelpCircle },
     { name: 'Feedback Hub', path: '/feedback', icon: MessageCircle },
     { name: 'Admin Profile', path: '/profile', icon: User },
@@ -44,7 +50,6 @@ export default function Sidebar() {
 
   const coachLinks = [
     { name: 'Coach Studio', path: '/coach', icon: GraduationCap },
-    { name: 'Accreditation', path: '/applications', icon: Award },
     { name: 'Student Messages', path: '/messages', icon: MessageSquare },
     { name: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
     { name: 'Help & Support', path: '/support', icon: HelpCircle },
@@ -54,9 +59,7 @@ export default function Sidebar() {
 
   const links = isAdmin ? adminLinks : coachLinks;
 
-  const isActive = (path) => {
-    return location.pathname === path;
-  };
+  const isActive = (path) => location.pathname === path;
 
   return (
     <>
@@ -68,7 +71,7 @@ export default function Sidebar() {
           <span className="font-extrabold text-base tracking-tight text-white">
             ChessLogs
           </span>
-          <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${isAdmin ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
             {isAdmin ? 'Admin' : 'Coach'}
           </span>
         </Link>
@@ -111,7 +114,7 @@ export default function Sidebar() {
                     <span className="font-extrabold text-base tracking-tight text-white">
                       ChessLogs
                     </span>
-                    <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded border ${isAdmin ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'}`}>
                       {isAdmin ? 'Admin' : 'Coach'}
                     </span>
                   </div>
@@ -145,20 +148,20 @@ export default function Sidebar() {
                   </div>
                   <div className="text-[11px] text-slate-400 truncate flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                    <span>{isAdmin ? 'System Admin' : 'Certified Coach'}</span>
+                    <span>{isAdmin ? 'System Administrator' : 'Certified Coach'}</span>
                   </div>
                 </div>
               )}
             </div>
           </div>
 
-          <nav className="px-3 py-2 space-y-1">
+          <nav className="px-3 py-2 space-y-0.5">
             {links.map((item) => {
               const Icon = item.icon;
-              const active = isActive(item.path);
+              const active = isActive(item.path) && !item.tab;
               return (
                 <Link
-                  key={item.path}
+                  key={item.path + (item.tab || '')}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
                   title={collapsed ? item.name : undefined}
@@ -177,17 +180,24 @@ export default function Sidebar() {
         </div>
 
         <div className="p-3 border-t border-slate-800 space-y-1.5">
-          <Link
-            to="/dashboard"
-            onClick={() => setMobileOpen(false)}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors ${
-              collapsed ? 'justify-center' : ''
-            }`}
-            title="Switch to Learner View"
-          >
-            <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
-            {!collapsed && <span>Learner View</span>}
-          </Link>
+          {isCoach && (
+            <Link
+              to="/dashboard"
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-amber-400 hover:text-white hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 transition-all ${
+                collapsed ? 'justify-center' : ''
+              }`}
+              title="My Learning Portal"
+            >
+              <BookOpen className="w-4 h-4 shrink-0 text-amber-400" />
+              {!collapsed && (
+                <span className="flex items-center gap-1.5">
+                  My Learning Portal
+                  <ArrowRight className="w-3 h-3" />
+                </span>
+              )}
+            </Link>
+          )}
 
           <button
             onClick={handleLogout}

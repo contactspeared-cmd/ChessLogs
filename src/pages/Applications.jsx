@@ -49,6 +49,26 @@ const SPECIALTIES = [
 export default function Applications() {
   const { profile, isCoach, isAdmin } = useAuth();
 
+  if (isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-24 text-center space-y-5">
+        <ShieldAlert className="w-14 h-14 text-purple-400 mx-auto" />
+        <h1 className="text-2xl font-extrabold text-white">Coach Applications</h1>
+        <p className="text-sm text-slate-400 leading-relaxed">
+          As a site administrator, you review and approve coach applications from the Admin Command Center — not from this page.
+          Coach application management is available under the <span className="text-purple-400 font-semibold">Coach Applications</span> tab in your dashboard.
+        </p>
+        <a
+          href="/admin"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm transition-all"
+        >
+          <ShieldAlert className="w-4 h-4" />
+          <span>Go to Admin Command Center</span>
+        </a>
+      </div>
+    );
+  }
+
   const [myCredentials, setMyCredentials] = useState([]);
   const [loading, setLoading] = useState(true);
 

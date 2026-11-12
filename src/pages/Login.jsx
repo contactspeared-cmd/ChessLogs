@@ -5,7 +5,7 @@ import { ChessKnightIcon } from '../components/ChessIcons';
 import { LogIn, AlertCircle, CheckCircle2, Eye, EyeOff, ShieldCheck, ArrowRight } from 'lucide-react';
 
 export default function Login() {
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, profile: authProfile } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -21,8 +21,15 @@ export default function Login() {
     setInfoMessage('');
     setLoading(true);
     try {
-      await signInWithEmail(email.trim(), password);
-      navigate('/dashboard');
+      const result = await signInWithEmail(email.trim(), password);
+      const role = result?.profile?.role || 'student';
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (role === 'coach') {
+        navigate('/coach');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message || 'Failed to sign in. Please verify your credentials.');
     } finally {

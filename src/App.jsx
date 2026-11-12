@@ -29,8 +29,7 @@ function AppLayout({ children }) {
   const { user, isCoach, isAdmin } = useAuth();
 
   const isAuthPage = ['/login', '/signup'].includes(location.pathname);
-  const isLandingPage = location.pathname === '/';
-  const isSidebarPage = ['/coach', '/admin'].includes(location.pathname);
+  const isSidebarPage = isAdmin || ['/coach', '/admin'].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans antialiased">
@@ -46,7 +45,6 @@ function AppLayout({ children }) {
           <div className="max-w-7xl mx-auto px-4 space-y-3">
             <div className="flex items-center justify-center gap-6 font-semibold text-slate-300">
               <a href="/marketplace" className="hover:text-emerald-400">Marketplace</a>
-              <a href="/applications" className="hover:text-emerald-400">Coach Applications</a>
               <a href="/support" className="hover:text-emerald-400">Customer Support</a>
               <a href="/feedback" className="hover:text-emerald-400">Community Feedback</a>
               <a href="/login" className="hover:text-emerald-400">Account Access</a>

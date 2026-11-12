@@ -12,7 +12,7 @@ export function ProtectedRoute({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#121417] text-slate-400 text-sm">
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400 text-sm">
         Loading ChessLogs...
       </div>
     );
@@ -22,8 +22,6 @@ export function ProtectedRoute({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  const role = profile?.role || 'student';
-
   if (requireAdmin && !isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -32,6 +30,11 @@ export function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
+  if (isAdmin && !requireAdmin) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  const role = profile?.role || 'student';
   if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/dashboard" replace />;
   }

@@ -5,8 +5,6 @@ import { getCourses, getGamesForStudent } from '../lib/db';
 import { fetchChesscomStats } from '../lib/chesscom';
 import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
-import CoachDashboard from '../components/dashboard/CoachDashboard';
-import AdminDashboard from './AdminDashboard';
 import {
   Trophy,
   BookOpen,
@@ -15,20 +13,15 @@ import {
   ArrowRight,
   Sparkles,
   Zap,
-  Eye,
-  ArrowLeft,
   GraduationCap,
   ShoppingBag,
-  Clock,
-  Target,
-  CheckCircle2,
+  MessageSquare,
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { profile, isAdmin, isCoach } = useAuth();
+  const { profile, isCoach } = useAuth();
   const navigate = useNavigate();
 
-  const [previewStudent, setPreviewStudent] = useState(false);
   const [courses, setCourses] = useState([]);
   const [games, setGames] = useState([]);
   const [chessStats, setChessStats] = useState(null);
@@ -59,14 +52,6 @@ export default function Dashboard() {
     loadDashboardData();
   }, [profile]);
 
-  if (isAdmin && !previewStudent) {
-    return <AdminDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
-  }
-
-  if (isCoach && !previewStudent) {
-    return <CoachDashboard onPreviewStudentView={() => setPreviewStudent(true)} />;
-  }
-
   const totalGames = games.length;
   const wins = games.filter((g) => g.result === 'win').length;
   const losses = games.filter((g) => g.result === 'loss').length;
@@ -84,21 +69,21 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {previewStudent && (
+      {isCoach && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5 text-xs text-amber-300 font-semibold">
-            <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+            <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
             <span>
-              Previewing Learner Portal View ({isAdmin ? 'Administrator Mode' : 'Coach Mode'})
+              You are a certified coach. This is your personal student learning portal.
             </span>
           </div>
-          <button
-            onClick={() => setPreviewStudent(false)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all"
+          <Link
+            to="/coach"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shrink-0"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>{isAdmin ? 'Back to Command Center' : 'Back to Coach Studio'}</span>
-          </button>
+            <span>Coach Studio</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       )}
 
@@ -134,9 +119,18 @@ export default function Dashboard() {
             to="/analysis"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all"
           >
-            <Crosshair className="w-4 h-4 text-emerald-600" />
+            <Crosshair className="w-4 h-4 text-emerald-400" />
             <span>Analysis Board</span>
           </Link>
+          {isCoach && (
+            <Link
+              to="/messages"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-all"
+            >
+              <MessageSquare className="w-4 h-4 text-amber-400" />
+              <span>Messages</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -157,7 +151,7 @@ export default function Dashboard() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Synced Matches</span>
-            <Database className="w-4 h-4 text-emerald-600" />
+            <Database className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-black text-white">{totalGames}</div>
           <p className="text-[11px] text-emerald-400 font-semibold">
@@ -168,7 +162,7 @@ export default function Dashboard() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Engine Accuracy</span>
-            <Zap className="w-4 h-4 text-cyan-600" />
+            <Zap className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-black text-white">
             {averageAccuracy ? `${averageAccuracy}%` : '—'}
@@ -179,7 +173,7 @@ export default function Dashboard() {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Active Courses</span>
-            <BookOpen className="w-4 h-4 text-purple-600" />
+            <BookOpen className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl font-black text-white">{courses.length}</div>
           <p className="text-[11px] text-purple-400 font-semibold">MoveTrainer Enrolled</p>
@@ -190,7 +184,7 @@ export default function Dashboard() {
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-emerald-600" />
+              <BookOpen className="w-5 h-5 text-emerald-400" />
               <span>Current MoveTrainer Study Courses</span>
             </h2>
             <Link
@@ -204,7 +198,7 @@ export default function Dashboard() {
 
           {courses.length === 0 ? (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center space-y-3 shadow-sm">
-              <BookOpen className="w-10 h-10 text-slate-300 mx-auto" />
+              <BookOpen className="w-10 h-10 text-slate-600 mx-auto" />
               <p className="text-xs text-slate-400">No courses enrolled in your personal study track yet.</p>
               <Link
                 to="/marketplace"
@@ -236,7 +230,7 @@ export default function Dashboard() {
                         </span>
                         {course.coach_name && (
                           <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <GraduationCap className="w-3 h-3 text-amber-600" />
+                            <GraduationCap className="w-3 h-3 text-amber-400" />
                             <span>Coach {course.coach_name}</span>
                           </span>
                         )}
@@ -244,7 +238,7 @@ export default function Dashboard() {
                       <h3 className="font-bold text-white text-sm line-clamp-1">
                         {course.title}
                       </h3>
-                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-800">
+                      <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
                         <div
                           className="bg-emerald-600 h-full rounded-full transition-all duration-300"
                           style={{ width: `${percent}%` }}
@@ -254,7 +248,7 @@ export default function Dashboard() {
 
                     <Link
                       to={`/courses/${course.id}`}
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-colors shrink-0 text-center"
+                      className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-colors shrink-0 text-center"
                     >
                       Study Now
                     </Link>
@@ -268,7 +262,7 @@ export default function Dashboard() {
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-600" />
+              <Sparkles className="w-5 h-5 text-emerald-400" />
               <span>Recent Game Evaluations</span>
             </h2>
             <Link
@@ -282,10 +276,10 @@ export default function Dashboard() {
 
           {games.length === 0 ? (
             <div className="bg-slate-900 border border-slate-800 rounded-2xl p-10 text-center text-slate-400 text-xs shadow-sm space-y-2">
-              <Database className="w-8 h-8 text-slate-300 mx-auto" />
+              <Database className="w-8 h-8 text-slate-600 mx-auto" />
               <p>No games synced yet.</p>
               <Link to="/games" className="text-emerald-400 font-bold hover:underline">
-                Sync Chess.com Database →
+                Sync Chess.com Database
               </Link>
             </div>
           ) : (
@@ -303,7 +297,7 @@ export default function Dashboard() {
                           game.result === 'win'
                             ? 'bg-emerald-500/10 text-emerald-300'
                             : game.result === 'loss'
-                            ? 'bg-rose-100 text-rose-300'
+                            ? 'bg-rose-500/10 text-rose-300'
                             : 'bg-slate-800 text-slate-300'
                         }`}
                       >
@@ -326,7 +320,7 @@ export default function Dashboard() {
                     </span>
                   ) : (
                     <span className="text-xs font-bold text-slate-400 group-hover:text-emerald-400">
-                      Analyze →
+                      Analyze
                     </span>
                   )}
                 </div>

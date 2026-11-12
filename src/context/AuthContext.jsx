@@ -338,6 +338,7 @@ export function AuthProvider({ children }) {
   const isAdmin = role === 'admin';
   const isCoach = role === 'coach';
   const isStudent = role === 'student';
+  const isCoachOrStudent = isCoach || isStudent;
 
   const switchDemoRole = async (targetRole) => {
     if (!profile) return;
@@ -354,6 +355,7 @@ export function AuthProvider({ children }) {
         isAdmin,
         isCoach,
         isStudent,
+        isCoachOrStudent,
         switchDemoRole,
         loading,
         signInWithEmail,
