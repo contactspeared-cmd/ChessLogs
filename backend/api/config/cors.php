@@ -32,7 +32,7 @@ function jsonError($message, $statusCode = 400, $details = null) {
 }
 
 function getJsonBody() {
-    $raw = file_get_contents('php:
+    $raw = file_get_contents('php://input');
     if (!$raw) {
         return [];
     }
