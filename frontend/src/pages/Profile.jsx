@@ -352,7 +352,6 @@ export default function Profile() {
                       value={middleInitial}
                       onChange={(e) => setMiddleInitial(e.target.value.toUpperCase())}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 text-xs text-white text-center font-bold focus:outline-none focus:border-emerald-500"
-                      required
                     />
                   </div>
 

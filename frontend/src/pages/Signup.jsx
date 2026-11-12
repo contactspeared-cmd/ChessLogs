@@ -91,10 +91,6 @@ export default function Signup() {
       setError('First Name is required.');
       return;
     }
-    if (!middleInitial.trim()) {
-      setError('Middle Initial (MI) is required.');
-      return;
-    }
     if (!lastName.trim()) {
       setError('Last Name is required.');
       return;
@@ -196,11 +192,10 @@ export default function Signup() {
                 <input
                   type="text"
                   maxLength={2}
-                  placeholder="M.I. *"
+                  placeholder="M.I."
                   value={middleInitial}
                   onChange={(e) => setMiddleInitial(e.target.value.toUpperCase())}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-2 py-2 text-xs text-white text-center uppercase focus:outline-none focus:border-emerald-500 focus:bg-slate-900"
-                  required
                 />
               </div>
 

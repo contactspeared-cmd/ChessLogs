@@ -283,9 +283,6 @@ export async function createSiteAccount({
   if (!cleanFirst) {
     throw new Error('First Name is required.');
   }
-  if (!cleanMi) {
-    throw new Error('Middle Initial (MI) is required.');
-  }
   if (!cleanLast) {
     throw new Error('Last Name is required.');
   }

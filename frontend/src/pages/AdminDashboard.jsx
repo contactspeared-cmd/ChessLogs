@@ -1618,10 +1618,9 @@ export default function AdminDashboard() {
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-semibold text-slate-400">M.I. *</label>
+                  <label className="text-[11px] font-semibold text-slate-400">M.I.</label>
                   <input
                     type="text"
-                    required
                     maxLength={2}
                     value={newMI}
                     onChange={(e) => setNewMI(e.target.value)}
