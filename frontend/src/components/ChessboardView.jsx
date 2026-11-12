@@ -8,11 +8,12 @@ export default function ChessboardView({
   customArrows = [],
   customSquareStyles = {},
   isDraggable = true,
-  lastMove = null, 
+  lastMove = null,
   boardWidth,
 }) {
   const containerRef = useRef(null);
   const [computedWidth, setComputedWidth] = useState(boardWidth || 320);
+  const [selectedSquare, setSelectedSquare] = useState(null);
 
   useEffect(() => {
     if (boardWidth) {
@@ -29,7 +30,6 @@ export default function ChessboardView({
         (parseFloat(styles.paddingLeft) || 0) +
         (parseFloat(styles.paddingRight) || 0);
       const available = Math.max(0, el.clientWidth - padX);
-      
       const target = Math.max(160, Math.min(available, 580));
       setComputedWidth(target);
     };
@@ -45,7 +45,6 @@ export default function ChessboardView({
     };
   }, [boardWidth]);
 
-  
   const squareStyles = { ...customSquareStyles };
   if (lastMove?.from && lastMove?.to) {
     squareStyles[lastMove.from] = {
@@ -58,7 +57,13 @@ export default function ChessboardView({
     };
   }
 
-  
+  if (selectedSquare) {
+    squareStyles[selectedSquare] = {
+      backgroundColor: 'rgba(56, 189, 248, 0.45)',
+      ...squareStyles[selectedSquare],
+    };
+  }
+
   const formattedArrows = (customArrows || []).map((arr) => {
     if (Array.isArray(arr)) {
       return {
@@ -70,12 +75,32 @@ export default function ChessboardView({
     return arr;
   });
 
-  
   const handlePieceDrop = ({ piece, sourceSquare, targetSquare }) => {
+    setSelectedSquare(null);
     if (!targetSquare) return false;
     if (!onPieceDrop) return false;
     const res = onPieceDrop(sourceSquare, targetSquare, piece);
     return res !== false;
+  };
+
+  const handleSquareClick = ({ square, piece }) => {
+    if (!isDraggable || !onPieceDrop) return;
+    if (selectedSquare) {
+      if (selectedSquare === square) {
+        setSelectedSquare(null);
+        return;
+      }
+      const moved = onPieceDrop(selectedSquare, square, piece?.pieceType || 'q');
+      if (moved !== false) {
+        setSelectedSquare(null);
+        return;
+      }
+    }
+    if (piece) {
+      setSelectedSquare(square);
+    } else {
+      setSelectedSquare(null);
+    }
   };
 
   const chessboardOptions = {
@@ -83,6 +108,7 @@ export default function ChessboardView({
     boardOrientation,
     allowDragging: isDraggable,
     onPieceDrop: handlePieceDrop,
+    onSquareClick: handleSquareClick,
     arrows: formattedArrows,
     squareStyles,
     boardStyle: {

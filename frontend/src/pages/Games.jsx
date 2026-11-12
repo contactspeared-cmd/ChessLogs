@@ -499,6 +499,17 @@ export default function Games() {
                       </a>
                     )}
 
+                    {game.review && (
+                      <div className="flex items-center gap-1 text-[11px] font-mono font-bold">
+                        <span className="px-2 py-1 rounded-lg bg-slate-800 text-white border border-slate-700">
+                          W {game.review.accuracy_white ?? '—'}%
+                        </span>
+                        <span className="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700">
+                          B {game.review.accuracy_black ?? '—'}%
+                        </span>
+                      </div>
+                    )}
+
                     <button
                       onClick={() => navigate(`/analysis?gameId=${game.id}`)}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white text-xs font-semibold border border-slate-800 hover:border-emerald-600 transition-all group"

@@ -111,7 +111,6 @@ export function AuthProvider({ children }) {
   const signInWithEmail = async (email, password) => {
     const cleanEmail = (email || '').trim().toLowerCase();
 
-    
     let apiErr = null;
     try {
       const res = await api.auth.login(cleanEmail, password);
@@ -123,10 +122,12 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       apiErr = err;
-      console.warn('PHP API login failed, checking local credentials fallback:', err?.message);
     }
 
-    
+    if (apiErr && apiErr.status === 401) {
+      throw new Error('Incorrect password. Please verify and try again.');
+    }
+
     try {
       const siteResult = await verifySiteCredentials(cleanEmail, password);
       if (siteResult?.user && siteResult?.profile) {
@@ -135,21 +136,15 @@ export function AuthProvider({ children }) {
         localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteResult.profile));
         return siteResult;
       }
+      throw new Error('Login failed. Please try again.');
     } catch (localErr) {
-      
-      if (apiErr && apiErr.status === 401) {
-        throw apiErr;
-      }
-      
-      
       if (localErr && localErr.message) {
         throw localErr;
       }
-      throw apiErr || new Error('Invalid email or password. Please verify your credentials.');
+      throw new Error('Invalid email or password. Please verify your credentials.');
     }
   };
 
-  
   const signUpWithEmail = async ({
     firstName,
     middleInitial,
@@ -162,7 +157,6 @@ export function AuthProvider({ children }) {
     confirmPassword,
     role = 'student',
   }) => {
-    
     if (!password) {
       throw new Error('Password is required.');
     }
@@ -170,7 +164,8 @@ export function AuthProvider({ children }) {
       throw new Error('Passwords do not match. Please re-enter.');
     }
 
-    
+    const cleanEmail = (email || '').trim().toLowerCase();
+
     try {
       const res = await api.auth.signup({
         firstName,
@@ -178,7 +173,7 @@ export function AuthProvider({ children }) {
         lastName,
         suffix,
         dateOfBirth,
-        email,
+        email: cleanEmail,
         chesscomUsername,
         password,
         confirmPassword,
@@ -192,15 +187,22 @@ export function AuthProvider({ children }) {
         return res;
       }
     } catch (apiErr) {
-      console.warn('PHP API signup error, falling back to local storage creation:', apiErr?.message);
-      
+      if (apiErr?.status === 409) {
+        throw new Error('An account with this email already exists. Please sign in instead.');
+      }
+      if (apiErr?.status >= 400) {
+        throw new Error(apiErr.message || 'Registration failed. Please try again.');
+      }
+    }
+
+    try {
       const { user: siteUser, profile: siteProfile } = await createSiteAccount({
         firstName,
         middleInitial,
         lastName,
         suffix,
         dateOfBirth,
-        email,
+        email: cleanEmail,
         chesscomUsername,
         password,
         role,
@@ -210,6 +212,8 @@ export function AuthProvider({ children }) {
       setProfile(siteProfile);
       localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(siteProfile));
       return { user: siteUser, profile: siteProfile, session: true };
+    } catch (localErr) {
+      throw new Error(localErr.message || 'Registration failed. Please try again.');
     }
   };
 

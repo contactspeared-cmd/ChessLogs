@@ -1,9 +1,7 @@
 <?php
-/**
- * CORS handling and JSON response helpers
- */
 
-// Handle CORS Headers
+
+
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
 header("Access-Control-Allow-Origin: $origin");
 header("Access-Control-Allow-Credentials: true");
@@ -34,7 +32,7 @@ function jsonError($message, $statusCode = 400, $details = null) {
 }
 
 function getJsonBody() {
-    $raw = file_get_contents('php://input');
+    $raw = file_get_contents('php:
     if (!$raw) {
         return [];
     }

@@ -1,7 +1,5 @@
 <?php
-/**
- * Authentication Endpoints for ChessLogs
- */
+
 
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/db.php';
@@ -15,9 +13,9 @@ if (!$action && isset($body['action'])) {
     $action = $body['action'];
 }
 
-// -----------------------------------------------------------------------------
-// SIGN IN / LOGIN
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'login' && $method === 'POST') {
     $email = strtolower(trim($body['email'] ?? ''));
     $password = (string)($body['password'] ?? '');
@@ -47,9 +45,9 @@ if ($action === 'login' && $method === 'POST') {
     ]);
 }
 
-// -----------------------------------------------------------------------------
-// SIGN UP / REGISTER
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'signup' && $method === 'POST') {
     $firstName = trim($body['firstName'] ?? $body['first_name'] ?? '');
     $middleInitial = trim($body['middleInitial'] ?? $body['middle_initial'] ?? '');
@@ -75,7 +73,7 @@ if ($action === 'signup' && $method === 'POST') {
         jsonError('Passwords do not match. Please re-enter.', 400);
     }
 
-    // Check if email already exists
+
     $check = $pdo->prepare('SELECT id FROM profiles WHERE LOWER(email) = ? LIMIT 1');
     $check->execute([$email]);
     if ($check->fetch()) {
@@ -139,9 +137,9 @@ if ($action === 'signup' && $method === 'POST') {
     ], 201);
 }
 
-// -----------------------------------------------------------------------------
-// CHESS.COM SIGN IN OR AUTO-REGISTER
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'chesscom' && $method === 'POST') {
     $username = trim($body['username'] ?? $body['chesscom_username'] ?? '');
     if (!$username) {
@@ -149,7 +147,7 @@ if ($action === 'chesscom' && $method === 'POST') {
     }
     $cleanUsername = strtolower($username);
 
-    // Look for existing user with this chesscom username
+
     $stmt = $pdo->prepare('SELECT * FROM profiles WHERE LOWER(chesscom_username) = ? LIMIT 1');
     $stmt->execute([$cleanUsername]);
     $user = $stmt->fetch();
@@ -166,7 +164,7 @@ if ($action === 'chesscom' && $method === 'POST') {
         ]);
     }
 
-    // Otherwise create a student profile
+
     $id = 'chesscom-' . $cleanUsername;
     $displayName = $body['displayName'] ?? $username;
     $avatarUrl = $body['avatarUrl'] ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80';
@@ -195,9 +193,9 @@ if ($action === 'chesscom' && $method === 'POST') {
     ]);
 }
 
-// -----------------------------------------------------------------------------
-// GET OR UPDATE PROFILE
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'profile') {
     if ($method === 'GET') {
         $id = $_GET['id'] ?? '';
@@ -235,7 +233,7 @@ if ($action === 'profile') {
             }
         }
 
-        // Support camelCase parameters as well
+
         if (isset($body['firstName']) && !array_key_exists('first_name', $body)) {
             $fields[] = '`first_name` = ?';
             $params[] = $body['firstName'];
@@ -275,9 +273,9 @@ if ($action === 'profile') {
     }
 }
 
-// -----------------------------------------------------------------------------
-// ME / VERIFY SESSION
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'me' && $method === 'GET') {
     $id = $_GET['id'] ?? '';
     if (!$id) {

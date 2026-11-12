@@ -1,8 +1,4 @@
 <?php
-/**
- * Database connection setup for ChessLogs
- * Uses PDO for MySQL / MariaDB
- */
 
 function loadEnvFile($filePath) {
     if (!file_exists($filePath)) {
@@ -27,7 +23,7 @@ function loadEnvFile($filePath) {
     }
 }
 
-// Attempt to load .env from project root
+loadEnvFile(dirname(__DIR__, 3) . '/.env');
 loadEnvFile(dirname(__DIR__, 2) . '/.env');
 loadEnvFile(__DIR__ . '/.env');
 

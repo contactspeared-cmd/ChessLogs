@@ -1,7 +1,5 @@
 <?php
-/**
- * Course Assignments & Progress API Endpoint
- */
+
 
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/db.php';
@@ -15,9 +13,9 @@ if (!$action && isset($body['action'])) {
     $action = $body['action'];
 }
 
-// -----------------------------------------------------------------------------
-// GET ASSIGNMENT PROGRESS / TRAINER
-// -----------------------------------------------------------------------------
+
+
+
 if ($method === 'GET') {
     $courseId = $_GET['course_id'] ?? '';
     $studentId = $_GET['student_id'] ?? '';
@@ -44,9 +42,9 @@ if ($method === 'GET') {
     ]);
 }
 
-// -----------------------------------------------------------------------------
-// ASSIGN COURSE TO ROSTER OF STUDENTS
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'assign' && $method === 'POST') {
     $courseId = $body['course_id'] ?? '';
     $studentIds = $body['student_ids'] ?? [];
@@ -62,7 +60,7 @@ if ($action === 'assign' && $method === 'POST') {
 
     $pdo->beginTransaction();
     try {
-        // Find existing assignments
+
         $stmtExisting = $pdo->prepare('SELECT id, student_id FROM course_assignments WHERE course_id = ?');
         $stmtExisting->execute([$courseId]);
         $existing = $stmtExisting->fetchAll();
@@ -75,14 +73,14 @@ if ($action === 'assign' && $method === 'POST') {
             }
         }
 
-        // Delete assignments for students no longer assigned
+
         if (!empty($toRemove)) {
             $inPlaceholders = implode(',', array_fill(0, count($toRemove), '?'));
             $stmtDel = $pdo->prepare("DELETE FROM course_assignments WHERE id IN ($inPlaceholders)");
             $stmtDel->execute($toRemove);
         }
 
-        // Add newly assigned students
+
         $toAdd = array_diff($uniqueStudentIds, $existingStudentIds);
         if (!empty($toAdd)) {
             $stmtInsert = $pdo->prepare('INSERT INTO course_assignments (
@@ -111,14 +109,14 @@ if ($action === 'assign' && $method === 'POST') {
     }
 }
 
-// -----------------------------------------------------------------------------
-// MARK CHAPTER COMPLETE (Video, Read, Trained)
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'progress' && $method === 'POST') {
     $courseId = $body['course_id'] ?? '';
     $studentId = $body['student_id'] ?? '';
     $chapterId = $body['chapter_id'] ?? '';
-    $mode = $body['mode'] ?? 'video'; // 'video' | 'read' | 'trained'
+    $mode = $body['mode'] ?? 'video';
 
     if (!$courseId || !$studentId || !$chapterId) {
         jsonError('course_id, student_id, and chapter_id are required.', 400);
@@ -142,7 +140,7 @@ if ($action === 'progress' && $method === 'POST') {
             $prog['completed_chapter_ids'][] = $chapterId;
         }
     } else {
-        // Video / legacy mode
+
         if (!in_array($chapterId, $prog['completed_chapter_ids'], true)) {
             $prog['completed_chapter_ids'][] = $chapterId;
         }
@@ -154,7 +152,7 @@ if ($action === 'progress' && $method === 'POST') {
         $update = $pdo->prepare('UPDATE course_assignments SET progress = ?, last_accessed_at = NOW() WHERE id = ?');
         $update->execute([$encodedProgress, $assign['id']]);
     } else {
-        // Auto-provision assignment
+
         $assignId = 'assign-' . generateUuid();
         $insert = $pdo->prepare('INSERT INTO course_assignments (
             id, course_id, student_id, assigned_at, status, progress_pct, last_accessed_at, progress
@@ -165,9 +163,9 @@ if ($action === 'progress' && $method === 'POST') {
     jsonResponse(['success' => true, 'progress' => $prog]);
 }
 
-// -----------------------------------------------------------------------------
-// SAVE PREFERRED STUDY MODE
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'study_mode' && $method === 'POST') {
     $courseId = $body['course_id'] ?? '';
     $studentId = $body['student_id'] ?? '';
@@ -199,9 +197,9 @@ if ($action === 'study_mode' && $method === 'POST') {
     jsonResponse(['success' => true, 'preferred_study_mode' => $mode]);
 }
 
-// -----------------------------------------------------------------------------
-// SAVE TRAINER PROGRESS (SRS Cards state)
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'trainer_progress' && $method === 'POST') {
     $courseId = $body['course_id'] ?? '';
     $studentId = $body['student_id'] ?? '';

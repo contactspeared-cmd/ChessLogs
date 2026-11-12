@@ -4,12 +4,8 @@ export function getApiBase() {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
-  
-  
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-    if (window.location.port !== '3000' && window.location.port !== '8000') {
-      return 'http://127.0.0.1:8000/api';
-    }
+    return 'http://127.0.0.1:8000/api';
   }
   return '/api';
 }

@@ -1,7 +1,5 @@
 <?php
-/**
- * Courses API Endpoint for ChessLogs
- */
+
 
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/db.php';
@@ -10,7 +8,7 @@ require_once __DIR__ . '/config/helpers.php';
 $pdo = getDbConnection();
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Helper to fetch chapters for a course
+
 function getCourseChapters($pdo, $courseId) {
     $stmt = $pdo->prepare('SELECT * FROM course_chapters WHERE course_id = ? ORDER BY order_index ASC, id ASC');
     $stmt->execute([$courseId]);
@@ -18,15 +16,15 @@ function getCourseChapters($pdo, $courseId) {
     return array_map('normalizeChapter', $chapters);
 }
 
-// -----------------------------------------------------------------------------
-// GET COURSES
-// -----------------------------------------------------------------------------
+
+
+
 if ($method === 'GET') {
     $id = $_GET['id'] ?? null;
     $studentId = $_GET['student_id'] ?? null;
     $role = $_GET['role'] ?? null;
 
-    // Single Course
+
     if ($id) {
         $stmt = $pdo->prepare('SELECT * FROM courses WHERE id = ? LIMIT 1');
         $stmt->execute([$id]);
@@ -53,7 +51,7 @@ if ($method === 'GET') {
         jsonResponse($course);
     }
 
-    // List of courses for student (only assigned courses)
+
     if ($studentId && $role !== 'admin') {
         $sql = 'SELECT c.*, ca.progress as assignment_progress, ca.assigned_at,
                        p.display_name as coach_name, p.avatar_url as coach_avatar, p.role as coach_role, p.chesscom_username as coach_chesscom
@@ -81,7 +79,7 @@ if ($method === 'GET') {
         jsonResponse($result);
     }
 
-    // List of all courses (admin view or public catalog)
+
     $stmt = $pdo->query('SELECT c.*, p.display_name as coach_name, p.avatar_url as coach_avatar, p.role as coach_role, p.chesscom_username as coach_chesscom
                          FROM courses c
                          LEFT JOIN profiles p ON c.created_by = p.id
@@ -101,9 +99,9 @@ if ($method === 'GET') {
     jsonResponse($result);
 }
 
-// -----------------------------------------------------------------------------
-// CREATE OR UPDATE COURSE (with Chapters)
-// -----------------------------------------------------------------------------
+
+
+
 if ($method === 'POST') {
     $body = getJsonBody();
     $courseData = $body['course'] ?? $body;
@@ -127,7 +125,7 @@ if ($method === 'POST') {
     $pdo->beginTransaction();
 
     try {
-        // Upsert Course
+
         $sqlCourse = 'INSERT INTO courses (
             id, title, description, type, created_by,
             orientation, trained_side, min_elo, max_elo, is_published,
@@ -153,7 +151,7 @@ if ($method === 'POST') {
             $orientation, $trainedSide, $minElo, $maxElo, $isPublished
         ]);
 
-        // Replace chapters if provided
+
         if (is_array($chaptersData)) {
             $delChapters = $pdo->prepare('DELETE FROM course_chapters WHERE course_id = ?');
             $delChapters->execute([$courseId]);
@@ -200,7 +198,7 @@ if ($method === 'POST') {
 
         $pdo->commit();
 
-        // Fetch saved course
+
         $stmtFetch = $pdo->prepare('SELECT * FROM courses WHERE id = ?');
         $stmtFetch->execute([$courseId]);
         $saved = $stmtFetch->fetch();
@@ -214,9 +212,9 @@ if ($method === 'POST') {
     }
 }
 
-// -----------------------------------------------------------------------------
-// DELETE COURSE
-// -----------------------------------------------------------------------------
+
+
+
 if ($method === 'DELETE') {
     $courseId = $_GET['id'] ?? '';
     if (!$courseId) {

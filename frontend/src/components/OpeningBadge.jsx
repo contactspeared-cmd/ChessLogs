@@ -1,5 +1,5 @@
 import { BookOpen } from 'lucide-react';
-import { formatOpeningLabel } from '../lib/openings';
+import { formatOpeningLabel, getOpeningNameByEco } from '../lib/openings';
 
 export default function OpeningBadge({
   eco,
@@ -9,16 +9,15 @@ export default function OpeningBadge({
   size = 'md',
   className = '',
 }) {
-  const label = formatOpeningLabel(
-    name
-      ? { eco, name, family: opening, variation }
-      : {
-          eco,
-          family: opening,
-          variation,
-          name: [opening, variation].filter(Boolean).join(': ') || null,
-        }
-  );
+  const fallbackEcoName = eco ? getOpeningNameByEco(eco) : null;
+  const resolvedOpening = opening && opening !== eco ? opening : (name && name !== eco ? name : fallbackEcoName);
+
+  const label = formatOpeningLabel({
+    eco,
+    family: resolvedOpening,
+    variation,
+    name: resolvedOpening,
+  });
 
   if (!label) return null;
 

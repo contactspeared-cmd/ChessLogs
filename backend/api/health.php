@@ -1,7 +1,5 @@
 <?php
-/**
- * Health check endpoint for ChessLogs API
- */
+
 
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/db.php';

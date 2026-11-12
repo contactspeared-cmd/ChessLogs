@@ -1,8 +1,4 @@
 <?php
-/**
- * Database Migration & Setup CLI script for ChessLogs
- * Usage: php database/migrate.php
- */
 
 require_once __DIR__ . '/../api/config/db.php';
 
@@ -19,12 +15,10 @@ try {
     echo "Reading schema from: $sqlPath\n";
     $sql = file_get_contents($sqlPath);
 
-    // Execute multiple statements
     $pdo->exec($sql);
 
-    echo "✓ Schema successfully migrated and tables initialized!\n";
+    echo "Schema successfully migrated and tables initialized!\n";
 
-    // Verify tables
     $stmt = $pdo->query("SHOW TABLES");
     $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
     echo "Existing tables in 'chesslogs':\n";
@@ -32,7 +26,6 @@ try {
         echo "  - $t\n";
     }
 
-    // Verify admin
     $adminStmt = $pdo->query("SELECT id, email, display_name, role FROM profiles WHERE role = 'admin' LIMIT 1");
     $admin = $adminStmt->fetch();
     if ($admin) {

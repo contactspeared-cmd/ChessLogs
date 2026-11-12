@@ -1,20 +1,13 @@
 <?php
-/**
- * PHP Built-in Server Router for ChessLogs API
- * Usage: php -S 127.0.0.1:8000 api/router.php
- */
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// If the file exists directly in public or root, serve it directly
 if ($uri !== '/' && file_exists(__DIR__ . '/..' . $uri)) {
     return false;
 }
 
-// Strip trailing slash
 $cleanUri = rtrim($uri, '/');
 
-// Route mapping
 $routes = [
     '/api/health'       => __DIR__ . '/health.php',
     '/api/health.php'   => __DIR__ . '/health.php',
@@ -35,9 +28,8 @@ if (isset($routes[$cleanUri])) {
     exit;
 }
 
-// Prefix matching for `/api/...`
 if (strpos($cleanUri, '/api/') === 0) {
-    $script = substr($cleanUri, 5); // remove '/api/'
+    $script = substr($cleanUri, 5);
     $script = preg_replace('/\.php$/', '', $script);
     $target = __DIR__ . '/' . $script . '.php';
     if (file_exists($target)) {
@@ -46,7 +38,6 @@ if (strpos($cleanUri, '/api/') === 0) {
     }
 }
 
-// Fallback 404
 http_response_code(404);
 header('Content-Type: application/json; charset=utf-8');
 echo json_encode([

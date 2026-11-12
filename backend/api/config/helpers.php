@@ -1,12 +1,10 @@
 <?php
-/**
- * Helper utilities for ChessLogs Backend
- */
+
 
 function generateUuid() {
     $data = random_bytes(16);
-    $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
-    $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
@@ -32,22 +30,22 @@ function verifyPasswordHash($inputPassword, $storedHash, $storedSalt = '') {
     if (!$storedHash) {
         return false;
     }
-    // 1. Check PHP standard password_verify (e.g. bcrypt / argon2)
+
     if (password_verify($inputPassword, $storedHash)) {
         return true;
     }
-    // 2. Check legacy SHA-256 hash with salt (e.g. salt:password)
+
     if ($storedSalt) {
         $sha = hash('sha256', "{$storedSalt}:{$inputPassword}");
         if (hash_equals($storedHash, $sha)) {
             return true;
         }
     }
-    // 3. Check plain SHA-256 without salt
+
     if (hash_equals($storedHash, hash('sha256', $inputPassword))) {
         return true;
     }
-    // 4. Fallback plain equality for testing
+
     if (hash_equals($storedHash, $inputPassword)) {
         return true;
     }

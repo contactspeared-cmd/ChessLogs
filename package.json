@@ -3,13 +3,16 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "dev": "vite",
-    "backend": "php -S 127.0.0.1:8000 api/router.php",
-    "db:migrate": "php database/migrate.php",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "npm --prefix frontend run dev",
+    "backend": "php -S 127.0.0.1:8000 backend/api/router.php",
+    "db:migrate": "php backend/database/migrate.php",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint",
+    "preview": "npm --prefix frontend run preview"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

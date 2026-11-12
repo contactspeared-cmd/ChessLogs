@@ -1,7 +1,5 @@
 <?php
-/**
- * Games and Reviews API Endpoint for ChessLogs
- */
+
 
 require_once __DIR__ . '/config/cors.php';
 require_once __DIR__ . '/config/db.php';
@@ -37,9 +35,9 @@ function normalizeGameReview($review) {
     ];
 }
 
-// -----------------------------------------------------------------------------
-// GET SINGLE GAME OR STUDENT GAMES
-// -----------------------------------------------------------------------------
+
+
+
 if ($method === 'GET') {
     $gameId = $_GET['id'] ?? null;
     $studentId = $_GET['student_id'] ?? null;
@@ -113,9 +111,9 @@ if ($method === 'GET') {
     jsonError('Either id or student_id query parameter is required.', 400);
 }
 
-// -----------------------------------------------------------------------------
-// SAVE GAME REVIEW
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'review' && $method === 'POST') {
     $gameId = $body['game_id'] ?? '';
     $reviewData = $body['review'] ?? $body;
@@ -150,7 +148,7 @@ if ($action === 'review' && $method === 'POST') {
     jsonResponse(normalizeGameReview($saved));
 }
 
-// Helper for upserting single game record
+
 function upsertSingleGame($pdo, $stmt, $g, $fallbackStudentId = null) {
     $studentId = $g['student_id'] ?? $fallbackStudentId;
     if (!$studentId) return null;
@@ -179,9 +177,9 @@ function upsertSingleGame($pdo, $stmt, $g, $fallbackStudentId = null) {
     return $gameId;
 }
 
-// -----------------------------------------------------------------------------
-// UPSERT GAMES
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'upsert' && $method === 'POST') {
     $games = $body['games'] ?? (isset($body[0]) ? $body : []);
     if (!is_array($games) || empty($games)) {
@@ -228,9 +226,9 @@ if ($action === 'upsert' && $method === 'POST') {
     }
 }
 
-// -----------------------------------------------------------------------------
-// REPLACE SYNCED CHESS.COM GAMES (Preserving manual PGN imports)
-// -----------------------------------------------------------------------------
+
+
+
 if ($action === 'replace_synced' && $method === 'POST') {
     $studentId = $body['student_id'] ?? '';
     $games = $body['games'] ?? [];
@@ -241,7 +239,7 @@ if ($action === 'replace_synced' && $method === 'POST') {
 
     $pdo->beginTransaction();
     try {
-        // Delete existing synced games (keep manual custom imports)
+
         $delStmt = $pdo->prepare('DELETE FROM games WHERE student_id = ?
             AND (chesscom_game_id IS NULL OR (chesscom_game_id NOT LIKE "custom-%" AND id NOT LIKE "pgn-%"))');
         $delStmt->execute([$studentId]);

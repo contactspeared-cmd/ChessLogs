@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { useAuth } from '../context/AuthContext';
@@ -10,8 +10,8 @@ import {
   runFastReview,
 } from '../lib/engine';
 import { ENGINE_CONFIG } from '../config/engine';
-import { getGameById, saveGameReview } from '../lib/db';
-import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
+import { getGameById, saveGameReview, upsertGames } from '../lib/db';
+import { detectOpening, openingFieldsFromDetection, findOpeningByMoves } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
 import {
   RotateCcw,
@@ -26,6 +26,7 @@ import {
   Trash2,
   X,
   BookOpen,
+  Save,
 } from 'lucide-react';
 
 function uciToSan(fen, uciMove) {
@@ -112,6 +113,10 @@ export default function Analysis() {
   const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
   const [pasteInput, setPasteInput] = useState('');
   const [pasteError, setPasteError] = useState('');
+
+  const [liveOpening, setLiveOpening] = useState(null);
+  const [isSavingAnalysis, setIsSavingAnalysis] = useState(false);
+  const [saveAnalysisFeedback, setSaveAnalysisFeedback] = useState(null);
 
   useEffect(() => {
     async function init() {
@@ -435,6 +440,55 @@ export default function Analysis() {
     setArrows(newArrows);
   }, [currentPly, reviewData, deepAnalysisEnabled, deepEngineInfo]);
 
+  useEffect(() => {
+    if (history.length === 0) {
+      setLiveOpening(null);
+      return;
+    }
+    const sans = history.map((m) => m.san);
+    const detected = findOpeningByMoves(sans);
+    setLiveOpening(detected || null);
+  }, [history]);
+
+  const handleSaveAnalysis = async () => {
+    if (!reviewData || !currentGame) return;
+    setIsSavingAnalysis(true);
+    setSaveAnalysisFeedback(null);
+    try {
+      const pgn = currentGame.pgn || '';
+      const gameToSave = {
+        student_id: profile?.id,
+        white_username: currentGame.white_username || 'White',
+        white_rating: currentGame.white_rating || null,
+        black_username: currentGame.black_username || 'Black',
+        black_rating: currentGame.black_rating || null,
+        time_class: currentGame.time_class || 'custom',
+        pgn,
+        eco: currentGame.eco || null,
+        opening: currentGame.opening || null,
+        variation: currentGame.variation || null,
+        result: currentGame.result || null,
+        played_at: currentGame.played_at || null,
+        source: 'manual',
+        review: {
+          accuracy_white: reviewData.accuracyWhite,
+          accuracy_black: reviewData.accuracyBlack,
+          move_classifications: reviewData.moveClassifications,
+          summary: reviewData.summary,
+        },
+      };
+      const saved = await upsertGames([gameToSave]);
+      if (saved?.[0]?.id) {
+        setCurrentGame((prev) => ({ ...prev, id: saved[0].id }));
+      }
+      setSaveAnalysisFeedback('saved');
+    } catch {
+      setSaveAnalysisFeedback('error');
+    } finally {
+      setIsSavingAnalysis(false);
+    }
+  };
+
   const currentClassification = reviewData?.moveClassifications?.find(
     (m) => m.ply === currentPly
   );
@@ -491,10 +545,18 @@ export default function Analysis() {
                 variation={currentGame.variation}
               />
             </div>
-          ) : currentGame?.pgn ? (
+          ) : liveOpening ? (
+            <div className="mt-2">
+              <OpeningBadge
+                eco={liveOpening.eco}
+                opening={liveOpening.family}
+                variation={liveOpening.variation}
+              />
+            </div>
+          ) : currentGame?.pgn || history.length > 0 ? (
             <p className="text-xs text-slate-400 mt-1.5 inline-flex items-center gap-1.5 font-medium">
               <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-              Opening not identified for this game
+              Opening not identified for this position
             </p>
           ) : null}
           {!currentGame && (
@@ -547,7 +609,8 @@ export default function Analysis() {
       </div>
 
       {reviewData && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800">
             <span className="text-xs text-slate-400 uppercase tracking-wider font-semibold block">
               White Accuracy
@@ -586,6 +649,32 @@ export default function Analysis() {
               </span>
             </span>
           </div>
+          </div>
+          {(currentGame?.id?.startsWith('pgn-') || currentGame?.id?.startsWith('fen-')) && (
+            <div className="flex items-center justify-between pt-1 border-t border-slate-800">
+              <span className="text-xs text-slate-400">
+                {saveAnalysisFeedback === 'saved'
+                  ? 'Analysis saved — find it in your Games database.'
+                  : saveAnalysisFeedback === 'error'
+                  ? 'Failed to save. Please try again.'
+                  : 'Save this analysis to your Games database for future review.'}
+              </span>
+              <button
+                onClick={handleSaveAnalysis}
+                disabled={isSavingAnalysis || saveAnalysisFeedback === 'saved'}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50 shrink-0"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>
+                  {isSavingAnalysis
+                    ? 'Saving...'
+                    : saveAnalysisFeedback === 'saved'
+                    ? 'Saved to Games'
+                    : 'Save Analysis'}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
