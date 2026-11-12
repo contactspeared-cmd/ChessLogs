@@ -697,7 +697,7 @@ export default function Analysis() {
             )}
 
             {deepAnalysisEnabled && (
-              <div className="pt-2 border-t border-slate-100 text-xs space-y-1.5">
+              <div className="pt-2 border-t border-slate-800 text-xs space-y-1.5">
                 <div className="flex items-center justify-between text-slate-400">
                   <span className="flex items-center gap-1 font-medium">
                     <Zap className="w-3.5 h-3.5 text-sky-600" />

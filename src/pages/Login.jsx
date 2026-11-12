@@ -51,14 +51,14 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-800 text-xs flex items-start gap-2.5">
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
             <span className="leading-relaxed">{error}</span>
           </div>
         )}
 
         {infoMessage && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs flex items-start gap-2.5">
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start gap-2.5">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
             <span className="leading-relaxed">{infoMessage}</span>
           </div>
@@ -114,7 +114,7 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="pt-2 border-t border-slate-100 space-y-2.5 text-center text-xs">
+        <div className="pt-2 border-t border-slate-800 space-y-2.5 text-center text-xs">
           <p className="text-slate-400">
             Don&apos;t have an account?{' '}
             <Link to="/signup" className="text-emerald-400 hover:underline font-extrabold">

@@ -307,9 +307,9 @@ export default function Games() {
         <div
           className={`p-3.5 rounded-xl text-sm flex items-center gap-2.5 ${
             syncFeedback.type === 'success'
-              ? 'bg-emerald-500/10 text-emerald-800 border border-emerald-500/20'
+              ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20'
               : syncFeedback.type === 'error'
-              ? 'bg-rose-500/10 text-rose-800 border border-rose-500/20'
+              ? 'bg-rose-500/10 text-rose-300 border border-rose-500/20'
               : 'bg-blue-50 text-blue-800 border border-blue-200'
           }`}
         >

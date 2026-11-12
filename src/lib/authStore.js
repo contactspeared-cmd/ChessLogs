@@ -1,8 +1,4 @@
-/**
- * ChessLogs Site Account Management Store
- * Provides persistent, site-native account creation, authentication,
- * and profile management with support for composite user names and DOB.
- */
+
 
 const STORAGE_ACCOUNTS = 'chesslogs_site_accounts';
 const STORAGE_STUDENTS = 'chesslogs_students';
@@ -11,11 +7,7 @@ export const STORAGE_CREDENTIALS = 'chesslogs_coach_credentials';
 export const STORAGE_ENROLLMENTS = 'chesslogs_student_enrollments';
 export const STORAGE_REQUIREMENTS = 'chesslogs_student_requirements';
 
-/**
- * Format composite name according to rules:
- * First Name, Middle Initial (with dot), Last Name, Suffix
- * Example: Alex M. Rivera Jr.
- */
+
 export function formatCompositeName({ firstName = '', middleInitial = '', lastName = '', suffix = '' }) {
   const parts = [];
   const f = (firstName || '').trim();
@@ -34,12 +26,9 @@ export function formatCompositeName({ firstName = '', middleInitial = '', lastNa
   return parts.join(' ') || 'Chess Player';
 }
 
-/**
- * Securely hash password on the client using Web Crypto SHA-256 with salt
- */
+
 export async function hashPassword(password, salt) {
   if (typeof window === 'undefined' || !window.crypto?.subtle) {
-    // Fallback for non-browser environments
     let hash = 0;
     const str = `${salt}:${password}`;
     for (let i = 0; i < str.length; i++) {
@@ -55,9 +44,7 @@ export async function hashPassword(password, salt) {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Generate cryptographic random salt
- */
+
 export function generateSalt() {
   if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
     const array = new Uint8Array(16);
@@ -67,15 +54,10 @@ export function generateSalt() {
   return Math.random().toString(36).substring(2, 18);
 }
 
-/**
- * Seed initial system administrator account for Admin (satoalt33@gmail.com).
- */
+
 const DEFAULT_SALT = 'cl_salt_2026';
-// Pre-computed SHA-256 hash for 'ChessLogsAdmin2026!' with salt 'cl_salt_2026'
 const ADMIN_HASH = '69226bbed9175da60bd820400f9711108f8bef8380233e5501b2656fa98b643b';
-// Pre-computed SHA-256 hash for 'Coach2026!' with salt 'cl_salt_2026'
 const COACH_HASH = '3287a8b41fb8445aee716813b1962cc78ac059e561ee5244ce28df7fbe5b01b6';
-// Pre-computed SHA-256 hash for 'Student2026!' with salt 'cl_salt_2026'
 const STUDENT_HASH = 'c089c940e4e013446be55ee67c35c4c91fb703ca0fe3956608be470f0e05d3b0';
 
 const SEED_ACCOUNTS = [
@@ -201,16 +183,13 @@ const SEED_ENROLLMENTS = [
   },
 ];
 
-/**
- * Retrieve all registered site accounts
- */
+
 export function getSiteAccounts() {
   if (typeof window === 'undefined') return SEED_ACCOUNTS;
   try {
     const raw = localStorage.getItem(STORAGE_ACCOUNTS);
     let accounts = raw ? JSON.parse(raw) : [];
 
-    // Ensure all seed accounts (Admin, Coach, Student) exist and are properly registered
     for (const seed of SEED_ACCOUNTS) {
       const idx = accounts.findIndex(
         (a) => a.id === seed.id || a.email?.toLowerCase() === seed.email.toLowerCase()
@@ -218,7 +197,6 @@ export function getSiteAccounts() {
       if (idx === -1) {
         accounts.push(seed);
       } else {
-        // Keep credentials intact if already seeded
         accounts[idx] = {
           ...seed,
           ...accounts[idx],
@@ -231,7 +209,6 @@ export function getSiteAccounts() {
 
     localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(accounts));
 
-    // Also purge legacy dummy students from student roster in storage
     const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
     if (rawStudents) {
       const parsedStudents = JSON.parse(rawStudents);
@@ -250,9 +227,7 @@ export function getSiteAccounts() {
   }
 }
 
-/**
- * Save site accounts array to storage
- */
+
 export function saveSiteAccounts(accounts) {
   if (typeof window === 'undefined') return;
   try {
@@ -262,9 +237,7 @@ export function saveSiteAccounts(accounts) {
   }
 }
 
-/**
- * Find account by email (case-insensitive, supports secondary emails)
- */
+
 export function findSiteAccountByEmail(email) {
   if (!email) return null;
   const target = email.trim().toLowerCase();
@@ -278,19 +251,14 @@ export function findSiteAccountByEmail(email) {
   }) || null;
 }
 
-/**
- * Find account by ID
- */
+
 export function findSiteAccountById(id) {
   if (!id) return null;
   const accounts = getSiteAccounts();
   return accounts.find((acc) => acc.id === id) || null;
 }
 
-/**
- * Create a new native site account.
- * Validates composite name components, DOB, email, passwords.
- */
+
 export async function createSiteAccount({
   firstName,
   middleInitial,
@@ -312,7 +280,6 @@ export async function createSiteAccount({
   const cleanChesscom = (chesscomUsername || '').trim().toLowerCase();
   const cleanDob = (dateOfBirth || '').trim();
 
-  // 1. Validation
   if (!cleanFirst) {
     throw new Error('First Name is required.');
   }
@@ -335,13 +302,11 @@ export async function createSiteAccount({
     throw new Error('Password must be at least 6 characters long.');
   }
 
-  // 2. Check for duplicate email
   const existing = findSiteAccountByEmail(cleanEmail);
   if (existing) {
     throw new Error(`An account with the email "${cleanEmail}" already exists. Please sign in instead.`);
   }
 
-  // 3. Compute Composite Display Name
   const displayName = formatCompositeName({
     firstName: cleanFirst,
     middleInitial: cleanMi,
@@ -349,11 +314,9 @@ export async function createSiteAccount({
     suffix: cleanSuffix,
   });
 
-  // 4. Hash password
   const salt = generateSalt();
   const passwordHash = await hashPassword(password, salt);
 
-  // 5. Build user and profile
   const id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`;
   const now = new Date().toISOString();
 
@@ -378,12 +341,10 @@ export async function createSiteAccount({
     updated_at: now,
   };
 
-  // 6. Save to site accounts
   const accounts = getSiteAccounts();
   accounts.push(newAccount);
   saveSiteAccounts(accounts);
 
-  // 7. Sync with student roster in localStorage for Coach Command Center
   if (typeof localStorage !== 'undefined') {
     try {
       const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
@@ -400,7 +361,6 @@ export async function createSiteAccount({
     }
   }
 
-  // Safe user representation (omit sensitive hash & salt from return)
   const safeProfile = { ...newAccount };
   delete safeProfile.password_hash;
   delete safeProfile.salt;
@@ -413,9 +373,7 @@ export async function createSiteAccount({
   return { user: sessionUser, profile: safeProfile };
 }
 
-/**
- * Verify credentials and sign in to site account
- */
+
 export async function verifySiteCredentials(email, password) {
   if (!email || !password) {
     throw new Error('Please enter both your email and password.');
@@ -428,10 +386,8 @@ export async function verifySiteCredentials(email, password) {
     throw new Error('No account found with this email. Please check spelling or create an account.');
   }
 
-  // Verify password
   let isValid = false;
 
-  // Case 1: Pre-computed hash exists
   if (account.password_hash && account.salt) {
     const checkHash = await hashPassword(password, account.salt);
     if (checkHash === account.password_hash) {
@@ -439,7 +395,6 @@ export async function verifySiteCredentials(email, password) {
     }
   }
 
-  // Case 2: Seed accounts sign in verification fallback
   if (!isValid) {
     const isSeedAdmin = account.email?.toLowerCase() === 'satoalt33@gmail.com' && password === 'ChessLogsAdmin2026!';
     const isSeedCoach = account.email?.toLowerCase() === 'coach@chesslogs.com' && password === 'Coach2026!';
@@ -447,7 +402,6 @@ export async function verifySiteCredentials(email, password) {
 
     if (isSeedAdmin || isSeedCoach || isSeedStudent) {
       isValid = true;
-      // Re-hash with fresh salt on sign in
       const salt = generateSalt();
       account.salt = salt;
       account.password_hash = await hashPassword(password, salt);
@@ -476,9 +430,7 @@ export async function verifySiteCredentials(email, password) {
   return { user: sessionUser, profile: safeProfile };
 }
 
-/**
- * Update site account profile
- */
+
 export function updateSiteAccount(id, updates) {
   if (!id) return null;
   const accounts = getSiteAccounts();
@@ -487,7 +439,6 @@ export function updateSiteAccount(id, updates) {
 
   const current = accounts[idx];
 
-  // Re-compute display_name if any composite name parts were supplied
   const nextFirst = updates.first_name !== undefined ? updates.first_name : current.first_name;
   const nextMi = updates.middle_initial !== undefined ? updates.middle_initial : current.middle_initial;
   const nextLast = updates.last_name !== undefined ? updates.last_name : current.last_name;
@@ -514,7 +465,6 @@ export function updateSiteAccount(id, updates) {
   accounts[idx] = updatedAccount;
   saveSiteAccounts(accounts);
 
-  // Sync with student roster
   if (typeof localStorage !== 'undefined') {
     try {
       const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
@@ -535,21 +485,17 @@ export function updateSiteAccount(id, updates) {
   delete safeProfile.password_hash;
   delete safeProfile.salt;
 
-  // Update active profile in local storage
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_ACTIVE_PROFILE, JSON.stringify(safeProfile));
     } catch {
-      // ignore
     }
   }
 
   return safeProfile;
 }
 
-/**
- * Delete a site account
- */
+
 export function deleteSiteAccount(id) {
   if (!id) return false;
   const accounts = getSiteAccounts();
@@ -564,34 +510,24 @@ export function deleteSiteAccount(id) {
       localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(sFiltered));
     }
   } catch {
-    // ignore
   }
 
   return true;
 }
 
-/**
- * -----------------------------------------------------------------------------
- * USER TIER & ROLE GOVERNANCE
- * -----------------------------------------------------------------------------
- */
 
-/**
- * Get all accounts across all tiers (Students, Coaches, Admins),
- * merging registered site accounts with any student roster entries.
- */
+
+
 export function getAllAccounts() {
   const accounts = getSiteAccounts();
   const rawStudents = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_STUDENTS) : null;
   const students = rawStudents ? JSON.parse(rawStudents) : [];
 
   const map = new Map();
-  // Add site accounts
   accounts.forEach((acc) => {
     map.set(acc.id, { ...acc, role: acc.role || 'student' });
   });
 
-  // Merge student roster entries if not present
   students.forEach((std) => {
     if (!map.has(std.id)) {
       map.set(std.id, {
@@ -609,9 +545,7 @@ export function getAllAccounts() {
   });
 }
 
-/**
- * Update user tier / role (admin, coach, or student)
- */
+
 export function updateAccountRole(id, newRole) {
   if (!id || !['admin', 'coach', 'student'].includes(newRole)) return null;
 
@@ -623,7 +557,6 @@ export function updateAccountRole(id, newRole) {
     saveSiteAccounts(accounts);
   }
 
-  // Update in student roster as well
   if (typeof localStorage !== 'undefined') {
     try {
       const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
@@ -637,7 +570,6 @@ export function updateAccountRole(id, newRole) {
         }
       }
 
-      // Update active profile if current user was modified
       const activeRaw = localStorage.getItem(STORAGE_ACTIVE_PROFILE);
       if (activeRaw) {
         const active = JSON.parse(activeRaw);
@@ -647,18 +579,13 @@ export function updateAccountRole(id, newRole) {
         }
       }
     } catch {
-      // ignore
     }
   }
 
   return true;
 }
 
-/**
- * -----------------------------------------------------------------------------
- * COACH CREDENTIALS
- * -----------------------------------------------------------------------------
- */
+
 
 export function getCoachCredentials(coachId = null) {
   if (typeof window === 'undefined') return SEED_CREDENTIALS;
@@ -745,11 +672,7 @@ export function reviewCoachCredential(credentialId, status, rejectionReason = nu
   return credentials[idx];
 }
 
-/**
- * -----------------------------------------------------------------------------
- * STUDENT ENROLLMENTS
- * -----------------------------------------------------------------------------
- */
+
 
 export function getStudentEnrollments(coachId = null, studentId = null) {
   if (typeof window === 'undefined') return SEED_ENROLLMENTS;
@@ -829,11 +752,7 @@ export function reviewStudentEnrollment(enrollmentId, status, reviewNotes = '', 
   return enrollments[idx];
 }
 
-/**
- * -----------------------------------------------------------------------------
- * STUDENT REQUIREMENTS & VERIFICATION
- * -----------------------------------------------------------------------------
- */
+
 
 export function getStudentRequirements(studentId = null) {
   try {

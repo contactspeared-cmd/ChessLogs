@@ -144,7 +144,7 @@ export default function Courses() {
                   )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 space-y-3.5">
+                <div className="mt-6 pt-4 border-t border-slate-800 space-y-3.5">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-semibold text-slate-400">
                       <span>Memory Progress</span>

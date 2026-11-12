@@ -76,11 +76,11 @@ export default function Landing() {
 
   return (
     <div className="space-y-16 pb-16">
-      <section className="relative overflow-hidden bg-gradient-to-b from-white via-slate-50 to-emerald-50/40 border-b border-slate-800 pt-12 pb-20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-b border-slate-800 pt-12 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-500/30 text-xs font-bold tracking-wide">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-bold tracking-wide">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Next-Gen Chess LMS &amp; Spaced Repetition</span>
               </div>
@@ -143,7 +143,7 @@ export default function Landing() {
 
             <div className="lg:col-span-5 flex justify-center">
               <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white">
                       <ChessKnightIcon className="w-5 h-5" />
@@ -261,7 +261,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <h3 className="font-bold text-sm text-white line-clamp-1">{c.title}</h3>
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
                   <span className="text-xs text-slate-400">{c.chapters} Chapters</span>
                   <Link
                     to="/marketplace"

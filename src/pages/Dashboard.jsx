@@ -301,9 +301,9 @@ export default function Dashboard() {
                       <span
                         className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
                           game.result === 'win'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-emerald-500/10 text-emerald-300'
                             : game.result === 'loss'
-                            ? 'bg-rose-100 text-rose-800'
+                            ? 'bg-rose-100 text-rose-300'
                             : 'bg-slate-800 text-slate-300'
                         }`}
                       >

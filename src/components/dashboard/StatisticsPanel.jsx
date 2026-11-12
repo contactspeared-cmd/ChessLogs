@@ -576,7 +576,7 @@ export default function StatisticsPanel({
   const accent = isAdmin ? 'purple' : 'amber';
   const activePillClass = isAdmin
     ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
-    : 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-900/40';
+    : 'bg-amber-500 text-white shadow-lg shadow-amber-900/40';
   const inactivePillClass = 'text-slate-400 hover:text-slate-200 hover:bg-slate-800';
 
   // ---- Collect all games across students filtered by period ----

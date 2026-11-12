@@ -48,7 +48,7 @@ export default function EvalBar({ scoreCp = 0, isMate = false, mateIn = null, or
           className={`text-[10px] font-mono font-bold px-1 py-0.5 rounded shadow-sm ${
             whitePercent >= 50
               ? 'bg-black/70 text-white'
-              : 'bg-white/80 text-black'
+              : 'bg-slate-900/80 text-black'
           }`}
         >
           {label}

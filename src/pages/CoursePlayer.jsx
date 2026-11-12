@@ -903,7 +903,7 @@ export default function CoursePlayer() {
             {!isWalkthrough && !chapterComplete && (
               <button
                 onClick={handleMarkVideoComplete}
-                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-600 text-emerald-800 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all shadow-sm"
+                className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-emerald-500/10 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold border border-emerald-500/30 transition-all shadow-sm"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Mark Chapter as Watched &amp; Continue
@@ -1009,7 +1009,7 @@ export default function CoursePlayer() {
 
             {isWalkthrough && (
               <>
-                <div className="border-t border-slate-100 pt-4 space-y-2">
+                <div className="border-t border-slate-800 pt-4 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
                       {studyMode === 'trainer' ? 'This move' : 'Position note'}

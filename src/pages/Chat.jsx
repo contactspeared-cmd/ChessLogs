@@ -220,7 +220,7 @@ export default function Chat() {
                               className={`p-2.5 rounded-xl text-[11px] font-mono overflow-x-auto ${
                                 isMine
                                   ? 'bg-emerald-700/80 text-emerald-100 border border-emerald-500/40'
-                                  : 'bg-slate-950 text-emerald-800 border border-slate-800'
+                                  : 'bg-slate-950 text-emerald-300 border border-slate-800'
                               }`}
                             >
                               <div className="text-[10px] uppercase font-bold tracking-wider opacity-80 mb-1 flex items-center gap-1">

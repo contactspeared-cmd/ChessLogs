@@ -113,7 +113,7 @@ export default function Support() {
         </div>
 
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-3">
+          <div className="border-b border-slate-800 pb-3">
             <h2 className="text-base font-bold text-white flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-emerald-600" />
               <span>Submit a Support Inquiry</span>
@@ -122,7 +122,7 @@ export default function Support() {
           </div>
 
           {submitted && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>Ticket submitted successfully! Check status below.</span>
             </div>
@@ -219,7 +219,7 @@ export default function Support() {
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                       tkt.status === 'resolved'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-emerald-500/10 text-emerald-300'
                         : tkt.status === 'in-review'
                         ? 'bg-amber-100 text-amber-400'
                         : 'bg-blue-100 text-blue-800'

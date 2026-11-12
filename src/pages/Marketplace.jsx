@@ -112,7 +112,7 @@ export default function Marketplace() {
       </div>
 
       {enrolledNotice && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-sm font-semibold flex items-center justify-between shadow-sm">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm font-semibold flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <span>{enrolledNotice}</span>
@@ -190,7 +190,7 @@ export default function Marketplace() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-slate-100">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 border-t border-slate-800">
           {categories.map((cat) => (
             <button
               key={cat.key}
@@ -261,7 +261,7 @@ export default function Marketplace() {
                         {course.description}
                       </p>
 
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                         <Link
                           to={`/coaches/${course.created_by || 'coach-magnus-uuid'}`}
                           className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -291,7 +291,7 @@ export default function Marketplace() {
                     </div>
                   </div>
 
-                  <div className="p-5 pt-0 border-t border-slate-100 flex items-center gap-2 mt-2">
+                  <div className="p-5 pt-0 border-t border-slate-800 flex items-center gap-2 mt-2">
                     {enrolled ? (
                       <Link
                         to={`/courses/${course.id}`}
