@@ -81,7 +81,7 @@ export default function Dashboard() {
             to="/coach"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shrink-0"
           >
-            <span>Coach Studio</span>
+            <span>Switch to Coaching Mode</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

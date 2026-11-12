@@ -174,14 +174,24 @@ export default function Navbar() {
                       )}
 
                       {isCoach && (
-                        <Link
-                          to="/coach"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-2 px-4 py-2 text-amber-400 hover:bg-slate-800 font-bold"
-                        >
-                          <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Switch to Coaching Mode</span>
-                        </Link>
+                        <>
+                          <Link
+                            to="/coach"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-amber-400 hover:bg-slate-800 font-bold"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Switch to Coaching Mode</span>
+                          </Link>
+                          <Link
+                            to="/dashboard"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-2 px-4 py-2 text-emerald-400 hover:bg-slate-800 font-bold"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Switch to Student Mode</span>
+                          </Link>
+                        </>
                       )}
                     </div>
 
@@ -271,13 +281,22 @@ export default function Navbar() {
                 Become a Coach
               </Link>
             ) : isCoach ? (
-              <Link
-                to="/coach"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-amber-400 hover:text-amber-300"
-              >
-                Switch to Coaching Mode
-              </Link>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/coach"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-amber-400 hover:text-amber-300 font-bold"
+                >
+                  Coaching Mode
+                </Link>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-emerald-400 hover:text-emerald-300 font-bold"
+                >
+                  Student Mode
+                </Link>
+              </div>
             ) : null}
             <Link
               to="/support"

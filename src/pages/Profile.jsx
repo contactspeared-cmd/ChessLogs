@@ -24,6 +24,7 @@ import {
   GraduationCap,
   ChevronRight,
   Award,
+  BookOpen,
 } from 'lucide-react';
 
 export default function Profile() {
@@ -419,14 +420,22 @@ export default function Profile() {
                     <p className="text-xs text-slate-400">You are an approved and verified coach.</p>
                   </div>
                 </div>
-                <Link
-                  to="/coach"
-                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-amber-600/20"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Switch to Coaching Mode</span>
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
+                <div className="grid grid-cols-2 gap-2">
+                  <Link
+                    to="/coach"
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-amber-600/20 text-center"
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Coaching Mode</span>
+                  </Link>
+                  <Link
+                    to="/dashboard"
+                    className="inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 text-center"
+                  >
+                    <BookOpen className="w-4 h-4 text-emerald-400" />
+                    <span>Student Mode</span>
+                  </Link>
+                </div>
               </div>
             )
           )}

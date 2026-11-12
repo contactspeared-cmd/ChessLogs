@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import StatisticsPanel from './StatisticsPanel';
 import {
@@ -440,16 +440,14 @@ export default function CoachDashboard({ onPreviewStudentView }) {
             <span>Author Course</span>
           </button>
 
-          {onPreviewStudentView && (
-            <button
-              onClick={onPreviewStudentView}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-800 transition-all"
-              title="Preview how learners experience the portal"
-            >
-              <Eye className="w-4 h-4 text-emerald-400" />
-              <span>Preview Learner View</span>
-            </button>
-          )}
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition-all"
+            title="Switch to Student Mode"
+          >
+            <BookOpen className="w-4 h-4 text-emerald-400" />
+            <span>Switch to Student Mode</span>
+          </Link>
         </div>
       </div>
 
