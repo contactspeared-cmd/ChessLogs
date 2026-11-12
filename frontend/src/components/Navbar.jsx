@@ -36,7 +36,6 @@ export default function Navbar() {
     { name: 'My Courses', path: '/courses', icon: BookOpen },
     { name: 'Games', path: '/games', icon: Database },
     { name: 'Analysis', path: '/analysis', icon: Crosshair },
-    { name: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
   const isActive = (path) => {

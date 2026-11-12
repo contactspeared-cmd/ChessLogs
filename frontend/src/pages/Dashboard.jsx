@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getCourses, getGamesForStudent } from '../lib/db';
@@ -17,6 +17,8 @@ import {
   GraduationCap,
   ShoppingBag,
   MessageSquare,
+  Clock,
+  Award,
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -67,6 +69,17 @@ export default function Dashboard() {
             reviewedGames.length
         )
       : null;
+
+  const sortedGames = useMemo(() => {
+    return [...games].sort((a, b) => new Date(b.played_at || 0) - new Date(a.played_at || 0));
+  }, [games]);
+
+  const latestGame = sortedGames[0] || null;
+
+  const myUsername = (profile?.chesscom_username || '').toLowerCase();
+  const isMyWhite = myUsername && latestGame?.white_username?.toLowerCase() === myUsername;
+  const isMyBlack = myUsername && latestGame?.black_username?.toLowerCase() === myUsername;
+  const studentSide = isMyWhite ? 'White' : isMyBlack ? 'Black' : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -179,6 +192,194 @@ export default function Dashboard() {
           <div className="text-2xl font-black text-white">{courses.length}</div>
           <p className="text-[11px] text-purple-400 font-semibold">MoveTrainer Enrolled</p>
         </div>
+      </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Latest Match Review
+              </span>
+              {latestGame?.played_at && (
+                <span className="text-xs text-slate-400 flex items-center gap-1 font-mono">
+                  <Clock className="w-3.5 h-3.5" />
+                  {new Date(latestGame.played_at).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+              <Crosshair className="w-5 h-5 text-emerald-400" />
+              <span>Review Your Last Game</span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Deep engine analysis and tactical move classifications powered by Stockfish 18 NNUE.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {latestGame && (
+              <button
+                onClick={() => navigate(`/analysis?gameId=${latestGame.id}`)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02]"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{latestGame.review ? 'View Last Game Analysis' : 'Start Instant Game Review'}</span>
+              </button>
+            )}
+            <Link
+              to="/games"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all"
+            >
+              <span>All Matches</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
+        {latestGame ? (
+          <div className="mt-5 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 font-mono text-xs font-bold uppercase text-slate-300">
+                  {latestGame.time_class || 'Standard'}
+                </span>
+                {latestGame.result && (
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${
+                      latestGame.result === 'win'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : latestGame.result === 'loss'
+                        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}
+                  >
+                    {latestGame.result === 'win'
+                      ? 'Victory'
+                      : latestGame.result === 'loss'
+                      ? 'Defeat'
+                      : 'Draw'}
+                  </span>
+                )}
+                {studentSide && (
+                  <span className="text-xs text-slate-400 font-medium">
+                    You played as <strong className="text-white capitalize">{studentSide}</strong>
+                  </span>
+                )}
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    White Player
+                  </div>
+                  <div className="font-extrabold text-sm text-white flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-white border border-slate-300 inline-block" />
+                    <span>{latestGame.white_username || 'White'}</span>
+                    <span className="text-xs font-mono text-slate-400 font-semibold">
+                      ({latestGame.white_rating || '—'})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-center px-2 text-slate-500 font-black text-xs uppercase tracking-widest hidden sm:block">
+                  vs
+                </div>
+
+                <div className="space-y-1 sm:text-right">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Black Player
+                  </div>
+                  <div className="font-extrabold text-sm text-white flex items-center sm:justify-end gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-900 border border-slate-600 inline-block" />
+                    <span>{latestGame.black_username || 'Black'}</span>
+                    <span className="text-xs font-mono text-slate-400 font-semibold">
+                      ({latestGame.black_rating || '—'})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {(latestGame.opening || latestGame.eco) && (
+                <div className="flex items-center gap-2">
+                  <OpeningBadge
+                    eco={latestGame.eco}
+                    opening={latestGame.opening}
+                    variation={latestGame.variation}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-3.5">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-emerald-400" />
+                  <span>Evaluation Status</span>
+                </span>
+                <span className="font-mono text-[11px] text-slate-500">Stockfish 18</span>
+              </div>
+
+              {latestGame.review ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                      <div className="text-[10px] font-bold uppercase text-slate-400">White Acc</div>
+                      <div className="text-xl font-black font-mono text-emerald-400">
+                        {latestGame.review.accuracy_white ?? '—'}%
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800">
+                      <div className="text-[10px] font-bold uppercase text-slate-400">Black Acc</div>
+                      <div className="text-xl font-black font-mono text-slate-200">
+                        {latestGame.review.accuracy_black ?? '—'}%
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate(`/analysis?gameId=${latestGame.id}`)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <span>Inspect Move-by-Move Analysis</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3 text-center py-2">
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    This match has not been reviewed yet. Run Stockfish 18 NNUE to evaluate every move and discover your inaccuracies, blunders, and brilliant moves.
+                  </p>
+                  <button
+                    onClick={() => navigate(`/analysis?gameId=${latestGame.id}`)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Run Fast Game Review Now</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 p-6 bg-slate-950 rounded-2xl border border-slate-800 text-center space-y-3">
+            <Database className="w-8 h-8 text-slate-600 mx-auto" />
+            <h3 className="text-sm font-bold text-white">No matches found in your database</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+              Sync your games from Chess.com or import PGNs to instantly review your last game with deep Stockfish NNUE engine analysis.
+            </p>
+            <Link
+              to="/games"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-sm"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Go to Games &amp; Sync</span>
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

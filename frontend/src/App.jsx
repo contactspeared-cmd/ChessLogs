@@ -24,6 +24,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import CoachDashboard from './components/dashboard/CoachDashboard';
 import Applications from './pages/Applications';
 import ErrorBoundary from './components/ErrorBoundary';
+import ChatWidget from './components/ChatWidget';
 
 function AppLayout({ children }) {
   const location = useLocation();
@@ -42,6 +43,8 @@ function AppLayout({ children }) {
           {children}
         </ErrorBoundary>
       </main>
+
+      {!isAuthPage && <ChatWidget />}
 
       {!isAuthPage && (
         <footer className={`border-t border-slate-800 bg-slate-900 py-10 text-xs text-slate-400 text-center ${isSidebarPage ? 'lg:pl-64' : ''}`}>
