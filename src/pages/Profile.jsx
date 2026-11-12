@@ -383,25 +383,52 @@ export default function Profile() {
             </form>
           </div>
 
-          {!isCoach && !isAdmin && (
-            <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-emerald-950/30 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <Award className="w-5 h-5" />
+          {!isAdmin && (
+            !isCoach ? (
+              <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-emerald-950/30 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Become an Official Coach</h3>
+                    <p className="text-xs text-slate-400">All accounts start as Students. Apply with your titles to teach.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Become an Official Coach</h3>
-                  <p className="text-xs text-slate-400">All accounts start as Students. Apply with your titles to teach.</p>
-                </div>
+                <Link
+                  to="/applications"
+                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20"
+                >
+                  <span>Become a Coach</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
               </div>
-              <Link
-                to="/applications"
-                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20"
-              >
-                <span>Submit Coach Accreditation</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
+            ) : (
+              <div className="bg-gradient-to-r from-amber-950/40 via-slate-900 to-emerald-950/30 border border-amber-500/30 rounded-3xl p-5 shadow-xl space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">Coach Accreditation Verified</h3>
+                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        Active
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">You are an approved and verified coach.</p>
+                  </div>
+                </div>
+                <Link
+                  to="/coach"
+                  className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-md shadow-amber-600/20"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Switch to Coaching Mode</span>
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )
           )}
 
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-xs text-slate-400 space-y-2 shadow-xl">

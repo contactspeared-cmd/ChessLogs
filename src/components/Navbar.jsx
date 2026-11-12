@@ -39,18 +39,6 @@ export default function Navbar() {
     { name: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
-  if (!isCoach && !isAdmin && user) {
-    navLinks.push({ name: 'Apply as Coach', path: '/applications', icon: Award });
-  }
-
-  if (isCoach) {
-    navLinks.push({ name: 'Coach Studio', path: '/coach', icon: GraduationCap });
-  }
-
-  if (isAdmin) {
-    navLinks.push({ name: 'Admin Console', path: '/admin', icon: ShieldAlert });
-  }
-
   const isActive = (path) => {
     if (path === '/dashboard' && location.pathname === '/dashboard') return true;
     if (path !== '/dashboard' && location.pathname.startsWith(path)) return true;
@@ -174,28 +162,28 @@ export default function Navbar() {
                         <BookOpen className="w-3.5 h-3.5 text-slate-400" />
                         <span>My Enrolled Courses</span>
                       </Link>
-                      <Link
-                        to="/applications"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-emerald-400 hover:bg-slate-800 font-semibold"
-                      >
-                        <Award className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Coach Applications</span>
-                      </Link>
-                    </div>
+                      {!isCoach && !isAdmin && (
+                        <Link
+                          to="/applications"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2 px-4 py-2 text-emerald-400 hover:bg-slate-800 font-semibold"
+                        >
+                          <Award className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Become a Coach</span>
+                        </Link>
+                      )}
 
-                    {isCoach && (
-                      <div className="py-1">
+                      {isCoach && (
                         <Link
                           to="/coach"
                           onClick={() => setDropdownOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 text-amber-400 hover:bg-slate-800 font-bold"
                         >
                           <GraduationCap className="w-3.5 h-3.5 text-amber-400" />
-                          <span>Coach Command Studio</span>
+                          <span>Switch to Coaching Mode</span>
                         </Link>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
                     {isAdmin && (
                       <div className="py-1">
@@ -274,13 +262,23 @@ export default function Navbar() {
           })}
 
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs font-bold">
-            <Link
-              to="/applications"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-emerald-400 hover:text-emerald-300"
-            >
-              Applications
-            </Link>
+            {!isCoach && !isAdmin ? (
+              <Link
+                to="/applications"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-emerald-400 hover:text-emerald-300"
+              >
+                Become a Coach
+              </Link>
+            ) : isCoach ? (
+              <Link
+                to="/coach"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-amber-400 hover:text-amber-300"
+              >
+                Switch to Coaching Mode
+              </Link>
+            ) : null}
             <Link
               to="/support"
               onClick={() => setMobileMenuOpen(false)}
