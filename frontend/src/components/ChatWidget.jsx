@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getChatContacts, getChatMessages, sendChatMessage } from '../lib/communityStore';
 import {
@@ -11,12 +11,17 @@ import {
   Search,
   BookOpen,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  ExternalLink,
   ArrowRight,
 } from 'lucide-react';
 
 export default function ChatWidget() {
   const { user, profile, isCoach } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -24,6 +29,20 @@ export default function ChatWidget() {
   const [showPgnInput, setShowPgnInput] = useState(false);
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
   const [contactSearch, setContactSearch] = useState('');
+  const [isSideDocked, setIsSideDocked] = useState(() => {
+    try {
+      return localStorage.getItem('chesslogs_chat_docked') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSideDock = (docked) => {
+    setIsSideDocked(docked);
+    try {
+      localStorage.setItem('chesslogs_chat_docked', docked ? 'true' : 'false');
+    } catch {}
+  };
 
   const messagesEndRef = useRef(null);
 
@@ -96,32 +115,67 @@ export default function ChatWidget() {
     );
   }, [contacts, contactSearch]);
 
+  const handleOpenFullMessenger = () => {
+    setIsOpen(false);
+    const target = activeContact?.id ? `/messages?recipient=${activeContact.id}` : '/messages';
+    navigate(target);
+  };
+
   if (!user || !profile) return null;
+  if (location.pathname === '/messages') return null;
 
   return (
     <>
-      <div className="fixed bottom-5 right-5 z-50">
-        {!isOpen && (
-          <button
-            onClick={() => setIsOpen(true)}
-            className="relative flex items-center gap-2.5 px-4 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xl shadow-emerald-900/40 border border-emerald-400/30 transition-all duration-200 hover:scale-105 group"
-            title="Open Chat"
-          >
-            <div className="relative">
-              <MessageSquare className="w-5 h-5 text-white" />
+      {!isOpen && (
+        isSideDocked ? (
+          <div className="fixed bottom-6 right-0 z-50 animate-in fade-in slide-in-from-right duration-200">
+            <button
+              onClick={() => toggleSideDock(false)}
+              className="flex items-center gap-1.5 pl-3 pr-2 py-3 rounded-l-2xl bg-slate-900/95 hover:bg-emerald-600 text-slate-300 hover:text-white border-y border-l border-slate-800 hover:border-emerald-500 shadow-2xl backdrop-blur-md transition-all duration-200 group"
+              title="Expand Messages pill"
+            >
+              <ChevronLeft className="w-5 h-5 text-emerald-400 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
               )}
+            </button>
+          </div>
+        ) : (
+          <div className="fixed bottom-5 right-5 z-50 flex items-center animate-in fade-in duration-150">
+            <div className="relative flex items-center rounded-full bg-emerald-600 shadow-2xl shadow-emerald-950/60 border border-emerald-400/30 overflow-hidden group hover:scale-[1.02] transition-all duration-200">
+              <button
+                onClick={() => setIsOpen(true)}
+                className="flex items-center gap-2.5 pl-4 pr-3 py-3 text-white font-bold text-xs hover:bg-emerald-500/30 transition-colors"
+                title="Open Chat"
+              >
+                <div className="relative">
+                  <MessageSquare className="w-5 h-5 text-white" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+                  )}
+                </div>
+                <span>Messages</span>
+                {unreadCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-mono font-black">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSideDock(true);
+                }}
+                className="pr-2.5 pl-1.5 py-3 text-emerald-200 hover:text-white hover:bg-emerald-500/50 transition-colors border-l border-emerald-500/40"
+                title="Hide to side"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-            <span>Messages</span>
-            {unreadCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-mono font-black">
-                {unreadCount}
-              </span>
-            )}
-          </button>
-        )}
-      </div>
+          </div>
+        )
+      )}
 
       {isOpen && (
         <div className="fixed bottom-5 right-5 z-50 w-[360px] sm:w-[400px] h-[520px] max-h-[85vh] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
@@ -194,11 +248,28 @@ export default function ChatWidget() {
                       </button>
                     ))}
                   </div>
+
+                  <div className="pt-1.5 border-t border-slate-800 mt-1">
+                    <button
+                      onClick={handleOpenFullMessenger}
+                      className="w-full flex items-center justify-between p-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    >
+                      <span>Open Full Messenger</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={handleOpenFullMessenger}
+                className="p-1.5 text-slate-400 hover:text-emerald-400 rounded-lg hover:bg-slate-800 transition-colors"
+                title="View full chat messenger page"
+              >
+                <Maximize2 className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
@@ -222,6 +293,13 @@ export default function ChatWidget() {
                 <MessageSquare className="w-8 h-8 text-slate-600" />
                 <p className="text-xs">No messages yet with {activeContact?.display_name || 'this contact'}.</p>
                 <p className="text-[11px] text-slate-500">Ask questions, share moves, or discuss training.</p>
+                <button
+                  onClick={handleOpenFullMessenger}
+                  className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:underline pt-1 font-semibold"
+                >
+                  <span>Open in Full Messenger</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </button>
               </div>
             ) : (
               messages.map((m) => {
