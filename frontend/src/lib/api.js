@@ -105,6 +105,8 @@ export const api = {
       }),
     me: (id) =>
       apiRequest(`/auth.php?action=me&id=${encodeURIComponent(id)}`),
+    getUsers: () =>
+      apiRequest('/auth.php?action=users'),
   },
 
   

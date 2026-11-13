@@ -1,7 +1,8 @@
 import { api } from './api';
 import {
-  getAllAccounts,
+  getAllAccounts as getLocalAllAccounts,
   updateAccountRole,
+  updateSiteAccount,
   getCoachCredentials,
   submitCoachCredential,
   reviewCoachCredential,
@@ -386,7 +387,7 @@ export const SEED_COURSES = [
 
 export function enrichCourseWithCoach(course) {
   if (!course) return course;
-  const accounts = getAllAccounts();
+  const accounts = getLocalAllAccounts();
   const coach =
     accounts.find((a) => a.id === course.created_by) ||
     accounts.find((a) => a.role === 'coach') || {
@@ -953,7 +954,7 @@ export async function getAllStudents() {
 
 export async function deleteStudent(studentId, { reason = '', deletedBy = null } = {}) {
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
-  const allAccounts = getAllAccounts();
+  const allAccounts = getLocalAllAccounts();
   const targetStudent = students.find((s) => s.id === studentId) || allAccounts.find((a) => a.id === studentId);
 
   if (targetStudent) {
@@ -1000,7 +1001,6 @@ export async function updateStudentProfile(studentId, profileData) {
         students[idx] = { ...students[idx], ...updated };
         localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
       }
-      const { updateSiteAccount } = await import('./authStore');
       updateSiteAccount(studentId, updated);
       return updated;
     }
@@ -1017,13 +1017,26 @@ export async function updateStudentProfile(studentId, profileData) {
   return null;
 }
 
+export async function getAllAccounts() {
+  try {
+    const remote = await api.auth.getUsers();
+    if (Array.isArray(remote) && remote.length > 0) {
+      for (const u of remote) {
+        updateSiteAccount(u.id, u);
+      }
+      return remote;
+    }
+  } catch {
+  }
+  return getLocalAllAccounts();
+}
+
 export async function getAllCoaches() {
-  const accounts = getAllAccounts();
+  const accounts = await getAllAccounts();
   return accounts.filter((a) => a.role === 'coach');
 }
 
 export {
-  getAllAccounts,
   updateAccountRole,
   getCoachCredentials,
   submitCoachCredential,

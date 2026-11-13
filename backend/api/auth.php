@@ -316,4 +316,11 @@ if ($action === 'me' && $method === 'GET') {
     ]);
 }
 
+if ($action === 'users' && $method === 'GET') {
+    $stmt = $pdo->query('SELECT * FROM profiles ORDER BY created_at DESC');
+    $rows = $stmt->fetchAll();
+    $sanitized = array_map('sanitizeProfile', $rows);
+    jsonResponse($sanitized);
+}
+
 jsonError("Unsupported auth action: '{$action}' with method '{$method}'.", 400);

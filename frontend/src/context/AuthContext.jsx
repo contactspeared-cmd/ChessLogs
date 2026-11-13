@@ -20,24 +20,16 @@ export function AuthProvider({ children }) {
 
   
   const fetchProfile = useCallback(async (userId) => {
-    
     try {
       const data = await api.auth.getProfile(userId);
-      if (data && data.id) return data;
+      if (data && data.id) {
+        localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(data));
+        updateSiteAccount(userId, data);
+        return data;
+      }
     } catch {
-      
     }
 
-    
-    const siteAcc = findSiteAccountById(userId);
-    if (siteAcc) {
-      const safe = { ...siteAcc };
-      delete safe.password_hash;
-      delete safe.salt;
-      return safe;
-    }
-
-    
     try {
       const saved = localStorage.getItem(STORAGE_KEY_LOCAL_USER);
       if (saved) {
@@ -45,7 +37,14 @@ export function AuthProvider({ children }) {
         if (parsed?.id === userId) return parsed;
       }
     } catch {
-      
+    }
+
+    const siteAcc = findSiteAccountById(userId);
+    if (siteAcc) {
+      const safe = { ...siteAcc };
+      delete safe.password_hash;
+      delete safe.salt;
+      return safe;
     }
 
     return null;

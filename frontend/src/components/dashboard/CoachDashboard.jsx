@@ -95,6 +95,20 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const [standardsSaving, setStandardsSaving] = useState(false);
   const [standardsSuccess, setStandardsSuccess] = useState(false);
 
+  useEffect(() => {
+    if (profile) {
+      if (profile.min_student_elo !== undefined && profile.min_student_elo !== null) {
+        setMinStudentElo(profile.min_student_elo);
+      }
+      if (profile.coaching_standards !== undefined && profile.coaching_standards !== null) {
+        setCoachingStandards(profile.coaching_standards);
+      }
+      if (profile.bio !== undefined && profile.bio !== null) {
+        setCoachingBio(profile.bio);
+      }
+    }
+  }, [profile]);
+
   const [newCredType, setNewCredType] = useState('FIDE Trainer License');
   const [newCredIssuer, setNewCredIssuer] = useState('FIDE Qualification Commission');
   const [newCredUrl, setNewCredUrl] = useState('');

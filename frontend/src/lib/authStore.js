@@ -208,18 +208,6 @@ export function getSiteAccounts() {
     }
 
     localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(accounts));
-
-    const rawStudents = localStorage.getItem(STORAGE_STUDENTS);
-    if (rawStudents) {
-      const parsedStudents = JSON.parse(rawStudents);
-      const cleanStudents = parsedStudents.filter(
-        (s) => !DUMMY_IDS.has(s.id) && !DUMMY_EMAILS.has(s.email?.toLowerCase())
-      );
-      if (cleanStudents.length !== parsedStudents.length) {
-        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(cleanStudents));
-      }
-    }
-
     return accounts;
   } catch {
     return SEED_ACCOUNTS;
@@ -429,14 +417,12 @@ export function updateSiteAccount(id, updates) {
   if (!id) return null;
   const accounts = getSiteAccounts();
   const idx = accounts.findIndex((a) => a.id === id);
-  if (idx === -1) return null;
+  const current = idx >= 0 ? accounts[idx] : { id };
 
-  const current = accounts[idx];
-
-  const nextFirst = updates.first_name !== undefined ? updates.first_name : current.first_name;
-  const nextMi = updates.middle_initial !== undefined ? updates.middle_initial : current.middle_initial;
-  const nextLast = updates.last_name !== undefined ? updates.last_name : current.last_name;
-  const nextSuffix = updates.suffix !== undefined ? updates.suffix : current.suffix;
+  const nextFirst = updates.first_name !== undefined ? updates.first_name : (current.first_name || '');
+  const nextMi = updates.middle_initial !== undefined ? updates.middle_initial : (current.middle_initial || '');
+  const nextLast = updates.last_name !== undefined ? updates.last_name : (current.last_name || '');
+  const nextSuffix = updates.suffix !== undefined ? updates.suffix : (current.suffix || '');
 
   const displayName = updates.display_name || formatCompositeName({
     firstName: nextFirst,
@@ -456,7 +442,11 @@ export function updateSiteAccount(id, updates) {
     updated_at: new Date().toISOString(),
   };
 
-  accounts[idx] = updatedAccount;
+  if (idx >= 0) {
+    accounts[idx] = updatedAccount;
+  } else {
+    accounts.push(updatedAccount);
+  }
   saveSiteAccounts(accounts);
 
   if (typeof localStorage !== 'undefined') {
