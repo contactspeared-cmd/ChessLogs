@@ -223,7 +223,8 @@ if ($action === 'profile') {
         $allowedKeys = [
             'first_name', 'middle_initial', 'last_name', 'suffix',
             'date_of_birth', 'display_name', 'avatar_url', 'chesscom_username',
-            'bio', 'elo_rating', 'min_student_elo', 'coaching_standards', 'current_elo'
+            'bio', 'elo_rating', 'min_student_elo', 'coaching_standards', 'current_elo',
+            'role'
         ];
 
         foreach ($allowedKeys as $k) {
@@ -232,7 +233,6 @@ if ($action === 'profile') {
                 $params[] = $body[$k];
             }
         }
-
 
         if (isset($body['firstName']) && !array_key_exists('first_name', $body)) {
             $fields[] = '`first_name` = ?';
@@ -246,6 +246,10 @@ if ($action === 'profile') {
             $fields[] = '`last_name` = ?';
             $params[] = $body['lastName'];
         }
+        if (isset($body['displayName']) && !array_key_exists('display_name', $body)) {
+            $fields[] = '`display_name` = ?';
+            $params[] = $body['displayName'];
+        }
         if (isset($body['dateOfBirth']) && !array_key_exists('date_of_birth', $body)) {
             $fields[] = '`date_of_birth` = ?';
             $params[] = $body['dateOfBirth'];
@@ -253,6 +257,22 @@ if ($action === 'profile') {
         if (isset($body['chesscomUsername']) && !array_key_exists('chesscom_username', $body)) {
             $fields[] = '`chesscom_username` = ?';
             $params[] = $body['chesscomUsername'];
+        }
+        if (isset($body['avatarUrl']) && !array_key_exists('avatar_url', $body)) {
+            $fields[] = '`avatar_url` = ?';
+            $params[] = $body['avatarUrl'];
+        }
+        if (isset($body['minStudentElo']) && !array_key_exists('min_student_elo', $body)) {
+            $fields[] = '`min_student_elo` = ?';
+            $params[] = (int)$body['minStudentElo'];
+        }
+        if (isset($body['coachingStandards']) && !array_key_exists('coaching_standards', $body)) {
+            $fields[] = '`coaching_standards` = ?';
+            $params[] = $body['coachingStandards'];
+        }
+        if (isset($body['currentElo']) && !array_key_exists('current_elo', $body)) {
+            $fields[] = '`current_elo` = ?';
+            $params[] = (int)$body['currentElo'];
         }
 
         if (empty($fields)) {

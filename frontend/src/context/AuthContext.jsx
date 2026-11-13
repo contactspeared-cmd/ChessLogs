@@ -117,6 +117,7 @@ export function AuthProvider({ children }) {
         setUser(res.user);
         setProfile(res.profile);
         localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(res.profile));
+        updateSiteAccount(res.profile.id, res.profile);
         return res;
       }
     } catch {
@@ -239,7 +240,7 @@ export function AuthProvider({ children }) {
         return res;
       }
     } catch (apiErr) {
-      console.warn('PHP API chesscom login failed, falling back to local profile:', apiErr?.message);
+      void apiErr;
     }
 
     let finalId = `chesscom-${canonicalUsername.toLowerCase()}`;
@@ -309,10 +310,10 @@ export function AuthProvider({ children }) {
       if (updated && updated.id) {
         setProfile(updated);
         localStorage.setItem(STORAGE_KEY_LOCAL_USER, JSON.stringify(updated));
+        updateSiteAccount(profile.id, updated);
         return updated;
       }
-    } catch (err) {
-      console.warn('PHP API updateProfile failed, updating local state:', err);
+    } catch {
     }
 
     const updated = updateSiteAccount(profile.id, updates);

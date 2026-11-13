@@ -221,8 +221,7 @@ export function getSiteAccounts() {
     }
 
     return accounts;
-  } catch (err) {
-    console.warn('Failed to read site accounts from localStorage:', err);
+  } catch {
     return SEED_ACCOUNTS;
   }
 }
@@ -232,8 +231,7 @@ export function saveSiteAccounts(accounts) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_ACCOUNTS, JSON.stringify(accounts));
-  } catch (err) {
-    console.error('Failed to save site accounts:', err);
+  } catch {
   }
 }
 
@@ -353,8 +351,7 @@ export async function createSiteAccount({
         students.push(newAccount);
       }
       localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
-    } catch (err) {
-      console.warn('Failed to sync new student to student roster:', err);
+    } catch {
     }
   }
 
@@ -473,8 +470,7 @@ export function updateSiteAccount(id, updates) {
           localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
         }
       }
-    } catch (err) {
-      console.warn('Failed to update student in roster:', err);
+    } catch {
     }
   }
 
@@ -597,8 +593,7 @@ export function getCoachCredentials(coachId = null) {
       return credentials.filter((c) => c.coach_id === coachId);
     }
     return credentials;
-  } catch (err) {
-    console.warn('Failed to get coach credentials:', err);
+  } catch {
     return SEED_CREDENTIALS;
   }
 }
@@ -687,8 +682,7 @@ export function getStudentEnrollments(coachId = null, studentId = null) {
       return enrollments.filter((e) => e.student_id === studentId);
     }
     return enrollments;
-  } catch (err) {
-    console.warn('Failed to get student enrollments:', err);
+  } catch {
     return SEED_ENROLLMENTS;
   }
 }

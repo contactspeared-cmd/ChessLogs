@@ -37,9 +37,21 @@ export default function Login() {
     }
   };
 
-  const handleQuickDemo = (demoEmail, demoPass) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
+  const handleQuickDemo = async (demoEmail, demoPass) => {
+    setError('');
+    setInfoMessage('');
+    setLoading(true);
+    try {
+      const result = await signInWithEmail(demoEmail, demoPass);
+      const role = result?.profile?.role || 'student';
+      if (role === 'admin') navigate('/admin');
+      else if (role === 'coach') navigate('/coach');
+      else navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Demo login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
