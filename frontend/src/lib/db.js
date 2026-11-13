@@ -991,6 +991,22 @@ export async function deleteStudent(studentId, { reason = '', deletedBy = null }
 }
 
 export async function updateStudentProfile(studentId, profileData) {
+  try {
+    const updated = await api.auth.updateProfile(studentId, profileData);
+    if (updated && updated.id) {
+      const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+      const idx = students.findIndex((s) => s.id === studentId);
+      if (idx >= 0) {
+        students[idx] = { ...students[idx], ...updated };
+        localStorage.setItem(STORAGE_STUDENTS, JSON.stringify(students));
+      }
+      const { updateSiteAccount } = await import('./authStore');
+      updateSiteAccount(studentId, updated);
+      return updated;
+    }
+  } catch {
+  }
+
   const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const idx = students.findIndex((s) => s.id === studentId);
   if (idx >= 0) {

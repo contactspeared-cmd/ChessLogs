@@ -241,7 +241,6 @@ export default function PgnImportWizard({ onConfirm, onClose }) {
 
       onConfirm(result);
     } catch (err) {
-      console.error('PGN import confirm failed:', err);
       setConfirmError(err?.message || 'Failed to build chapter PGNs from the import.');
     }
   };

@@ -67,7 +67,6 @@ export default function Games() {
       const data = await getGamesForStudent(profile.id);
       setGames(data || []);
     } catch (err) {
-      console.error('Failed to load games:', err);
     } finally {
       setLoading(false);
     }
@@ -98,7 +97,6 @@ export default function Games() {
       await unarchiveGame(gameId);
       await loadGames();
     } catch (err) {
-      console.error('Failed to unarchive game:', err);
     }
   };
 
@@ -143,7 +141,6 @@ export default function Games() {
         text: `Successfully synced ${formatted.length.toLocaleString()} games from Chess.com!`,
       });
     } catch (err) {
-      console.error('Chess.com sync failed:', err);
       setSyncFeedback({
         type: 'error',
         text: 'Failed to sync games from Chess.com. Please try again.',
@@ -206,7 +203,6 @@ export default function Games() {
       setPastedPgn('');
       navigate(`/analysis?gameId=${newGame.id}`);
     } catch (err) {
-      console.error('Failed to import PGN:', err);
       setImportError('Invalid PGN format. Please verify the game notation.');
     }
   };

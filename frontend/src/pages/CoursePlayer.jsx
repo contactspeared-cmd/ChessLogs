@@ -170,7 +170,6 @@ export default function CoursePlayer() {
           setActiveChapterIndex(resumeIdx);
         }
       } catch (e) {
-        console.error('Failed to load course:', e);
       } finally {
         setLoading(false);
       }
@@ -364,7 +363,6 @@ export default function CoursePlayer() {
           startTrainerDemo(fullHistory, 0, fenHeader);
         }
       } catch (err) {
-        console.error('Failed to parse chapter PGN:', err);
         setChapterStartFen(null);
         setHistory([]);
       }

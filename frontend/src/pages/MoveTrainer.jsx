@@ -103,7 +103,6 @@ export default function MoveTrainer() {
           setSrsMap(trainer?.cards || {});
         }
       } catch (err) {
-        console.error('Failed to load move trainer:', err);
       } finally {
         setLoading(false);
       }
@@ -122,7 +121,6 @@ export default function MoveTrainer() {
           mode: deckMode,
         });
       } catch (err) {
-        console.warn('Failed to save trainer progress:', err);
       }
     },
     [courseId, profile?.id, deckMode]
@@ -143,7 +141,6 @@ export default function MoveTrainer() {
         setAwaitingConfirm(false);
         setPendingGrade(null);
       } catch (err) {
-        console.error('Failed to load card position:', err);
       }
     },
     [chess]
@@ -314,7 +311,6 @@ export default function MoveTrainer() {
         message: `Solution: ${currentCard.keyMove}. ${currentCard.comment || 'Commit this to memory for next review.'}`,
       });
     } catch (err) {
-      console.error(err);
     }
   };
 

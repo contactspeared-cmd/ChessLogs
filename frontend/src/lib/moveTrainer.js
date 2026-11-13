@@ -126,7 +126,6 @@ export function buildAnnotationCards(chapters = []) {
         if (card) cards.push(card);
       }
     } catch (err) {
-      console.warn('Skip chapter for trainer (bad PGN):', chapter?.title, err);
     }
   }
 
@@ -168,7 +167,6 @@ export function buildLineCards(chapters = [], trainColor = 'b') {
         }
       });
     } catch (err) {
-      console.warn('Skip chapter for line trainer:', chapter?.title, err);
     }
   }
 

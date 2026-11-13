@@ -177,7 +177,6 @@ export default function Analysis() {
           setCurrentPly(0);
         }
       } catch (err) {
-        console.error('Failed to load game for analysis:', err);
       }
     }
 
@@ -340,7 +339,6 @@ export default function Analysis() {
         });
       }
     } catch (err) {
-      console.error('Failed to run fast review:', err);
     } finally {
       setIsReviewing(false);
     }

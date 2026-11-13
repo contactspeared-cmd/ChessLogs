@@ -54,7 +54,6 @@ export class StockfishEngine {
       };
 
       this.worker.onerror = (err) => {
-        console.warn('Stockfish Worker encountered error, running with fallback evaluator:', err);
       };
 
       
@@ -62,7 +61,6 @@ export class StockfishEngine {
       await this.waitForReady();
       this.isReady = true;
     } catch (e) {
-      console.warn('Failed to start Stockfish Web Worker. Fallback evaluator will be used.', e);
       this.isReady = false;
     }
   }
@@ -100,7 +98,6 @@ export class StockfishEngine {
           try {
             cb(parsedInfo);
           } catch (e) {
-            console.error('Subscriber error:', e);
           }
         }
       }

@@ -130,7 +130,6 @@ export default function Profile() {
       setChesscomData(prof);
       setStatsData(stats);
     } catch (err) {
-      console.error('Failed to load Chess.com public data:', err);
     } finally {
       setLoadingStats(false);
     }
@@ -167,7 +166,6 @@ export default function Profile() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to update profile:', err);
     } finally {
       setIsSaving(false);
     }

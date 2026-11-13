@@ -119,7 +119,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       const enrs = getStudentEnrollments(profile?.id);
       setEnrollments(enrs || []);
     } catch (err) {
-      console.error('Failed to load coach dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -258,7 +257,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       await loadDashboardData();
       setActiveTab('curriculum');
     } catch (err) {
-      console.error('Failed to save course:', err);
       setCourseSaveError(err?.message || 'Failed to save course.');
     } finally {
       setCourseSaving(false);
@@ -293,7 +291,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       setDeleteError('');
       await loadDashboardData();
     } catch (err) {
-      console.error('Failed to delete course:', err);
       setDeleteError(err?.message || 'Failed to delete course. Please try again.');
     }
   };
@@ -367,7 +364,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       setStandardsSuccess(true);
       setTimeout(() => setStandardsSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to save coaching standards:', err);
     } finally {
       setStandardsSaving(false);
     }
@@ -393,7 +389,6 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       setCredentials(updatedCreds);
       setTimeout(() => setCredSuccess(false), 3000);
     } catch (err) {
-      console.error('Failed to submit credential:', err);
     } finally {
       setCredSubmitting(false);
     }

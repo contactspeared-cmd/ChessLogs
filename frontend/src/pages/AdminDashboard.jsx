@@ -172,8 +172,7 @@ export default function AdminDashboard() {
 
       const audits = getDeletionAuditRecords();
       setAuditRecords(audits || []);
-    } catch (err) {
-      console.error('Failed to load admin telemetry:', err);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -218,9 +217,7 @@ export default function AdminDashboard() {
     try {
       await updateAccountRole(userId, targetRole);
       await loadAdminData();
-    } catch (err) {
-      console.error('Failed to update user role:', err);
-      alert('Failed to update user role.');
+    } catch {
     }
   };
 
@@ -350,9 +347,7 @@ export default function AdminDashboard() {
 
       await loadAdminData();
       setEditingUser(null);
-    } catch (err) {
-      console.error('Failed to update user profile:', err);
-      alert('Failed to save user updates.');
+    } catch {
     } finally {
       setUserEditSaving(false);
     }
@@ -460,7 +455,6 @@ export default function AdminDashboard() {
       await loadAdminData();
       setActiveTab('courses');
     } catch (err) {
-      console.error('Failed to save course:', err);
       setCourseSaveError(err?.message || 'Failed to save course.');
     } finally {
       setCourseSaving(false);

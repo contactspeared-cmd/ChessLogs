@@ -100,7 +100,6 @@ export default function EngineVariationTools({ pgn, onPgnChange }) {
         setError('No alternate engine lines found (mainline may already be best).');
       }
     } catch (err) {
-      console.error(err);
       setError(err.message || 'Engine evaluation failed');
     } finally {
       setLoading(false);

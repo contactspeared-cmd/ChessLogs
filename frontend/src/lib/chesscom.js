@@ -29,7 +29,6 @@ export async function fetchChesscomProfile(username) {
 
     return await res.json();
   } catch (error) {
-    console.error('Error fetching Chess.com profile:', error);
     throw error;
   }
 }
@@ -48,7 +47,6 @@ export async function fetchChesscomStats(username) {
 
     return await res.json();
   } catch (error) {
-    console.error('Error fetching Chess.com stats:', error);
     return null;
   }
 }
@@ -86,8 +84,7 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
         targetMonth = parts[parts.length - 1];
       }
     } catch (e) {
-      console.warn('Could not fetch archives, defaulting to current date', e);
-    }
+      }
   }
 
   if (!targetYear || !targetMonth) {
@@ -113,7 +110,6 @@ export async function fetchChesscomMonthlyGames(username, year, month) {
     const data = await res.json();
     return data.games || [];
   } catch (error) {
-    console.error('Error fetching monthly games:', error);
     throw error;
   }
 }
@@ -179,7 +175,6 @@ export async function fetchChesscomAllGames(username, onProgressOrOptions = null
         try {
           return await fetchGamesFromArchiveUrl(url);
         } catch (err) {
-          console.warn('Skipping Chess.com archive after error:', url, err);
           return [];
         }
       })

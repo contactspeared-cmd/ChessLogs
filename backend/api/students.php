@@ -67,7 +67,8 @@ if ($method === 'PUT' || ($method === 'POST' && isset($_GET['id']))) {
     $allowed = [
         'first_name', 'middle_initial', 'last_name', 'suffix',
         'date_of_birth', 'display_name', 'avatar_url', 'chesscom_username',
-        'bio', 'elo_rating', 'min_student_elo', 'coaching_standards', 'current_elo'
+        'bio', 'elo_rating', 'min_student_elo', 'coaching_standards', 'current_elo',
+        'role'
     ];
 
     foreach ($allowed as $k) {
