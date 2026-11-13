@@ -154,7 +154,7 @@ export default function ChatWidget() {
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
                   )}
                 </div>
-                <span>Messages</span>
+                <span>{isCoach ? 'Student Messages' : 'Messages'}</span>
                 {unreadCount > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-mono font-black">
                     {unreadCount}

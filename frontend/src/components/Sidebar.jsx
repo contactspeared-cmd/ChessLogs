@@ -5,7 +5,6 @@ import { ChessKnightIcon } from './ChessIcons';
 import {
   ShieldAlert,
   GraduationCap,
-  MessageSquare,
   HelpCircle,
   MessageCircle,
   ShoppingBag,
@@ -50,7 +49,6 @@ export default function Sidebar() {
 
   const coachLinks = [
     { name: 'Coach Studio', path: '/coach', icon: GraduationCap },
-    { name: 'Student Messages', path: '/messages', icon: MessageSquare },
     { name: 'Marketplace', path: '/marketplace', icon: ShoppingBag },
     { name: 'Help & Support', path: '/support', icon: HelpCircle },
     { name: 'Community Feedback', path: '/feedback', icon: MessageCircle },
