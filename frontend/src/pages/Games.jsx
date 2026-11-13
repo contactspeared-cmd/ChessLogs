@@ -6,9 +6,16 @@ import {
   fetchChesscomAllGames,
   formatChesscomGame,
 } from '../lib/chesscom';
-import { getGamesForStudent, upsertGames, replaceSyncedChesscomGames } from '../lib/db';
+import {
+  getGamesForStudent,
+  upsertGames,
+  replaceSyncedChesscomGames,
+  archiveGame,
+  unarchiveGame,
+} from '../lib/db';
 import { detectOpening, openingFieldsFromDetection } from '../lib/openings';
 import OpeningBadge from '../components/OpeningBadge';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
 import {
   Database,
   RefreshCw,
@@ -25,6 +32,8 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 
 const GAMES_PER_PAGE = 50;
@@ -38,6 +47,9 @@ export default function Games() {
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(null);
   const [syncFeedback, setSyncFeedback] = useState(null);
+
+  const [gameFilterMode, setGameFilterMode] = useState('active');
+  const [archiveModalGame, setArchiveModalGame] = useState(null);
 
   const [timeFilter, setTimeFilter] = useState('all');
   const [resultFilter, setResultFilter] = useState('all');
@@ -76,7 +88,19 @@ export default function Games() {
 
   useEffect(() => {
     setPage(1);
-  }, [timeFilter, resultFilter, searchQuery, games.length]);
+  }, [gameFilterMode, timeFilter, resultFilter, searchQuery, games.length]);
+
+  const activeCount = useMemo(() => games.filter((g) => !g.archived).length, [games]);
+  const archivedCount = useMemo(() => games.filter((g) => g.archived).length, [games]);
+
+  const handleUnarchiveGame = async (gameId) => {
+    try {
+      await unarchiveGame(gameId);
+      await loadGames();
+    } catch (err) {
+      console.error('Failed to unarchive game:', err);
+    }
+  };
 
   const handleSyncGames = async () => {
     const username = profile?.chesscom_username;
@@ -189,6 +213,11 @@ export default function Games() {
 
   const filteredGames = useMemo(() => {
     return games.filter((game) => {
+      if (gameFilterMode === 'archived') {
+        if (!game.archived) return false;
+      } else {
+        if (game.archived) return false;
+      }
       if (timeFilter !== 'all' && game.time_class !== timeFilter) return false;
       if (resultFilter !== 'all' && game.result !== resultFilter) return false;
       if (searchQuery.trim()) {
@@ -212,7 +241,7 @@ export default function Games() {
       }
       return true;
     });
-  }, [games, timeFilter, resultFilter, searchQuery, profile?.chesscom_username]);
+  }, [games, gameFilterMode, timeFilter, resultFilter, searchQuery, profile?.chesscom_username]);
 
   const totalPages = Math.max(1, Math.ceil(filteredGames.length / GAMES_PER_PAGE));
   const safePage = Math.min(page, totalPages);
@@ -321,6 +350,32 @@ export default function Games() {
           <span className="font-medium">{syncFeedback.text}</span>
         </div>
       )}
+
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+        <button
+          onClick={() => setGameFilterMode('active')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            gameFilterMode === 'active'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5" />
+          <span>Active Games ({activeCount.toLocaleString()})</span>
+        </button>
+
+        <button
+          onClick={() => setGameFilterMode('archived')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            gameFilterMode === 'archived'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+          }`}
+        >
+          <Archive className="w-3.5 h-3.5" />
+          <span>Archived Games ({archivedCount.toLocaleString()})</span>
+        </button>
+      </div>
 
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-80">
@@ -446,6 +501,13 @@ export default function Games() {
                           <span>{game.time_class}</span>
                         </div>
 
+                        {game.archived && (
+                          <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[11px] font-semibold flex items-center gap-1">
+                            <Archive className="w-3 h-3" />
+                            <span>Archived</span>
+                          </span>
+                        )}
+
                         {game.review && (
                           <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-mono font-semibold">
                             Acc: {isUserWhite ? game.review.accuracy_white : game.review.accuracy_black}%
@@ -483,10 +545,35 @@ export default function Games() {
                           </>
                         )}
                       </div>
+
+                      {game.archived && game.archived_reason && (
+                        <div className="text-[11px] text-amber-300/80 italic">
+                          Archive reason: &quot;{game.archived_reason}&quot;
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 sm:self-center self-end">
+                    {game.archived ? (
+                      <button
+                        onClick={() => handleUnarchiveGame(game.id)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-xs font-semibold border border-amber-500/20 transition-colors"
+                        title="Unarchive game"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Unarchive</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setArchiveModalGame(game)}
+                        className="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors"
+                        title="Archive game"
+                      >
+                        <Archive className="w-4 h-4" />
+                      </button>
+                    )}
+
                     {game.url && (
                       <a
                         href={game.url}
@@ -618,6 +705,25 @@ export default function Games() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={!!archiveModalGame}
+        onClose={() => setArchiveModalGame(null)}
+        title="Archive Saved Game"
+        itemType="Saved Game"
+        itemName={
+          archiveModalGame
+            ? `vs. ${(archiveModalGame.white_username || '').toLowerCase() === (profile?.chesscom_username || '').toLowerCase() ? archiveModalGame.black_username : archiveModalGame.white_username} (${archiveModalGame.time_class || 'game'})`
+            : ''
+        }
+        warningDetails="Archiving this game removes it from your active game catalog. It is retained in your archive and can be unarchived at any time, and an audit snapshot is recorded in the platform audit trail."
+        onConfirm={async (reason) => {
+          if (!archiveModalGame) return;
+          await archiveGame(archiveModalGame.id, { reason, user: profile });
+          setArchiveModalGame(null);
+          await loadGames();
+        }}
+      />
     </div>
   );
 }

@@ -2,6 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StatisticsPanel from '../components/dashboard/StatisticsPanel';
+import ConfirmDeleteModal from '../components/ConfirmDeleteModal';
+import {
+  getDeletionAuditRecords,
+  restoreDeletedItem,
+  purgeAuditRecord,
+} from '../lib/auditStore';
 import {
   getAllStudents,
   getCourses,
@@ -48,6 +54,9 @@ import {
   ChevronRight,
   Database,
   ArrowUpRight,
+  Archive,
+  RotateCcw,
+  Shield,
 } from 'lucide-react';
 
 export default function AdminDashboard() {
@@ -57,13 +66,13 @@ export default function AdminDashboard() {
   const tabParam = searchParams.get('tab');
 
   const [activeTab, setActiveTabState] = useState(
-    tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder'].includes(tabParam)
+    tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder', 'vault'].includes(tabParam)
       ? tabParam
       : 'telemetry'
   );
 
   useEffect(() => {
-    if (tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder'].includes(tabParam)) {
+    if (tabParam && ['telemetry', 'users', 'coaches', 'enrollments', 'courses', 'courseBuilder', 'vault'].includes(tabParam)) {
       setActiveTabState(tabParam);
     }
   }, [tabParam]);
@@ -129,6 +138,20 @@ export default function AdminDashboard() {
   const [rejectingCred, setRejectingCred] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
 
+  const [auditRecords, setAuditRecords] = useState([]);
+  const [vaultSearch, setVaultSearch] = useState('');
+  const [vaultTypeFilter, setVaultTypeFilter] = useState('all');
+  const [vaultRestoringId, setVaultRestoringId] = useState(null);
+  const [vaultActionMessage, setVaultActionMessage] = useState(null);
+  const [deleteModalConfig, setDeleteModalConfig] = useState({
+    isOpen: false,
+    itemType: '',
+    itemId: null,
+    itemName: '',
+    warningDetails: '',
+    onConfirm: null,
+  });
+
   const loadAdminData = async () => {
     setLoading(true);
     try {
@@ -146,6 +169,9 @@ export default function AdminDashboard() {
 
       const enrs = getStudentEnrollments();
       setEnrollments(enrs || []);
+
+      const audits = getDeletionAuditRecords();
+      setAuditRecords(audits || []);
     } catch (err) {
       console.error('Failed to load admin telemetry:', err);
     } finally {
@@ -198,22 +224,53 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (userId, userName) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to permanently delete the account for "${userName}"? All associated records will be purged.`
-      )
-    ) {
-      return;
-    }
+  const handleDeleteUser = (userId, userName) => {
+    setDeleteModalConfig({
+      isOpen: true,
+      itemType: 'User Account',
+      itemId: userId,
+      itemName: userName,
+      warningDetails: `Are you sure you want to revoke and delete the account for "${userName}"? The user will be revoked from the platform. A full snapshot of the account will be stored in the Restoration Vault where only an administrator can restore it.`,
+      onConfirm: async (reason) => {
+        await deleteStudent(userId, { reason, deletedBy: profile });
+        await loadAdminData();
+      },
+    });
+  };
+
+  const handleRestoreRecord = async (recordId) => {
+    setVaultRestoringId(recordId);
+    setVaultActionMessage(null);
     try {
-      await deleteStudent(userId);
+      await restoreDeletedItem(recordId, profile);
+      setVaultActionMessage({
+        type: 'success',
+        text: 'Item successfully restored to the platform and reinjected into active collections.',
+      });
       await loadAdminData();
     } catch (err) {
-      console.error('Failed to purge user:', err);
-      alert('Failed to delete user account.');
+      setVaultActionMessage({
+        type: 'error',
+        text: err?.message || 'Failed to restore item.',
+      });
+    } finally {
+      setVaultRestoringId(null);
     }
   };
+
+  const filteredAuditRecords = useMemo(() => {
+    return auditRecords.filter((rec) => {
+      const matchesType = vaultTypeFilter === 'all' || rec.item_type === vaultTypeFilter;
+      const q = vaultSearch.toLowerCase().trim();
+      const matchesSearch =
+        !q ||
+        rec.item_title?.toLowerCase().includes(q) ||
+        rec.deleted_by_name?.toLowerCase().includes(q) ||
+        rec.deleted_by_email?.toLowerCase().includes(q) ||
+        rec.reason?.toLowerCase().includes(q);
+      return matchesType && matchesSearch;
+    });
+  }, [auditRecords, vaultSearch, vaultTypeFilter]);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -410,14 +467,18 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteCourse = async (courseId) => {
-    if (!window.confirm('Are you sure you want to delete this course from the platform?')) return;
-    try {
-      await deleteCourse(courseId);
-      await loadAdminData();
-    } catch (err) {
-      console.error('Failed to delete course:', err);
-    }
+  const handleDeleteCourse = (courseId, courseTitle = 'Course') => {
+    setDeleteModalConfig({
+      isOpen: true,
+      itemType: 'Course',
+      itemId: courseId,
+      itemName: courseTitle,
+      warningDetails: `Are you sure you want to remove and delete "${courseTitle}" from the platform? It will be removed from all active curricula. A full snapshot is stored in the Restoration Vault where only an administrator can restore it.`,
+      onConfirm: async (reason) => {
+        await deleteCourse(courseId, { reason, deletedBy: profile });
+        await loadAdminData();
+      },
+    });
   };
 
   const handleAddChapter = () => {
@@ -650,6 +711,18 @@ export default function AdminDashboard() {
         >
           <BookOpen className="w-4 h-4" />
           <span>Curriculum Moderation ({courses.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('vault')}
+          className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap ${
+            activeTab === 'vault'
+              ? 'border-purple-400 text-purple-400 bg-purple-500/100/5'
+              : 'border-transparent text-slate-400 hover:text-white'
+          }`}
+        >
+          <Archive className="w-4 h-4" />
+          <span>Restoration Vault ({auditRecords.length})</span>
         </button>
       </div>
 
@@ -1299,7 +1372,7 @@ export default function AdminDashboard() {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteCourse(course.id)}
+                      onClick={() => handleDeleteCourse(course.id, course.title)}
                       className="p-1.5 rounded-lg bg-rose-500/100/10 hover:bg-rose-500/100/20 text-rose-400 transition-colors"
                       title="Delete course"
                     >
@@ -1566,6 +1639,190 @@ export default function AdminDashboard() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {activeTab === 'vault' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Archive className="w-5 h-5 text-purple-400" />
+                <span>Restoration Vault &amp; Audit Log</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Permanent audit trail of all purged courses, revoked user accounts, and archived games. Exclusively restorable by administrators.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-bold">
+                {auditRecords.filter((r) => !r.restored_at).length} In Vault
+              </span>
+              <span className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                {auditRecords.filter((r) => r.restored_at).length} Restored
+              </span>
+            </div>
+          </div>
+
+          {vaultActionMessage && (
+            <div
+              className={`p-4 rounded-2xl text-xs font-medium flex items-center gap-2.5 ${
+                vaultActionMessage.type === 'success'
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                  : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+              }`}
+            >
+              {vaultActionMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              )}
+              <span>{vaultActionMessage.text}</span>
+            </div>
+          )}
+
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={vaultSearch}
+                onChange={(e) => setVaultSearch(e.target.value)}
+                placeholder="Search audit trail by title, user, or reason..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-10 pr-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs w-full md:w-auto overflow-x-auto">
+              {[
+                { id: 'all', label: 'All Records' },
+                { id: 'user', label: 'Users' },
+                { id: 'course', label: 'Courses' },
+                { id: 'game', label: 'Saved Games' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setVaultTypeFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap ${
+                    vaultTypeFilter === f.id
+                      ? 'bg-purple-600 text-white font-semibold shadow-sm'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredAuditRecords.length === 0 ? (
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-12 text-center space-y-3">
+              <ShieldCheck className="w-12 h-12 text-slate-600 mx-auto" />
+              <h3 className="text-base font-bold text-white">Vault is Clear</h3>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                No deleted items match your search filter. Deletion events across the platform with required reasons will appear here automatically.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredAuditRecords.map((record) => {
+                const isRestored = !!record.restored_at;
+                const isRestoring = vaultRestoringId === record.id;
+
+                const typeColor =
+                  record.item_type === 'user' || record.item_type === 'student'
+                    ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+                    : record.item_type === 'course'
+                    ? 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+                    : 'text-amber-400 bg-amber-500/10 border-amber-500/20';
+
+                return (
+                  <div
+                    key={record.id}
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 transition-all space-y-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md border ${typeColor}`}
+                          >
+                            {record.item_type}
+                          </span>
+
+                          {isRestored ? (
+                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Restored
+                            </span>
+                          ) : (
+                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                              <ShieldAlert className="w-3 h-3" />
+                              Purged
+                            </span>
+                          )}
+
+                          <span className="text-[11px] text-slate-500 font-mono">
+                            ID: {record.item_id}
+                          </span>
+                        </div>
+
+                        <h3 className="text-base font-bold text-white break-words">
+                          {record.item_title}
+                        </h3>
+
+                        <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+                          <span>
+                            Deleted by{' '}
+                            <span className="text-slate-300 font-semibold">
+                              {record.deleted_by_name}
+                            </span>{' '}
+                            ({record.deleted_by_role})
+                          </span>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 text-slate-400">
+                            <Clock className="w-3 h-3" />
+                            {new Date(record.deleted_at).toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:self-start self-end shrink-0">
+                        {isRestored ? (
+                          <div className="text-right">
+                            <span className="text-xs text-emerald-400 font-semibold block">
+                              Restored by {record.restored_by}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {new Date(record.restored_at).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleRestoreRecord(record.id)}
+                            disabled={isRestoring}
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/20 disabled:opacity-50"
+                          >
+                            <RotateCcw className={`w-3.5 h-3.5 ${isRestoring ? 'animate-spin' : ''}`} />
+                            <span>{isRestoring ? 'Restoring...' : 'Restore to Platform'}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3.5 space-y-1">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                        Reason for Deletion
+                      </span>
+                      <p className="text-xs text-slate-200 italic leading-relaxed">
+                        &quot;{record.reason}&quot;
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -1979,6 +2236,15 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <ConfirmDeleteModal
+        isOpen={deleteModalConfig.isOpen}
+        onClose={() => setDeleteModalConfig((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={deleteModalConfig.onConfirm}
+        itemType={deleteModalConfig.itemType}
+        itemName={deleteModalConfig.itemName}
+        warningDetails={deleteModalConfig.warningDetails}
+      />
     </div>
   );
 }

@@ -83,6 +83,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
 
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [deleteConfirmTitle, setDeleteConfirmTitle] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
   const [deleteError, setDeleteError] = useState('');
 
   const [minStudentElo, setMinStudentElo] = useState(profile?.min_student_elo || 1200);
@@ -267,6 +268,7 @@ export default function CoachDashboard({ onPreviewStudentView }) {
   const handleOpenDeleteModal = (course) => {
     setDeletingCourse(course);
     setDeleteConfirmTitle('');
+    setDeleteReason('');
     setDeleteError('');
   };
 
@@ -276,10 +278,18 @@ export default function CoachDashboard({ onPreviewStudentView }) {
       setDeleteError('Course title does not match. Please type the exact title to confirm.');
       return;
     }
+    if (!deleteReason.trim()) {
+      setDeleteError('Please provide a mandatory reason for deletion before continuing.');
+      return;
+    }
     try {
-      await deleteCourse(deletingCourse.id);
+      await deleteCourse(deletingCourse.id, {
+        reason: deleteReason.trim(),
+        deletedBy: profile,
+      });
       setDeletingCourse(null);
       setDeleteConfirmTitle('');
+      setDeleteReason('');
       setDeleteError('');
       await loadDashboardData();
     } catch (err) {
@@ -1519,21 +1529,42 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500/50 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none transition-colors placeholder:text-slate-400"
                 autoFocus
               />
-              {deleteError && (
-                <div className="p-2.5 rounded-xl bg-rose-500/100/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
-                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                  {deleteError}
-                </div>
-              )}
             </div>
 
-            {}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">
+                Reason for Deletion <span className="text-rose-400">*</span>:
+              </label>
+              <textarea
+                rows={2}
+                required
+                placeholder="State mandatory reason for archiving this course (submitted to Admin Vault)..."
+                value={deleteReason}
+                onChange={(e) => {
+                  setDeleteReason(e.target.value);
+                  setDeleteError('');
+                }}
+                className="w-full bg-slate-950 border border-slate-800 focus:border-rose-500/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none transition-colors placeholder:text-slate-500"
+              />
+              <p className="text-[10px] text-slate-500">
+                This course will be archived and logged in the Administrator Restoration Vault. Only the Admin can restore it.
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="p-2.5 rounded-xl bg-rose-500/100/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {deleteError}
+              </div>
+            )}
+
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="button"
                 onClick={() => {
                   setDeletingCourse(null);
                   setDeleteConfirmTitle('');
+                  setDeleteReason('');
                   setDeleteError('');
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
@@ -1545,12 +1576,13 @@ export default function CoachDashboard({ onPreviewStudentView }) {
                 onClick={handleConfirmDelete}
                 disabled={
                   deleteConfirmTitle.trim().toLowerCase() !==
-                  deletingCourse.title.trim().toLowerCase()
+                  deletingCourse.title.trim().toLowerCase() ||
+                  !deleteReason.trim()
                 }
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500/100 disabled:bg-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-rose-600/20 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                Delete Permanently
+                Delete &amp; Archive
               </button>
             </div>
           </div>

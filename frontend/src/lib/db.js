@@ -10,7 +10,9 @@ import {
   reviewStudentEnrollment,
   getStudentRequirements,
   reviewStudentRequirement,
+  deleteSiteAccount,
 } from './authStore';
+import { recordDeletion } from './auditStore';
 
 const STORAGE_COURSES = 'chesslogs_courses';
 const STORAGE_GAMES = 'chesslogs_games';
@@ -589,12 +591,25 @@ export async function saveCourse(courseData, chaptersData = []) {
   return updatedCourse;
 }
 
-export async function deleteCourse(courseId) {
+export async function deleteCourse(courseId, { reason = '', deletedBy = null } = {}) {
+  const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
+  const targetCourse = courses.find((c) => c.id === courseId);
+
+  if (targetCourse) {
+    recordDeletion({
+      itemType: 'course',
+      itemId: courseId,
+      itemTitle: targetCourse.title || courseId,
+      deletedBy,
+      reason,
+      payload: targetCourse,
+    });
+  }
+
   try {
     await api.courses.delete(courseId);
   } catch (err) {}
 
-  const courses = JSON.parse(localStorage.getItem(STORAGE_COURSES) || '[]');
   const filtered = courses.filter((c) => c.id !== courseId);
   localStorage.setItem(STORAGE_COURSES, JSON.stringify(filtered));
   return true;
@@ -866,6 +881,49 @@ export async function saveGameReview(gameId, reviewData) {
   return reviews[gameId];
 }
 
+export async function archiveGame(gameId, { reason = '', user = null } = {}) {
+  const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const idx = games.findIndex((g) => g.id === gameId);
+  if (idx === -1) return false;
+
+  const targetGame = { ...games[idx] };
+  targetGame.archived = true;
+  targetGame.archived_at = new Date().toISOString();
+  targetGame.archived_reason = (reason || '').trim() || 'Archived by player';
+
+  recordDeletion({
+    itemType: 'game',
+    itemId: gameId,
+    itemTitle: `${targetGame.white_username || 'White'} vs ${targetGame.black_username || 'Black'}`,
+    deletedBy: user,
+    reason,
+    payload: targetGame,
+  });
+
+  games[idx] = targetGame;
+  try {
+    setGamesSafely(games);
+  } catch (err) {}
+  return targetGame;
+}
+
+export async function unarchiveGame(gameId) {
+  const games = JSON.parse(localStorage.getItem(STORAGE_GAMES) || '[]');
+  const idx = games.findIndex((g) => g.id === gameId);
+  if (idx === -1) return false;
+
+  const targetGame = { ...games[idx] };
+  targetGame.archived = false;
+  delete targetGame.archived_at;
+  delete targetGame.archived_reason;
+
+  games[idx] = targetGame;
+  try {
+    setGamesSafely(games);
+  } catch (err) {}
+  return targetGame;
+}
+
 export async function getAllStudents() {
   try {
     const data = await api.students.getAll();
@@ -893,12 +951,28 @@ export async function getAllStudents() {
     });
 }
 
-export async function deleteStudent(studentId) {
+export async function deleteStudent(studentId, { reason = '', deletedBy = null } = {}) {
+  const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
+  const allAccounts = getAllAccounts();
+  const targetStudent = students.find((s) => s.id === studentId) || allAccounts.find((a) => a.id === studentId);
+
+  if (targetStudent) {
+    recordDeletion({
+      itemType: 'user',
+      itemId: studentId,
+      itemTitle: targetStudent.display_name || targetStudent.email || studentId,
+      deletedBy,
+      reason,
+      payload: targetStudent,
+    });
+  }
+
+  deleteSiteAccount(studentId);
+
   try {
     await api.students.delete(studentId);
   } catch (err) {}
 
-  const students = JSON.parse(localStorage.getItem(STORAGE_STUDENTS) || '[]');
   const filtered = students.filter(
     (s) =>
       s.id !== studentId &&
